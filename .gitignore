@@ -1,0 +1,77 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# uv
+.uv/
+uv.lock
+
+# Node / pnpm
+node_modules/
+.pnpm-store/
+pnpm-debug.log*
+npm-debug.log*
+.yarn/
+.next/
+.turbo/
+
+# Vite / bundlers
+**/dist/
+**/.vite/
+*.tsbuildinfo
+
+# Chrome extension build outputs
+frontend/packages/extension/dist/
+frontend/packages/extension/.crx/
+
+# Playwright
+playwright-report/
+test-results/
+.playwright/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+*~
+
+# Sisyphus / opencode scratch
+.sisyphus/
+.kiro/
+
+# Attachment scratch
+tmp/
+/tmp-medshield/
+
+# Docker / data volumes
+infra/data/
+*.timestamp-*.mjs
