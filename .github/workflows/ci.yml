@@ -1,0 +1,54 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with: { enable-cache: true }
+      - name: Install
+        run: |
+          cd detection && uv sync --all-extras
+          cd ../backend && uv sync --all-extras
+      - name: Lint
+        run: cd backend && uv run ruff check .
+      - name: Typecheck
+        run: cd backend && uv run pyright
+      - name: Test
+        run: cd backend && uv run pytest -q
+      - name: Dependency audit
+        run: cd backend && uv run pip-audit
+      - name: SBOM
+        run: cd backend && uvx --from cyclonedx-bom cyclonedx-py environment -o cyclonedx.json
+
+  detection:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - run: cd detection && uv sync --all-extras
+      - run: cd detection && uv run ruff check .
+      - run: cd detection && uv run pyright
+      - run: cd detection && uv run pytest -q
+      - run: cd detection && uv run pip-audit
+      - run: cd detection && uvx --from cyclonedx-bom cyclonedx-py environment -o cyclonedx.json
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+      - run: cd frontend && pnpm install --frozen-lockfile
+      - run: cd frontend && pnpm typecheck
+      - run: cd frontend && pnpm lint
+      - run: cd frontend && pnpm test
+      - run: cd frontend && pnpm build
