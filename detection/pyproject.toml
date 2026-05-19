@@ -1,0 +1,68 @@
+[project]
+name = "medshield-detection"
+version = "0.1.0"
+description = "MedShield healthcare DLP detection engine: Presidio + custom recognizers + OCR + risk scoring."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = { text = "MIT" }
+authors = [{ name = "MedShield" }]
+
+dependencies = [
+    "pydantic>=2.9.0",
+    "presidio-analyzer>=2.2.355",
+    "presidio-anonymizer>=2.2.355",
+    "spacy>=3.7.6",
+    "python-stdnum>=1.20",
+    "simple-icd-10-cm>=1.5.0,<2.0.0",
+    "pymupdf>=1.24.10",
+    "python-docx>=1.1.2",
+    "openpyxl>=3.1.5",
+    "Pillow>=11.0.0",
+    "python-magic>=0.4.27",
+    "regex>=2024.9.11",
+    "structlog>=24.4.0",
+]
+
+[project.optional-dependencies]
+ocr = [
+    "pytesseract>=0.3.13",
+    "paddlepaddle>=2.6.2",
+    "paddleocr>=2.8.1",
+    "opencv-python-headless>=4.10.0",
+]
+medical-ner = [
+    "transformers>=4.45.0",
+    "torch>=2.4.1",
+]
+dev = [
+    "ruff>=0.7.0",
+    "pyright>=1.1.385",
+    "pytest>=8.3.3",
+    "pytest-cov>=5.0.0",
+    "hypothesis>=6.115.0",
+    "pip-audit>=2.7.3",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["medshield_detection"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "A", "C4", "RET", "SIM", "RUF"]
+
+[tool.pyright]
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+reportMissingTypeStubs = false
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
