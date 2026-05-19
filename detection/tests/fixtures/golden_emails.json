@@ -1,0 +1,62 @@
+[
+  {
+    "name": "formatted_abha",
+    "subject": "",
+    "body": "ABHA 12-3456-7890-1234 for discharge summary",
+    "expected": {"ABHA": 1}
+  },
+  {
+    "name": "raw_abha",
+    "subject": "health ID",
+    "body": "Patient health ID 12345678901234 is active",
+    "expected": {"ABHA": 1}
+  },
+  {
+    "name": "mrn",
+    "subject": "",
+    "body": "MRN HSP-2026-0012 requires review",
+    "expected": {"MRN": 1}
+  },
+  {
+    "name": "icd10",
+    "subject": "",
+    "body": "Diagnosis E11.9 in the report",
+    "expected": {"ICD10": 1}
+  },
+  {
+    "name": "pan",
+    "subject": "",
+    "body": "PAN ABCDE1234F was pasted by mistake",
+    "expected": {"IN_PAN": 1}
+  },
+  {
+    "name": "aadhaar",
+    "subject": "",
+    "body": "Aadhaar 234567890124 appears in the mail",
+    "expected": {"IN_AADHAAR": 1}
+  },
+  {
+    "name": "combined_identifiers",
+    "subject": "Patient file",
+    "body": "ABHA 12-3456-7890-1234, MRN HSP-2026-0012, diagnosis E11.9",
+    "expected": {"ABHA": 1, "MRN": 1, "ICD10": 1}
+  },
+  {
+    "name": "invalid_abha_leading_zero",
+    "subject": "",
+    "body": "ABHA 02-3456-7890-1234 should not match",
+    "expected": {}
+  },
+  {
+    "name": "icd10_regex_only",
+    "subject": "",
+    "body": "ICD A01.9999 came from a malformed template",
+    "expected": {"ICD10": 1}
+  },
+  {
+    "name": "no_entities",
+    "subject": "Lunch",
+    "body": "Can we meet in the cafeteria at noon?",
+    "expected": {}
+  }
+]
