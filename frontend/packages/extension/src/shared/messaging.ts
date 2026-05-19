@@ -1,4 +1,4 @@
-import type { Verdict } from '@medshield/shared';
+import type { Verdict } from '@aurodlpv2/shared';
 
 export interface ScanRequest {
   subject: string;

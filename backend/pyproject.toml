@@ -1,11 +1,11 @@
 [project]
-name = "medshield-backend"
+name = "aurodlpv2-backend"
 version = "0.1.0"
-description = "MedShield Gmail DLP backend - FastAPI service for healthcare DLP scanning, policy enforcement, audit logging, and admin dashboard APIs."
+description = "Auro DLP v2 backend - FastAPI service for healthcare DLP scanning, policy enforcement, audit logging, and admin dashboard APIs."
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 license = { text = "MIT" }
-authors = [{ name = "MedShield" }]
+authors = [{ name = "Auro DLP v2" }]
 
 dependencies = [
     # Web
@@ -30,7 +30,7 @@ dependencies = [
     "pyjwt[crypto]>=2.9.0",
     "argon2-cffi>=23.1.0",
     # Detection (local package)
-    "medshield-detection",
+    "aurodlpv2-detection",
     # Files / MIME
     "python-magic>=0.4.27",
     "aiofiles>=24.1.0",
@@ -64,14 +64,14 @@ dev = [
 ]
 
 [tool.uv.sources]
-medshield-detection = { path = "../detection", editable = true }
+aurodlpv2-detection = { path = "../detection", editable = true }
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["medshield_backend"]
+packages = ["aurodlpv2_backend"]
 
 # ---------------------------------------------------------------------------
 # Tooling
@@ -79,7 +79,7 @@ packages = ["medshield_backend"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-extend-exclude = ["medshield_backend/db/migrations/versions"]
+extend-exclude = ["aurodlpv2_backend/db/migrations/versions"]
 
 [tool.ruff.lint]
 select = [
@@ -95,13 +95,13 @@ pythonVersion = "3.12"
 typeCheckingMode = "strict"
 reportMissingTypeStubs = false
 reportPrivateImportUsage = false
-exclude = ["medshield_backend/db/migrations/versions", ".venv", "**/__pycache__"]
+exclude = ["aurodlpv2_backend/db/migrations/versions", ".venv", "**/__pycache__"]
 
 [tool.pytest.ini_options]
 minversion = "8.0"
 asyncio_mode = "auto"
 testpaths = ["tests"]
-addopts = "-ra --strict-markers --cov=medshield_backend --cov-report=term-missing"
+addopts = "-ra --strict-markers --cov=aurodlpv2_backend --cov-report=term-missing"
 markers = [
     "unit: unit tests",
     "integration: requires postgres/redis",
@@ -110,5 +110,5 @@ markers = [
 
 [tool.coverage.run]
 branch = true
-source = ["medshield_backend"]
+source = ["aurodlpv2_backend"]
 omit = ["*/migrations/*", "*/tests/*"]

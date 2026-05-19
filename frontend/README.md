@@ -1,4 +1,4 @@
-# medshield-frontend
+# aurodlpv2-frontend
 
 pnpm workspace with three packages.
 
@@ -25,6 +25,6 @@ pnpm dev:dashboard   # vite on :5173
 - TypeScript strict everywhere (`tsconfig.base.json`).
 - React 19, function components only.
 - Zod parses every backend response in `shared`.
-- Shared types live in `@medshield/shared` - never duplicate `Verdict` between packages.
+- Shared types live in `@aurodlpv2/shared` - never duplicate `Verdict` between packages.
 - No restricted Gmail OAuth scopes (`openid email profile` only).
 - Bundle budgets enforced via `size-limit` in CI: content-script ≤ 250 KB gz, SW ≤ 80 KB gz, dashboard route ≤ 350 KB gz.

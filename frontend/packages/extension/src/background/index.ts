@@ -1,5 +1,5 @@
-import { createApiClient } from '@medshield/shared/api';
-import type { Verdict, AuthTokens } from '@medshield/shared';
+import { createApiClient } from '@aurodlpv2/shared/api';
+import type { Verdict, AuthTokens } from '@aurodlpv2/shared';
 
 const API_BASE_URL = 'http://localhost:8000';
 

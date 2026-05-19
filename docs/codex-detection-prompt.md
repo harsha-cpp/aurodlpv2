@@ -1,10 +1,10 @@
 # Codex — Detection Engine Build Brief
 
-You are implementing the MedShield detection engine — a pure Python package at `detection/medshield_detection/`. Scaffold with models, config, and weights is in place; fill in the stubs.
+You are implementing the Auro DLP v2 detection engine — a pure Python package at `detection/aurodlpv2_detection/`. Scaffold with models, config, and weights is in place; fill in the stubs.
 
 ## Authoritative spec
 
-`docs/plans/detection-engine.md` is the source of truth. Cross-refs: `docs/prd.md` (product requirements), `docs/plans/backend.md` (backend imports this package via `from medshield_detection.api import detect_email`).
+`docs/plans/detection-engine.md` is the source of truth. Cross-refs: `docs/prd.md` (product requirements), `docs/plans/backend.md` (backend imports this package via `from aurodlpv2_detection.api import detect_email`).
 
 ## Ground rules
 

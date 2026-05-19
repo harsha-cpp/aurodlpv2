@@ -1,4 +1,4 @@
-# MedShield Gmail DLP
+# Auro DLP v2
 
 Healthcare Data-Loss-Prevention for Gmail / Google Workspace.
 

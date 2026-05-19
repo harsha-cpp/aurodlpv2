@@ -1,17 +1,17 @@
-name: medshield-dev
+name: aurodlpv2-dev
 
 services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: medshield
-      POSTGRES_PASSWORD: medshield
-      POSTGRES_DB: medshield
+      POSTGRES_USER: aurodlpv2
+      POSTGRES_PASSWORD: aurodlpv2
+      POSTGRES_DB: aurodlpv2
     ports: ["5432:5432"]
     volumes:
       - ./data/postgres:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U medshield"]
+      test: ["CMD-SHELL", "pg_isready -U aurodlpv2"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -30,8 +30,8 @@ services:
     image: minio/minio:latest
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: medshield
-      MINIO_ROOT_PASSWORD: medshield-secret
+      MINIO_ROOT_USER: aurodlpv2
+      MINIO_ROOT_PASSWORD: aurodlpv2-secret
     ports:
       - "9000:9000"
       - "9001:9001"

@@ -1,6 +1,6 @@
-# MedShield Backend — Build Plan
+# Auro DLP v2 Backend — Build Plan
 
-> Scope: Python FastAPI + Celery + Redis + PostgreSQL backend that the Chrome extension and admin dashboard talk to. Owns auth, scan orchestration, policy evaluation, quarantine, audit log, and admin APIs. Detection logic lives in the separate `medshield_detection` package (see `detection-engine.md`).
+> Scope: Python FastAPI + Celery + Redis + PostgreSQL backend that the Chrome extension and admin dashboard talk to. Owns auth, scan orchestration, policy evaluation, quarantine, audit log, and admin APIs. Detection logic lives in the separate `aurodlpv2_detection` package (see `detection-engine.md`).
 
 ---
 
@@ -42,7 +42,7 @@
                                                │
                                                ▼
                                        ┌───────────────┐
-                                       │ Celery worker │── invokes ──► medshield_detection
+                                       │ Celery worker │── invokes ──► aurodlpv2_detection
                                        │ (prefork x N) │              (OCR / PDF / NER deep scan)
                                        └───────┬───────┘
                                                │
@@ -59,7 +59,7 @@
 backend/
 ├── pyproject.toml
 ├── alembic/                   # migrations
-├── medshield_backend/
+├── aurodlpv2_backend/
 │   ├── main.py                # FastAPI app factory
 │   ├── settings.py            # pydantic-settings
 │   ├── deps.py                # DI: db session, current_user, current_workspace
@@ -114,7 +114,7 @@ All endpoints scoped under `/v1`. JSON only. Errors use [RFC 7807 Problem Detail
 ### 3.1 Auth (called by both extension and dashboard)
 | Method | Path | Purpose |
 |---|---|---|
-| `POST` | `/v1/auth/google` | Exchange Google ID token → MedShield access JWT + refresh cookie. Enforces `hd` claim against tenant's allowed Workspace domains |
+| `POST` | `/v1/auth/google` | Exchange Google ID token → Auro DLP v2 access JWT + refresh cookie. Enforces `hd` claim against tenant's allowed Workspace domains |
 | `POST` | `/v1/auth/refresh` | Refresh access token using refresh cookie |
 | `POST` | `/v1/auth/logout` | Revoke refresh token |
 | `GET` | `/v1/auth/me` | Current user profile + role |
@@ -489,8 +489,8 @@ CREATE TRIGGER audit_events_no_update BEFORE UPDATE ON audit_events
 CREATE TRIGGER audit_events_no_delete BEFORE DELETE ON audit_events
   FOR EACH ROW EXECUTE FUNCTION block_audit_mutation();
 
-REVOKE UPDATE, DELETE ON audit_events FROM medshield_app;
-GRANT  INSERT, SELECT ON audit_events TO medshield_app;
+REVOKE UPDATE, DELETE ON audit_events FROM aurodlpv2_app;
+GRANT  INSERT, SELECT ON audit_events TO aurodlpv2_app;
 ```
 
 Verification job (Celery beat, daily): walk last partition, recompute hash chain, alert if mismatch.
@@ -507,7 +507,7 @@ Verification job (Celery beat, daily): walk last partition, recompute hash chain
 ### 9.1 Upload pipeline
 ```
 multipart upload  ─►  size check (≤10MB sync, ≤50MB async)
-                  ─►  stream to /var/lib/medshield/tmp/{uuid}.part
+                  ─►  stream to /var/lib/aurodlpv2/tmp/{uuid}.part
                   ─►  python-magic MIME verification (reject mismatch)
                   ─►  atomic rename to {uuid}{.ext}
                   ─►  compute SHA-256 (for dedup + audit)
@@ -517,7 +517,7 @@ multipart upload  ─►  size check (≤10MB sync, ≤50MB async)
 
 ### 9.2 Temp file security
 - Dedicated mount with `noexec,nosuid,nodev`.
-- Ownership `medshield:medshield`, mode `0700`.
+- Ownership `aurodlpv2:aurodlpv2`, mode `0700`.
 - Lifecycle TTL 1 hour; reaper Celery job sweeps orphans.
 - Filenames are random UUIDs — never use client-supplied name on disk.
 
@@ -630,7 +630,7 @@ Latency SLOs (golden signals):
 - Tests: latency budget enforced, audit rows immutable.
 
 ### Phase 3 — Detection engine integration (Days 9–11)
-- Wire `medshield_detection` package.
+- Wire `aurodlpv2_detection` package.
 - Per-tenant config loading.
 - Temp file lifecycle.
 - Sync vs async decision logic.

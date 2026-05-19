@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from medshield_backend.recipients.classifier import email_domain
+from aurodlpv2_backend.recipients.classifier import email_domain
 
 
 @pytest.mark.unit

@@ -3,7 +3,7 @@ import { mountWarningModal } from '../modal/mount';
 import { takeCapturedFiles, installAttachmentCapture } from './attachment-capture';
 import { sendScanRequest } from '../shared/messaging';
 
-const APP_ID = 'medshield-content';
+const APP_ID = 'aurodlpv2-content';
 
 async function bootstrap(): Promise<void> {
   const sdk = await InboxSDK.load(2, APP_ID);
@@ -34,7 +34,7 @@ async function bootstrap(): Promise<void> {
             break;
         }
       } catch (err) {
-        console.error('[MedShield] Scan failed, allowing send as fallback:', err);
+        console.error('[Auro DLP v2] Scan failed, allowing send as fallback:', err);
         setTimeout(() => view.send(), 0);
       }
     });

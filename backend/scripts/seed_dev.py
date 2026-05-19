@@ -12,14 +12,14 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from medshield_backend.db.models import (
+from aurodlpv2_backend.db.models import (
     DomainClassification,
     PolicyRecord,
     User,
     Workspace,
 )
-from medshield_backend.settings import get_settings
-from medshield_backend.utils.uuid import uuid7
+from aurodlpv2_backend.settings import get_settings
+from aurodlpv2_backend.utils.uuid import uuid7
 
 
 DEMO_WORKSPACE_ID = UUID("01912345-6789-7000-8000-000000000001")
@@ -131,11 +131,11 @@ APPROVED_DOMAINS = [
 ]
 
 DEMO_USERS = [
-    ("admin@medshield-demo.com", "super_admin"),
-    ("analyst@medshield-demo.com", "analyst"),
-    ("dr.sharma@medshield-demo.com", "user"),
-    ("nurse.priya@medshield-demo.com", "user"),
-    ("receptionist@medshield-demo.com", "user"),
+    ("admin@aurodlpv2-demo.com", "super_admin"),
+    ("analyst@aurodlpv2-demo.com", "analyst"),
+    ("dr.sharma@aurodlpv2-demo.com", "user"),
+    ("nurse.priya@aurodlpv2-demo.com", "user"),
+    ("receptionist@aurodlpv2-demo.com", "user"),
 ]
 
 
@@ -155,8 +155,8 @@ async def seed() -> None:
 
         workspace = Workspace(
             id=DEMO_WORKSPACE_ID,
-            name="MedShield Demo Hospital",
-            google_domains=["medshield-demo.com"],
+            name="Auro DLP v2 Demo Hospital",
+            google_domains=["aurodlpv2-demo.com"],
             settings={},
         )
         session.add(workspace)

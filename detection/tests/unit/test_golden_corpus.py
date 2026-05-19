@@ -7,8 +7,8 @@ from typing import TypedDict, cast
 
 import pytest
 
-from medshield_detection.api import detect_email
-from medshield_detection.models import EmailPayload
+from aurodlpv2_detection.api import detect_email
+from aurodlpv2_detection.models import EmailPayload
 
 
 class GoldenEmail(TypedDict):

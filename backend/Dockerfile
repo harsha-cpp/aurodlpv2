@@ -30,4 +30,4 @@ WORKDIR /app/backend
 RUN uv sync --all-extras
 
 EXPOSE 8000
-CMD ["uv", "run", "uvicorn", "medshield_backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uv", "run", "uvicorn", "aurodlpv2_backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

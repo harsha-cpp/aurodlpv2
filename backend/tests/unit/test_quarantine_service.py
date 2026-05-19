@@ -5,8 +5,8 @@ from uuid import uuid4
 
 import pytest
 
-from medshield_backend.db.models import QuarantineQueue
-from medshield_backend.quarantine.service import can_override_quarantine
+from aurodlpv2_backend.db.models import QuarantineQueue
+from aurodlpv2_backend.quarantine.service import can_override_quarantine
 
 
 @pytest.mark.unit

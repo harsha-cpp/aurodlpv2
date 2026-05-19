@@ -7,7 +7,7 @@ import {
   type ColumnDef,
 } from '@tanstack/react-table';
 import { Inbox } from 'lucide-react';
-import type { Severity } from '@medshield/shared';
+import type { Severity } from '@aurodlpv2/shared';
 
 interface QuarantineItem {
   id: string;

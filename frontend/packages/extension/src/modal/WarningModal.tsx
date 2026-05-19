@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { Verdict, Severity, RecipientClass, EntityHit, RecipientHit } from '@medshield/shared';
+import type { Verdict, Severity, RecipientClass, EntityHit, RecipientHit } from '@aurodlpv2/shared';
 
 interface WarningModalProps {
   verdict: Verdict;
@@ -140,7 +140,7 @@ export default function WarningModal({ verdict, onClose, onSendAnyway, onQuarant
         ref={modalRef}
         role="dialog"
         aria-modal="true"
-        aria-label="MedShield Security Alert"
+        aria-label="Auro DLP v2 Security Alert"
         tabIndex={-1}
         className="w-full max-w-lg bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden outline-none"
       >
@@ -161,7 +161,7 @@ export default function WarningModal({ verdict, onClose, onSendAnyway, onQuarant
               </svg>
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-slate-800 leading-tight">MedShield Security Alert</h2>
+              <h2 className="text-lg font-semibold text-slate-800 leading-tight">Auro DLP v2 Security Alert</h2>
               <p className="text-xs text-slate-500 mt-0.5">
                 Action required: <span className="font-medium capitalize">{verdict.action}</span>
               </p>

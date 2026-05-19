@@ -1,4 +1,4 @@
-# MedShield Frontend Build Plan
+# Auro DLP v2 Frontend Build Plan
 
 > Scope: Chrome Extension (MV3) that intercepts Gmail compose, talks to the FastAPI backend, and surfaces warning / block / quarantine flows. Plus the standalone **Admin Dashboard SPA** consumed by analysts and workspace admins.
 >
@@ -54,7 +54,7 @@ graph TB
 
 Two independently deployed UI artifacts:
 - **`extension/`** — Chrome MV3 extension (zipped & uploaded to CWS / Workspace Marketplace).
-- **`dashboard/`** — Static React SPA built with Vite, served by Nginx behind the same domain as the API (e.g. `admin.medshield.io`).
+- **`dashboard/`** — Static React SPA built with Vite, served by Nginx behind the same domain as the API (e.g. `admin.aurodlpv2.io`).
 
 ---
 
@@ -190,7 +190,7 @@ frontend/
 ```jsonc
 {
   "manifest_version": 3,
-  "name": "MedShield Gmail DLP",
+  "name": "Auro DLP v2",
   "version": "0.1.0",
   "description": "Healthcare DLP for Gmail — blocks PHI leaks before Send.",
   "minimum_chrome_version": "120",
@@ -203,10 +203,10 @@ frontend/
   ],
   "host_permissions": [
     "https://mail.google.com/*",
-    "https://api.medshield.io/*"
+    "https://api.aurodlpv2.io/*"
   ],
   "optional_host_permissions": [
-    "https://*.medshield.io/*"
+    "https://*.aurodlpv2.io/*"
   ],
 
   "background": {
@@ -243,7 +243,7 @@ frontend/
   },
 
   "externally_connectable": {
-    "matches": ["https://admin.medshield.io/*"]
+    "matches": ["https://admin.aurodlpv2.io/*"]
   },
 
   "storage": {
@@ -269,7 +269,7 @@ Key constraints encoded:
 import * as InboxSDK from '@inboxsdk/core';
 import { handleCompose } from './compose-controller';
 
-const APP_ID = 'sdk-medshield-prod';
+const APP_ID = 'sdk-aurodlpv2-prod';
 
 void InboxSDK.load(2, APP_ID).then(sdk => {
   sdk.Compose.registerComposeViewHandler(handleCompose);
@@ -440,7 +440,7 @@ export function takeFiles(compose: HTMLElement): File[] {
 import { createRoot } from 'react-dom/client';
 import twCss from './tailwind.css?inline';
 
-const HOST_ID = 'medshield-host';
+const HOST_ID = 'aurodlpv2-host';
 
 export function ensureHost(): ShadowRoot {
   let host = document.getElementById(HOST_ID);
@@ -527,7 +527,7 @@ export function renderModal(view: ComposeView, props: ModalProps) {
 
 ### 9.2 Responsibilities
 
-1. **Auth** — `chrome.identity.getAuthToken({ interactive })` → POST `id_token` to `/api/v1/auth/google/exchange` → receive short-lived JWT (15 min) + refresh cookie (handled automatically by browser for `api.medshield.io`).
+1. **Auth** — `chrome.identity.getAuthToken({ interactive })` → POST `id_token` to `/api/v1/auth/google/exchange` → receive short-lived JWT (15 min) + refresh cookie (handled automatically by browser for `api.aurodlpv2.io`).
 2. **API client** — typed fetch with:
    - Auto-retry on `401` (refresh JWT), `429` (backoff), `5xx` (exponential backoff + jitter, up to 3 attempts).
    - Per-request `AbortController` exposed to content script for cancel-on-modal-close.
@@ -556,7 +556,7 @@ PRD success metric is ">90 % PHI leak reduction" — allowing sends on backend o
 
 ### 10.1 Auth
 
-- Same Google SSO as extension. Dashboard origin (`admin.medshield.io`) gets the JWT in an HttpOnly secure cookie (set by backend `/api/v1/auth/google/exchange?source=dashboard`).
+- Same Google SSO as extension. Dashboard origin (`admin.aurodlpv2.io`) gets the JWT in an HttpOnly secure cookie (set by backend `/api/v1/auth/google/exchange?source=dashboard`).
 - Role-based access: `user` (no access), `analyst` (read audit + quarantine review), `admin` (policies + domains + users), `super_admin` (workspace settings + billing).
 
 ### 10.2 Information architecture
@@ -602,7 +602,7 @@ PRD success metric is ">90 % PHI leak reduction" — allowing sends on backend o
 
 ### 10.5 Visual style
 
-- **shadcn/ui** baseline; custom `medshield` theme with brand teal `#0F8E7F` + neutral grays.
+- **shadcn/ui** baseline; custom `aurodlpv2` theme with brand teal `#0F8E7F` + neutral grays.
 - Severity palette: low #16a34a, medium #ca8a04, high #ea580c, critical #b91c1c.
 - Dark mode via `next-themes`-style toggle backed by `chrome.storage.local` so user prefs sync across surfaces (when extension is signed in).
 
@@ -611,8 +611,8 @@ PRD success metric is ">90 % PHI leak reduction" — allowing sends on backend o
 ## 11. Bundle Size & Performance Strategy
 
 ### Targets
-- Content script `medshield-cs.js` **≤ 250 KB gz** including InboxSDK + React + modal.
-- Service worker `medshield-sw.js` **≤ 80 KB gz**.
+- Content script `aurodlpv2-cs.js` **≤ 250 KB gz** including InboxSDK + React + modal.
+- Service worker `aurodlpv2-sw.js` **≤ 80 KB gz**.
 - SPA initial route **≤ 350 KB gz**; per-route chunks **≤ 120 KB gz**.
 
 ### Techniques
@@ -689,13 +689,13 @@ Scenarios:
 4. `build-dash` → `pnpm -F dashboard build` + `size-limit`.
 5. `e2e` → Playwright (parallel shards, persistent context).
 6. `bundle-report` → upload visualizer html.
-7. `package` (tags only) → `tools/build-cws-zip.ts` writes `medshield-ext-<sha>.zip`, sha-256 sum, source-map archive (private).
+7. `package` (tags only) → `tools/build-cws-zip.ts` writes `aurodlpv2-ext-<sha>.zip`, sha-256 sum, source-map archive (private).
 
 ### 13.2 Chrome Web Store / Workspace Marketplace
 - Two listings:
   - **Private Workspace listing** (default for v1 enterprise customers): published to the customer's Workspace domain only; deployed via admin console `ExtensionInstallForcelist` policy.
   - **Public CWS listing** (later): requires full review, restricted-scope security assessment if we ever add `gmail.readonly`.
-- Privacy policy hosted at `https://medshield.io/privacy`; data-handling disclosure inside store listing.
+- Privacy policy hosted at `https://aurodlpv2.io/privacy`; data-handling disclosure inside store listing.
 - Use **Chrome Web Store Publish API** from CI to upload new versions; manual promote to production on tag `vX.Y.Z`.
 
 ### 13.3 Versioning
@@ -730,7 +730,7 @@ Scenarios:
 | Token storage | JWT stored in `chrome.storage.session` (memory-only, cleared on browser close); refresh handled via HttpOnly cookie owned by backend. |
 | XSS into Shadow DOM | All content rendered via React (no `dangerouslySetInnerHTML`); modal copy is static + interpolated literals only. |
 | Clickjacking on dashboard | CSP `frame-ancestors 'none'`; `X-Frame-Options: DENY`. |
-| Extension impersonation | `externally_connectable` limited to `admin.medshield.io`; messages signed with workspace key. |
+| Extension impersonation | `externally_connectable` limited to `admin.aurodlpv2.io`; messages signed with workspace key. |
 | Telemetry leakage | Telemetry events are PII-free (event names + counts + durations); user can opt-out in Options. |
 | Audit-log tamper claims | Dashboard exposes per-row hash so analysts can verify chain via backend `/api/v1/audit/verify`. |
 | User override of block | Always logged with user identity + justification; admin-configurable allowlist of policies eligible for override. |
@@ -785,8 +785,8 @@ Scenarios:
 2. **Multiple Gmail accounts in same Chrome profile** — must SW maintain per-account JWT, or is workspace-scoped enough?
 3. **Default verdict action when backend is down** — fail-closed (block all) or fail-open with audit (allow + log)? PRD success metric implies fail-closed.
 4. **Drive-attached files** — out of scope for v1, but do we need a hard block, soft warn, or silent log?
-5. **Admin dashboard hosting** — same vendor domain (`admin.medshield.io`) for all tenants, or per-tenant subdomain (`<tenant>.medshield.io`)?
-6. **Branding** — single MedShield brand, or whitelabel per hospital network?
+5. **Admin dashboard hosting** — same vendor domain (`admin.aurodlpv2.io`) for all tenants, or per-tenant subdomain (`<tenant>.aurodlpv2.io`)?
+6. **Branding** — single Auro DLP v2 brand, or whitelabel per hospital network?
 7. **Localisation** — English-only for v1, or Hindi at launch given Indian healthcare focus?
 8. **Telemetry default** — opt-in or opt-out? (legal preference is opt-in for healthcare deployments.)
 9. **User override of block** — allowed at all? If yes, which roles, which severities, with what justification UX?

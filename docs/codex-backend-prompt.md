@@ -1,6 +1,6 @@
 # Codex — Backend Build Brief
 
-You are implementing the MedShield Gmail DLP backend. Scaffold is already in place; fill in the stubs.
+You are implementing the Auro DLP v2 backend. Scaffold is already in place; fill in the stubs.
 
 ## Authoritative spec
 
@@ -22,8 +22,8 @@ Follow plan §16 phases. Each phase ends with green CI.
 1. **Phase 0 — Skeleton & infra** (plan §16.0): wire `settings.py` env loading, `db/session.py` engine, `db/base.py` declarative base, `main.py` lifespan, `/healthz` `/readyz`. Goal: `make backend-dev` boots, `pytest` passes.
 2. **Phase 1 — Auth + workspaces** (plan §10, §13): Google ID-token verification, JWT issue/refresh, `refresh_tokens` table hashed with Argon2id, `current_user` dep enforces workspace + role. Tests: token round-trip, `hd` claim rejection, expired refresh.
 3. **Phase 2 — Scan endpoints (stubbed detector)** (plan §6, §11): `POST /scan/email`, `POST /scan/attachment` (streaming + `python-magic` verify + atomic temp), `GET /scan/{id}`, `POST /scan/{id}/finalize`. Return a hardcoded `Verdict` until Phase 3.
-4. **Phase 3 — Detection integration** (plan §6 + detection-engine §3): import `medshield_detection.api.detect_email`, run via `asyncio.to_thread`, persist `scans` row + audit event. Latency budget: text ≤ 500 ms p95.
-5. **Phase 4 — Celery deep scan** (plan §8, §11): attachments ≥ 1 MB or PDFs with images go to `medshield.scan.deep_attachment`. Status transitions: `pending → scanning → complete`.
+4. **Phase 3 — Detection integration** (plan §6 + detection-engine §3): import `aurodlpv2_detection.api.detect_email`, run via `asyncio.to_thread`, persist `scans` row + audit event. Latency budget: text ≤ 500 ms p95.
+5. **Phase 4 — Celery deep scan** (plan §8, §11): attachments ≥ 1 MB or PDFs with images go to `aurodlpv2.scan.deep_attachment`. Status transitions: `pending → scanning → complete`.
 6. **Phase 5 — Policy engine + recipients** (plan §9, §12): custom Python DSL evaluator (`evaluate(detection, recipients, attachments, policies) -> Verdict`). Most-restrictive action wins. MX + SPF/DKIM heuristic for recipient class, Redis 24 h cache. `POST /admin/policies/dry-run` replays the last 10 k audit events.
 7. **Phase 6 — Quarantine** (plan §14): state machine `pending → approved | rejected | expired | escalated`. Approve emits SSE to `/admin/quarantine/stream`; extension `POST /scan/{id}/finalize` with `override_quarantine=true`. Beat job expires after 7 days.
 8. **Phase 7 — Admin dashboard APIs** (plan §15): `/admin/dashboard/stats`, `/top-violations`, `/trend?days=N`. Cursor pagination (`occurred_at, id`) on `/admin/audit`. CSV export streams.

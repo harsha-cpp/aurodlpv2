@@ -5,7 +5,7 @@ from uuid import uuid4
 
 import pytest
 
-from medshield_backend.audit.api import parse_cursor
+from aurodlpv2_backend.audit.api import parse_cursor
 
 
 @pytest.mark.unit

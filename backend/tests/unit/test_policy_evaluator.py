@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from medshield_backend.policy.evaluator import PolicyContext, evaluate
-from medshield_backend.policy.models import Condition, EntityClause, Policy, RecipientClause, Rule
+from aurodlpv2_backend.policy.evaluator import PolicyContext, evaluate
+from aurodlpv2_backend.policy.models import Condition, EntityClause, Policy, RecipientClause, Rule
 
 
 @pytest.mark.unit

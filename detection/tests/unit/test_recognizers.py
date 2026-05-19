@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from medshield_detection.recognizers import AbhaRecognizer, Icd10Recognizer, MrnRecognizer
+from aurodlpv2_detection.recognizers import AbhaRecognizer, Icd10Recognizer, MrnRecognizer
 
 
 def test_abha_formatted_high_confidence() -> None:

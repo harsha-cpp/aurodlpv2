@@ -1,9 +1,9 @@
 {
-  "name": "@medshield/dashboard",
+  "name": "@aurodlpv2/dashboard",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "MedShield admin dashboard (static SPA). See docs/plans/frontend.md.",
+  "description": "Auro DLP v2 admin dashboard (static SPA). See docs/plans/frontend.md.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -13,7 +13,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@medshield/shared": "workspace:*",
+    "@aurodlpv2/shared": "workspace:*",
     "@tanstack/react-query": "^5.59.16",
     "@tanstack/react-table": "^8.20.5",
     "class-variance-authority": "^0.7.0",

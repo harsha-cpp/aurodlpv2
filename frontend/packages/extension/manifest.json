@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "MedShield Gmail DLP",
+  "name": "Auro DLP v2",
   "version": "0.1.0",
   "description": "Block accidental PHI/PII leaks from Gmail before send.",
   "minimum_chrome_version": "120",

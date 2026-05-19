@@ -5,10 +5,10 @@ from decimal import Decimal
 from uuid import UUID
 
 import pytest
-from medshield_detection.models import Entity, ScanResult
+from aurodlpv2_detection.models import Entity, ScanResult
 
-from medshield_backend.db.models import Scan
-from medshield_backend.scan.service import (
+from aurodlpv2_backend.db.models import Scan
+from aurodlpv2_backend.scan.service import (
     combined_verdict_from_scans,
     should_deep_scan,
     stub_verdict,

@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import pytest
 
-from medshield_detection.config import DetectionConfig
-from medshield_detection.models import Entity
-from medshield_detection.scoring import score
-from medshield_detection.scoring.weights import bucket
+from aurodlpv2_detection.config import DetectionConfig
+from aurodlpv2_detection.models import Entity
+from aurodlpv2_detection.scoring import score
+from aurodlpv2_detection.scoring.weights import bucket
 
 
 @pytest.mark.parametrize(

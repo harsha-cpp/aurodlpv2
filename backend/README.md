@@ -1,6 +1,6 @@
-# medshield-backend
+# aurodlpv2-backend
 
-FastAPI service for the MedShield Gmail DLP platform.
+FastAPI service for the Auro DLP v2 platform.
 
 Authoritative build spec: [`docs/plans/backend.md`](../docs/plans/backend.md).
 
@@ -12,14 +12,14 @@ make dev-up                    # postgres + redis + minio + jaeger via docker-co
 cd backend
 uv sync --all-extras
 uv run alembic upgrade head
-uv run uvicorn medshield_backend.main:app --reload
-uv run celery -A medshield_backend.celery_app worker -l info
+uv run uvicorn aurodlpv2_backend.main:app --reload
+uv run celery -A aurodlpv2_backend.celery_app worker -l info
 ```
 
 ## Layout
 
 ```
-medshield_backend/
+aurodlpv2_backend/
 ├── main.py              # FastAPI app factory + lifespan
 ├── settings.py          # pydantic-settings (env-driven)
 ├── deps.py              # FastAPI dependencies (db, user, workspace, roles)

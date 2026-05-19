@@ -24,13 +24,13 @@ dev-logs: ## Tail infra logs
 	$(COMPOSE) logs -f
 
 backend-dev: ## Run FastAPI with reload
-	cd backend && $(UV) run uvicorn medshield_backend.main:app --reload --host 0.0.0.0 --port 8000
+	cd backend && $(UV) run uvicorn aurodlpv2_backend.main:app --reload --host 0.0.0.0 --port 8000
 
 worker-dev: ## Run Celery worker
-	cd backend && $(UV) run celery -A medshield_backend.celery_app worker -l info
+	cd backend && $(UV) run celery -A aurodlpv2_backend.celery_app worker -l info
 
 beat-dev: ## Run Celery beat
-	cd backend && $(UV) run celery -A medshield_backend.celery_app beat -l info
+	cd backend && $(UV) run celery -A aurodlpv2_backend.celery_app beat -l info
 
 dashboard-dev: ## Run admin dashboard
 	cd frontend && $(PNPM) dev:dashboard

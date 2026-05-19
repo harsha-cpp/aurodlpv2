@@ -5,8 +5,8 @@ from pathlib import Path
 
 from docx import Document
 
-from medshield_detection.api import detect_email
-from medshield_detection.models import Attachment, EmailPayload
+from aurodlpv2_detection.api import detect_email
+from aurodlpv2_detection.models import Attachment, EmailPayload
 
 
 def test_detect_email_finds_abha() -> None:

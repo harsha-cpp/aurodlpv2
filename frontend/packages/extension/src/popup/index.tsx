@@ -70,7 +70,7 @@ function Popup() {
             <Shield className="h-4 w-4 text-white" />
           </div>
           <div>
-            <h1 className="text-sm font-bold text-gray-900 leading-tight">MedShield</h1>
+            <h1 className="text-sm font-bold text-gray-900 leading-tight">Auro DLP v2</h1>
             <p className="text-[10px] font-medium text-gray-400 leading-tight">v0.1.0</p>
           </div>
         </div>
@@ -180,7 +180,7 @@ function Popup() {
 
       <div className="flex items-center justify-center gap-1.5 border-t border-gray-100 pt-3">
         <Shield className="h-3 w-3 text-gray-300" />
-        <p className="text-[10px] font-medium text-gray-400">Protected by MedShield DLP</p>
+        <p className="text-[10px] font-medium text-gray-400">Protected by Auro DLP v2</p>
       </div>
     </div>
   );

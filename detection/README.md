@@ -1,6 +1,6 @@
-# medshield-detection
+# aurodlpv2-detection
 
-Pure-Python PHI/PII detection engine used by the MedShield backend.
+Pure-Python PHI/PII detection engine used by the Auro DLP v2 backend.
 
 Authoritative build spec: [`docs/plans/detection-engine.md`](../docs/plans/detection-engine.md).
 
@@ -14,7 +14,7 @@ Authoritative build spec: [`docs/plans/detection-engine.md`](../docs/plans/detec
 ## Layout
 
 ```
-medshield_detection/
+aurodlpv2_detection/
 ├── api.py            # public entry: detect_email(EmailPayload) -> ScanResult
 ├── models.py         # EmailPayload, Attachment, Entity, ScanResult
 ├── recognizers/      # Aadhaar (built-in), PAN, ABHA (custom), MRN, ICD-10

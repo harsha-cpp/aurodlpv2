@@ -18,7 +18,7 @@ const DEFAULTS: OptionsState = {
   autoLoginOnInstall: true,
 };
 
-const STORAGE_KEY = 'medshield_options';
+const STORAGE_KEY = 'aurodlpv2_options';
 
 function Options() {
   const [state, setState] = useState<OptionsState>(DEFAULTS);
@@ -55,7 +55,7 @@ function Options() {
             <Shield className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">MedShield DLP</h1>
+            <h1 className="text-xl font-bold text-gray-900">Auro DLP v2</h1>
             <p className="text-sm text-gray-500">Extension settings &amp; preferences</p>
           </div>
         </div>
@@ -138,7 +138,7 @@ function Options() {
 
         {/* Footer */}
         <p className="mt-10 text-xs text-gray-400 text-center">
-          MedShield DLP v0.1.0 · Healthcare PHI/PII protection for Google Workspace
+          Auro DLP v2 v0.1.0 · Healthcare PHI/PII protection for Google Workspace
         </p>
       </div>
     </div>

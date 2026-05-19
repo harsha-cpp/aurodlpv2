@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from pydantic import SecretStr
 
-from medshield_backend.auth.jwt import (
+from aurodlpv2_backend.auth.jwt import (
     TokenExpiredError,
     decode_access_token,
     issue_access_token,
@@ -14,7 +14,7 @@ from medshield_backend.auth.jwt import (
     refresh_token_is_active,
     verify_refresh_secret,
 )
-from medshield_backend.settings import Settings
+from aurodlpv2_backend.settings import Settings
 
 
 @pytest.mark.unit

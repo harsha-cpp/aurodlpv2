@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from medshield_backend.auth.google_oauth import GoogleTokenError, google_identity_from_payload
+from aurodlpv2_backend.auth.google_oauth import GoogleTokenError, google_identity_from_payload
 
 
 @pytest.mark.unit
