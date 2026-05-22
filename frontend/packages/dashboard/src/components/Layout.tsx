@@ -1,40 +1,62 @@
-import { Suspense } from 'react';
+import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
+import { useAuth } from '../lib/auth';
 
-const nav: Array<{ to: string; label: string; end?: boolean | undefined }> = [
-  { to: '/', label: 'Overview', end: true },
-  { to: '/quarantine', label: 'Quarantine' },
-  { to: '/audit', label: 'Audit log' },
-  { to: '/policies', label: 'Policies' },
-  { to: '/domains', label: 'Domains' },
-  { to: '/users', label: 'Users' },
-];
+export default function Layout() {
+  const { member, organization, logout } = useAuth();
+  const [signingOut, setSigningOut] = useState(false);
 
-export default function Layout() { return (
-  <div className="flex min-h-screen">
-    <aside className="w-56 border-r border-gray-200 bg-white p-4 space-y-0.5">
-      <h1 className="text-lg font-bold text-gray-900 mb-5 tracking-tight">Auro DLP v2</h1>
-      {nav.map((n) => (
-        <NavLink
-          key={n.to}
-          to={n.to}
-          end={n.end ?? false}
-          className={({ isActive }) =>
-            `block rounded-md px-3 py-2 text-sm font-medium text-gray-700 transition-colors ${
-              isActive
-                ? 'bg-indigo-50 text-indigo-700 border-l-[3px] border-indigo-600'
-                : 'hover:bg-gray-50 hover:text-gray-900'
-            }`
-          }
-        >
-          {n.label}
-        </NavLink>
-      ))}
-    </aside>
-    <main className="flex-1 p-6">
-      <Suspense fallback={<div className="text-sm text-gray-500">Loading…</div>}>
+  async function onLogout() {
+    setSigningOut(true);
+    await logout();
+  }
+
+  return (
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="sidebar-brand">
+          <ShieldGlyph />
+          <span>Auro DLP</span>
+        </div>
+        <nav className="sidebar-nav">
+          <NavItem to="/" end>Overview</NavItem>
+          <NavItem to="/domains">Approved domains</NavItem>
+          <NavItem to="/members">Members</NavItem>
+          <NavItem to="/settings">Settings</NavItem>
+        </nav>
+        <div className="sidebar-user">
+          <div className="sidebar-user-email">{member?.email}</div>
+          <div className="sidebar-user-org">{organization?.name}</div>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            style={{ marginTop: 10, width: '100%' }}
+            onClick={onLogout}
+            disabled={signingOut}
+          >
+            {signingOut ? 'Signing out…' : 'Sign out'}
+          </button>
+        </div>
+      </aside>
+      <main className="main">
         <Outlet />
-      </Suspense>
-    </main>
-  </div>
-); }
+      </main>
+    </div>
+  );
+}
+
+function NavItem({ to, end, children }: { to: string; end?: boolean; children: React.ReactNode }) {
+  return (
+    <NavLink to={to} end={end ?? false} className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>
+      {children}
+    </NavLink>
+  );
+}
+
+function ShieldGlyph() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </svg>
+  );
+}

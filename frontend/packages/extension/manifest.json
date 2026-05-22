@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Auro DLP v2",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Block accidental PHI/PII leaks from Gmail before send.",
   "minimum_chrome_version": "120",
   "icons": {
@@ -13,10 +13,6 @@
   "action": {
     "default_popup": "src/popup/index.html",
     "default_icon": "icons/icon-32.png"
-  },
-  "options_ui": {
-    "page": "src/options/index.html",
-    "open_in_tab": true
   },
   "background": {
     "service_worker": "src/background/index.ts",
@@ -30,17 +26,18 @@
       "all_frames": false
     }
   ],
-  "permissions": ["storage", "identity", "alarms"],
+  "permissions": ["storage", "alarms"],
   "host_permissions": [
     "https://mail.google.com/*",
-    "http://localhost:8000/*",
-    "http://localhost:5173/*"
+    "http://localhost:8000/*"
   ],
-  "oauth2": {
-    "client_id": "495076181627-fi7msvvbdoqh5ilolnpvm6s3u5jsudhc.apps.googleusercontent.com",
-    "scopes": ["openid", "email", "profile"]
-  },
+  "web_accessible_resources": [
+    {
+      "resources": ["assets/*"],
+      "matches": ["https://mail.google.com/*"]
+    }
+  ],
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; frame-ancestors 'none';"
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; frame-ancestors 'none';"
   }
 }

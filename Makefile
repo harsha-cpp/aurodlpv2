@@ -26,11 +26,11 @@ dev-logs: ## Tail infra logs
 backend-dev: ## Run FastAPI with reload
 	cd backend && $(UV) run uvicorn aurodlpv2_backend.main:app --reload --host 0.0.0.0 --port 8000
 
-worker-dev: ## Run Celery worker
-	cd backend && $(UV) run celery -A aurodlpv2_backend.celery_app worker -l info
+worker-dev: ## No-op: Celery worker is not part of the current backend slice
+	@echo "No Celery worker is configured in the current backend slice."
 
-beat-dev: ## Run Celery beat
-	cd backend && $(UV) run celery -A aurodlpv2_backend.celery_app beat -l info
+beat-dev: ## No-op: Celery beat is not part of the current backend slice
+	@echo "No Celery beat is configured in the current backend slice."
 
 dashboard-dev: ## Run admin dashboard
 	cd frontend && $(PNPM) dev:dashboard
@@ -41,8 +41,8 @@ extension-dev: ## Run Chrome extension with crxjs HMR
 migrate: ## Apply DB migrations
 	cd backend && $(UV) run alembic upgrade head
 
-seed: ## Seed local dev DB
-	cd backend && $(UV) run python -m scripts.seed_dev
+seed: ## No-op: seed script is not part of the current backend slice
+	@echo "No seed script is configured in the current backend slice."
 
 test: ## Run all tests
 	cd backend && $(UV) run pytest -q

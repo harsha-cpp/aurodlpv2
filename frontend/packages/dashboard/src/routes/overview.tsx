@@ -1,80 +1,201 @@
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Shield, Ban, Lock, Activity } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { eventsApi, type RecentEvent } from '../api/events';
+import { useAuth } from '../lib/auth';
 
-function StatCard({
-  label,
-  value,
-  icon,
-  accent,
-}: {
-  label: string;
-  value: string;
-  icon: React.ReactNode;
-  accent: string;
-}) {
+export default function OverviewRoute() {
+  const { organization } = useAuth();
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['analytics', 30],
+    queryFn: () => eventsApi.analytics(30),
+    refetchInterval: 15_000,
+  });
+
   return (
-    <div className="rounded-lg border bg-white p-4 shadow-sm">
-      <div className={`inline-flex rounded-md p-2 ${accent}`}>{icon}</div>
-      <div className="mt-3">
-        <div className="text-2xl font-bold text-gray-900">{value}</div>
-        <div className="text-sm text-gray-500">{label}</div>
+    <div>
+      <div className="page-header">
+        <div>
+          <h1 className="h1">Overview</h1>
+          <p className="muted">Last 30 days of scan activity for {organization?.name ?? 'your organization'}.</p>
+        </div>
+      </div>
+
+      {error && <div className="error" style={{ marginBottom: 16 }}>Failed to load analytics.</div>}
+
+      <div className="stat-grid">
+        <Stat label="Total scans" value={data?.total_scans ?? 0} loading={isLoading} />
+        <Stat label="Blocked" value={data?.total_blocks ?? 0} loading={isLoading} accent />
+        <Stat label="Warnings" value={data?.total_warnings ?? 0} loading={isLoading} />
+        <Stat label="Quarantined" value={data?.total_quarantines ?? 0} loading={isLoading} />
+        <Stat label="Escalated" value={data?.total_escalations ?? 0} loading={isLoading} />
+        <Stat label="Allowed" value={data?.total_allows ?? 0} loading={isLoading} />
+        <Stat label="Unique senders" value={data?.unique_users ?? 0} loading={isLoading} />
+        <Stat
+          label="Avg risk score"
+          value={data?.avg_risk_score ? data.avg_risk_score.toFixed(1) : '—'}
+          loading={isLoading}
+        />
+      </div>
+
+      <div className="card" style={{ marginBottom: 24 }}>
+        <h2 className="h2" style={{ marginBottom: 12 }}>Daily activity</h2>
+        <div style={{ width: '100%', height: 260 }}>
+          {data && data.daily_trend.length > 0 ? (
+            <ResponsiveContainer>
+              <AreaChart data={mergeTrend(data.daily_trend)}>
+                <defs>
+                  <linearGradient id="g-total" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#fafafa" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#fafafa" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="g-block" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#dc2626" stopOpacity={0.5} />
+                    <stop offset="95%" stopColor="#dc2626" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke="#262626" strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="day" stroke="#737373" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis stroke="#737373" fontSize={11} tickLine={false} axisLine={false} />
+                <Tooltip
+                  contentStyle={{
+                    background: '#171717',
+                    border: '1px solid #262626',
+                    borderRadius: 6,
+                    fontSize: 12,
+                  }}
+                />
+                <Area type="monotone" dataKey="total" stroke="#fafafa" fill="url(#g-total)" strokeWidth={1.5} />
+                <Area type="monotone" dataKey="blocks" stroke="#dc2626" fill="url(#g-block)" strokeWidth={1.5} />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="center" style={{ height: '100%' }}>
+              <span className="subtle">{isLoading ? 'Loading…' : 'No scan activity yet.'}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="row gap-4" style={{ marginBottom: 24, flexWrap: 'wrap' }}>
+        <div className="card grow" style={{ minWidth: 280 }}>
+          <h2 className="h2" style={{ marginBottom: 12 }}>Top PHI types</h2>
+          {data && data.top_entity_types.length > 0 ? (
+            <div className="col gap-2">
+              {data.top_entity_types.slice(0, 6).map((e) => (
+                <div key={e.type} className="row between" style={{ alignItems: 'center' }}>
+                  <span className="mono" style={{ fontSize: 13 }}>{e.type}</span>
+                  <span className="subtle">{e.count}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <span className="subtle">No detections yet.</span>
+          )}
+        </div>
+        <div className="card grow" style={{ minWidth: 280 }}>
+          <h2 className="h2" style={{ marginBottom: 12 }}>Top blocked senders</h2>
+          {data && data.top_users.length > 0 ? (
+            <div className="col gap-2">
+              {data.top_users.slice(0, 6).map((u) => (
+                <div key={u.email} className="row between" style={{ alignItems: 'center' }}>
+                  <span className="truncate" style={{ fontSize: 13, maxWidth: 220 }}>{u.email}</span>
+                  <span className="subtle">{u.blocks}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <span className="subtle">No blocks yet.</span>
+          )}
+        </div>
+      </div>
+
+      <div className="card">
+        <h2 className="h2" style={{ marginBottom: 12 }}>Recent events</h2>
+        {data && data.recent_events.length > 0 ? (
+          <RecentTable events={data.recent_events} />
+        ) : (
+          <span className="subtle">No events recorded yet. Install the extension to start scanning.</span>
+        )}
       </div>
     </div>
   );
 }
 
-export default function Overview() {
+function Stat({ label, value, loading, accent }: { label: string; value: number | string; loading: boolean; accent?: boolean }) {
   return (
-    <section className="space-y-6">
-      <h2 className="text-2xl font-semibold text-gray-900">Overview</h2>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Total scans"
-          value="0"
-          icon={<Shield className="h-5 w-5 text-emerald-600" />}
-          accent="bg-emerald-50"
-        />
-        <StatCard
-          label="Blocked"
-          value="0"
-          icon={<Ban className="h-5 w-5 text-red-600" />}
-          accent="bg-red-50"
-        />
-        <StatCard
-          label="Quarantined"
-          value="0"
-          icon={<Lock className="h-5 w-5 text-orange-600" />}
-          accent="bg-orange-50"
-        />
-        <StatCard
-          label="Avg risk score"
-          value="—"
-          icon={<Activity className="h-5 w-5 text-blue-600" />}
-          accent="bg-blue-50"
-        />
+    <div className="stat-card">
+      <div className="stat-label">{label}</div>
+      <div className="stat-value" style={{ color: accent ? 'var(--accent)' : 'var(--text)' }}>
+        {loading ? '—' : value}
       </div>
-
-      <div className="rounded-lg border bg-white p-4 shadow-sm">
-        <h3 className="mb-4 text-sm font-semibold text-gray-900">Daily scan trend (last 7 days)</h3>
-        <div className="flex h-72 items-center justify-center">
-          <div className="text-center text-gray-400">
-            <Activity className="mx-auto h-8 w-8 mb-2" />
-            <p className="text-sm">No scan data yet</p>
-            <p className="text-xs mt-1">Data will appear once scans start processing</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-lg border bg-white shadow-sm">
-        <div className="px-4 py-3">
-          <h3 className="text-sm font-semibold text-gray-900">Recent decisions</h3>
-        </div>
-        <div className="border-t py-12 text-center text-sm text-gray-400">
-          <p>No decisions recorded yet</p>
-          <p className="text-xs mt-1">Scan results will appear here</p>
-        </div>
-      </div>
-    </section>
+    </div>
   );
+}
+
+function RecentTable({ events }: { events: RecentEvent[] }) {
+  return (
+    <table className="table">
+      <thead>
+        <tr>
+          <th>When</th>
+          <th>Sender</th>
+          <th>Action</th>
+          <th>Risk</th>
+          <th>Detected</th>
+          <th>Recipients</th>
+        </tr>
+      </thead>
+      <tbody>
+        {events.slice(0, 25).map((e, i) => (
+          <tr key={`${e.timestamp}-${i}`}>
+            <td className="subtle">{formatTime(e.timestamp)}</td>
+            <td className="truncate" style={{ maxWidth: 180 }}>{e.user_email}</td>
+            <td>
+              <span className={`action-pill ${isRestrictiveAction(e.action) ? 'action-pill-block' : 'action-pill-allow'}`}>
+                {e.action}
+              </span>
+            </td>
+            <td>{e.risk_score?.toFixed(1) ?? '—'}</td>
+            <td className="subtle" style={{ fontSize: 12 }}>
+              {e.entities.length > 0 ? e.entities.map((x) => x.type).join(', ') : '—'}
+            </td>
+            <td className="truncate subtle" style={{ maxWidth: 200, fontSize: 12 }}>
+              {e.recipients.join(', ') || '—'}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+interface TrendPoint { day: string; total: number; blocks: number }
+
+function mergeTrend(rows: { day: string; action: string; count: number }[]): TrendPoint[] {
+  const byDay = new Map<string, TrendPoint>();
+  for (const r of rows) {
+    const day = r.day.slice(5);
+    const cur = byDay.get(day) ?? { day, total: 0, blocks: 0 };
+    cur.total += r.count;
+    if (r.action === 'block') cur.blocks += r.count;
+    byDay.set(day, cur);
+  }
+  return Array.from(byDay.values()).sort((a, b) => a.day.localeCompare(b.day));
+}
+
+function formatTime(ts: string): string {
+  try {
+    return new Date(ts).toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return ts;
+  }
+}
+
+function isRestrictiveAction(action: string): boolean {
+  return action === 'block' || action === 'quarantine' || action === 'escalate' || action === 'warn';
 }

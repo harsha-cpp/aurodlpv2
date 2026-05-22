@@ -1,3 +1,257 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  width: 320px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+  color: #fafafa;
+  background: #0a0a0a;
+  padding: 16px;
+}
+
+.popup {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.popup-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.popup-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #dc2626;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.popup-logo svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: #fff;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.popup-title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.popup-version {
+  font-size: 10px;
+  color: #737373;
+  font-weight: 500;
+  margin-top: 1px;
+}
+
+.popup-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #fafafa;
+  background: #171717;
+  border: 1px solid #262626;
+  border-radius: 20px;
+  padding: 3px 9px;
+}
+
+.popup-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #dc2626;
+  box-shadow: 0 0 6px rgba(220, 38, 38, 0.7);
+}
+
+.status-card {
+  border: 1px solid #262626;
+  background: #0f0f0f;
+  border-radius: 10px;
+  padding: 13px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.status-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(220, 38, 38, 0.12);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.status-icon svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: #dc2626;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.status-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fafafa;
+}
+
+.status-desc {
+  font-size: 10px;
+  color: #a3a3a3;
+  margin-top: 2px;
+}
+
+.settings-section {
+  border-top: 1px solid #262626;
+  padding-top: 14px;
+}
+
+.settings-title {
+  font-size: 10px;
+  font-weight: 600;
+  color: #737373;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.settings-label {
+  font-size: 11px;
+  color: #a3a3a3;
+  font-weight: 500;
+}
+
+.settings-input-row {
+  display: flex;
+  gap: 6px;
+}
+
+.settings-input {
+  flex: 1;
+  padding: 8px 11px;
+  font-size: 12px;
+  font-family: 'SF Mono', 'Menlo', monospace;
+  letter-spacing: 0.03em;
+  border: 1px solid #262626;
+  border-radius: 6px;
+  background: #171717;
+  color: #fafafa;
+  outline: none;
+  transition: border-color 0.15s;
+  text-transform: uppercase;
+}
+
+.settings-input:focus {
+  border-color: #dc2626;
+  background: #1a1a1a;
+}
+
+.settings-input::placeholder {
+  color: #525252;
+  text-transform: none;
+  letter-spacing: 0;
+  font-family: -apple-system, sans-serif;
+}
+
+.settings-btn {
+  padding: 8px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.settings-btn-save {
+  background: #fafafa;
+  color: #0a0a0a;
+}
+
+.settings-btn-save:hover {
+  background: #e5e5e5;
+}
+
+.settings-btn-save:disabled {
+  background: #262626;
+  color: #525252;
+  cursor: not-allowed;
+}
+
+.settings-saved {
+  font-size: 10px;
+  color: #4ade80;
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+.settings-meta {
+  font-size: 10px;
+  color: #737373;
+  margin-top: 6px;
+}
+
+.settings-meta-org {
+  color: #fafafa;
+  font-weight: 600;
+}
+
+.popup-footer {
+  border-top: 1px solid #262626;
+  padding-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.popup-footer svg {
+  width: 10px;
+  height: 10px;
+  fill: none;
+  stroke: #525252;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.popup-footer-text {
+  font-size: 10px;
+  color: #525252;
+  font-weight: 500;
+}

@@ -12,15 +12,9 @@ export function mountWarningModal(view: ComposeView, verdict: Verdict): () => vo
   const host = document.createElement('div');
   host.style.position = 'fixed';
   host.style.inset = '0';
-  host.style.zIndex = '9999';
+  host.style.zIndex = '2147483647';
   host.style.pointerEvents = 'none';
-
-  const parent = view.getElement().parentElement;
-  if (parent) {
-    parent.appendChild(host);
-  } else {
-    view.getElement().appendChild(host);
-  }
+  document.body.appendChild(host);
 
   const shadow = host.attachShadow({ mode: 'closed' });
 
@@ -31,11 +25,6 @@ export function mountWarningModal(view: ComposeView, verdict: Verdict): () => vo
   const container = document.createElement('div');
   container.style.position = 'fixed';
   container.style.inset = '0';
-  container.style.display = 'flex';
-  container.style.alignItems = 'center';
-  container.style.justifyContent = 'center';
-  container.style.backgroundColor = 'rgba(15, 23, 42, 0.45)';
-  container.style.fontFamily = "'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif";
   container.style.pointerEvents = 'auto';
   shadow.appendChild(container);
 
@@ -43,36 +32,10 @@ export function mountWarningModal(view: ComposeView, verdict: Verdict): () => vo
 
   const cleanup = (): void => {
     root.unmount();
-    if (host.parentNode) {
-      host.parentNode.removeChild(host);
-    }
+    host.remove();
   };
 
-  const handleSendAnyway = (): void => {
-    cleanup();
-    setTimeout(() => view.send(), 0);
-  };
-
-  const handleQuarantineAck = async (): Promise<void> => {
-    try {
-      await chrome.runtime.sendMessage({
-        type: 'QUARANTINE_ACK',
-        payload: { scan_id: verdict.scan_id },
-      });
-    } catch (error) {
-      console.warn('Failed to acknowledge quarantine decision', error);
-    }
-    cleanup();
-  };
-
-  const modalProps = {
-    verdict,
-    onClose: cleanup,
-    onSendAnyway: verdict.action === 'warn' ? handleSendAnyway : undefined,
-    onQuarantineAck: verdict.action === 'quarantine' ? handleQuarantineAck : undefined,
-  };
-
-  root.render(<WarningModal {...modalProps} />);
+  root.render(<WarningModal verdict={verdict} onClose={cleanup} />);
 
   return cleanup;
 }

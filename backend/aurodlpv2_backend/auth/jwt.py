@@ -14,7 +14,7 @@ from argon2 import PasswordHasher
 from argon2.exceptions import VerificationError, VerifyMismatchError
 from argon2.low_level import Type
 
-from aurodlpv2_backend.db.models import UserRole
+from aurodlpv2_backend.db.models import MemberRole
 from aurodlpv2_backend.settings import Settings, get_settings
 from aurodlpv2_backend.utils.uuid import uuid7
 
@@ -36,8 +36,12 @@ class TokenExpiredError(TokenError):
 class AccessClaims:
     sub: str
     workspace_id: str
-    role: UserRole
+    role: MemberRole
     exp: int
+
+    @property
+    def org_id(self) -> str:
+        return self.workspace_id
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,7 +55,7 @@ class IssuedRefreshToken:
 def issue_access_token(
     user_id: str,
     workspace_id: str,
-    role: UserRole,
+    role: MemberRole,
     *,
     settings: Settings | None = None,
     now: datetime | None = None,
@@ -62,6 +66,7 @@ def issue_access_token(
     payload: dict[str, object] = {
         "sub": user_id,
         "workspace_id": workspace_id,
+        "org_id": workspace_id,
         "role": role,
         "type": TOKEN_TYPE,
         "iat": int(issued_at.timestamp()),
@@ -82,7 +87,7 @@ def decode_access_token(token: str, *, settings: Settings | None = None) -> Acce
             token,
             resolved_settings.jwt_secret_value,
             algorithms=[resolved_settings.jwt_algorithm],
-            options={"require": ["exp", "sub", "workspace_id", "role", "type"]},
+            options={"require": ["exp", "sub", "role", "type"]},
         )
     except jwt.ExpiredSignatureError as exc:
         raise TokenExpiredError("access token expired") from exc
@@ -96,7 +101,7 @@ def decode_access_token(token: str, *, settings: Settings | None = None) -> Acce
     role = _role_claim(payload.get("role"))
     return AccessClaims(
         sub=_str_claim(payload, "sub"),
-        workspace_id=_str_claim(payload, "workspace_id"),
+        workspace_id=_str_claim(payload, "org_id", fallback_key="workspace_id"),
         role=role,
         exp=_int_claim(payload, "exp"),
     )
@@ -151,8 +156,10 @@ def _string_key_dict(payload: Mapping[object, object]) -> dict[str, object]:
     return {key: value for key, value in payload.items() if isinstance(key, str)}
 
 
-def _str_claim(payload: dict[str, object], key: str) -> str:
+def _str_claim(payload: dict[str, object], key: str, *, fallback_key: str | None = None) -> str:
     value = payload.get(key)
+    if value is None and fallback_key is not None:
+        value = payload.get(fallback_key)
     if not isinstance(value, str) or not value:
         raise TokenError(f"missing {key} claim")
     return value
@@ -165,7 +172,7 @@ def _int_claim(payload: dict[str, object], key: str) -> int:
     return value
 
 
-def _role_claim(value: object) -> UserRole:
-    if value in {"user", "analyst", "admin", "super_admin"}:
-        return cast(UserRole, value)
+def _role_claim(value: object) -> MemberRole:
+    if value in {"owner", "admin", "analyst", "viewer"}:
+        return cast(MemberRole, value)
     raise TokenError("invalid role claim")

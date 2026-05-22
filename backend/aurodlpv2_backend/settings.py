@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -30,42 +31,32 @@ class Settings(BaseSettings):
     cors_origins: list[str] = Field(default_factory=list)
 
     # ---- Database ----------------------------------------------------------
-    database_url: str = Field(default="postgresql+asyncpg://aurodlpv2:aurodlpv2@localhost:5432/aurodlpv2")
-    database_sync_url: str = Field(default="postgresql+psycopg://aurodlpv2:aurodlpv2@localhost:5432/aurodlpv2")
-    database_pool_size: int = Field(default=10)
-    database_max_overflow: int = Field(default=10)
-
-    # ---- Redis + Celery ----------------------------------------------------
+    database_url: str = Field(
+        default="postgresql+asyncpg://aurodlpv2:aurodlpv2@localhost:5433/aurodlpv2"
+    )
+    database_sync_url: str = Field(
+        default="postgresql+psycopg://aurodlpv2:aurodlpv2@localhost:5433/aurodlpv2"
+    )
+    database_pool_size: int = Field(default=5)
+    database_max_overflow: int = Field(default=5)
+    # Disable asyncpg prepared statements (required for transaction-mode poolers like Neon).
+    database_disable_prepared_statements: bool = Field(default=True)
     redis_url: str = Field(default="redis://localhost:6379/0")
-    celery_broker_url: str = Field(default="redis://localhost:6379/1")
-    celery_result_backend: str = Field(default="redis://localhost:6379/2")
 
     # ---- Auth --------------------------------------------------------------
-    google_client_ids: list[str] = Field(default_factory=list)
-    allowed_hd_domains: list[str] = Field(default_factory=list)
     jwt_secret: SecretStr = Field(default=SecretStr("change-me-change-me-change-me-32!"))
     jwt_algorithm: str = Field(default="HS256")
     jwt_access_ttl_seconds: int = Field(default=900)
     jwt_refresh_ttl_days: int = Field(default=30)
+    refresh_cookie_name: str = Field(default="aurodlpv2_refresh")
+    refresh_cookie_secure: bool = Field(default=False)
+    refresh_cookie_samesite: Literal["lax", "strict", "none"] = Field(default="lax")
 
-    # ---- Attachments -------------------------------------------------------
+    # ---- Attachments / object storage / observability (kept for forward compat) ----
     attachment_temp_dir: Path = Field(default=Path("/tmp/aurodlpv2-attachments"))
-    attachment_max_bytes: int = Field(default=25 * 1024 * 1024)
-    attachment_deep_scan_threshold: int = Field(default=2 * 1024 * 1024)
-
-    # ---- Quarantine / object storage --------------------------------------
-    quarantine_bucket: str = Field(default="aurodlpv2-quarantine")
-    s3_endpoint_url: str | None = Field(default=None)
-    s3_access_key: SecretStr | None = Field(default=None)
-    s3_secret_key: SecretStr | None = Field(default=None)
-    s3_region: str = Field(default="us-east-1")
-
-    # ---- Observability -----------------------------------------------------
-    otel_exporter_otlp_endpoint: str | None = Field(default=None)
-    prometheus_port: int = Field(default=9100)
     sentry_dsn: str | None = Field(default=None)
 
-    @field_validator("cors_origins", "google_client_ids", "allowed_hd_domains", mode="before")
+    @field_validator("cors_origins", mode="before")
     @classmethod
     def parse_csv_list(cls, value: object) -> list[str] | object:
         if isinstance(value, str):
@@ -75,16 +66,37 @@ class Settings(BaseSettings):
             return [item.strip() for item in stripped.split(",") if item.strip()]
         return value
 
-    @field_validator("sentry_dsn", "otel_exporter_otlp_endpoint", "s3_endpoint_url", mode="before")
+    @field_validator("sentry_dsn", mode="before")
     @classmethod
     def empty_string_as_none(cls, value: object) -> object:
         if isinstance(value, str) and not value.strip():
             return None
         return value
 
+    @field_validator("refresh_cookie_samesite", mode="before")
+    @classmethod
+    def normalize_samesite(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip().lower()
+        return value
+
+    @model_validator(mode="after")
+    def enforce_production_security(self) -> Settings:
+        if not self.is_production:
+            return self
+        if not self.refresh_cookie_secure:
+            raise ValueError("REFRESH_COOKIE_SECURE must be true in production")
+        if self.jwt_secret_value.startswith("change-me"):
+            raise ValueError("JWT_SECRET must be changed in production")
+        return self
+
     @property
     def jwt_secret_value(self) -> str:
         return self.jwt_secret.get_secret_value()
+
+    @property
+    def is_production(self) -> bool:
+        return self.app_env.lower() == "production"
 
 
 @lru_cache(maxsize=1)

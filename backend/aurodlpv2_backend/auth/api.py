@@ -1,314 +1,331 @@
-"""Auth endpoints."""
+"""Auth API (orgs + members) — email/password signup, login, refresh, logout, me."""
 
 from __future__ import annotations
 
 import asyncio
+import re
+import secrets
 from datetime import UTC, datetime
-from typing import Annotated, Literal
 
-from fastapi import APIRouter, Body, Cookie, Header, HTTPException, Response, status
-from pydantic import BaseModel, Field
-from sqlalchemy import any_, select, update
+from argon2 import PasswordHasher
+from argon2.exceptions import VerificationError, VerifyMismatchError
+from argon2.low_level import Type
+from fastapi import APIRouter, HTTPException, Request, Response, status
+from pydantic import BaseModel, EmailStr, Field
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from aurodlpv2_backend.audit.writer import write_event
-from aurodlpv2_backend.auth.google_oauth import (
-    GoogleIdentity,
-    GoogleTokenError,
-    verify_google_id_token,
-)
 from aurodlpv2_backend.auth.jwt import (
     TokenError,
     issue_access_token,
     issue_refresh_token,
     parse_refresh_token,
-    refresh_token_is_active,
     verify_refresh_secret,
 )
-from aurodlpv2_backend.db.models import RefreshToken, User, Workspace
-from aurodlpv2_backend.deps import CurrentUser, DbSession
-from aurodlpv2_backend.settings import get_settings
-
-REFRESH_COOKIE_NAME = "aurodlpv2_refresh"
+from aurodlpv2_backend.db.models import Organization, OrgMember, RefreshToken
+from aurodlpv2_backend.deps import CurrentMember, DbSession
+from aurodlpv2_backend.settings import Settings, get_settings
 
 router = APIRouter()
 
-
-class GoogleTokenRequest(BaseModel):
-    id_token: str = Field(min_length=1)
-
-
-class AuthTokens(BaseModel):
-    access_token: str
-    expires_in: int
-    token_type: Literal["Bearer"] = "Bearer"
+_PASSWORD_HASHER = PasswordHasher(type=Type.ID)
+_ORG_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+_SLUG_RE = re.compile(r"[^a-z0-9]+")
 
 
-class UserProfile(BaseModel):
-    user_id: str
+def _hash_password(plain: str) -> bytes:
+    return _PASSWORD_HASHER.hash(plain).encode("utf-8")
+
+
+def _verify_password(plain: str, hashed: bytes) -> bool:
+    try:
+        return _PASSWORD_HASHER.verify(hashed.decode("utf-8"), plain)
+    except (UnicodeDecodeError, VerificationError, VerifyMismatchError):
+        return False
+
+
+def _slugify(name: str) -> str:
+    base = _SLUG_RE.sub("-", name.lower()).strip("-")
+    return base or "org"
+
+
+def _generate_org_code() -> str:
+    return "AUR-" + "".join(secrets.choice(_ORG_CODE_ALPHABET) for _ in range(6))
+
+
+async def _unique_slug(session: AsyncSession, base: str) -> str:
+    for suffix in [""] + [f"-{secrets.token_hex(2)}" for _ in range(5)]:
+        candidate = f"{base}{suffix}"
+        existing = await session.scalar(
+            select(Organization.id).where(Organization.slug == candidate)
+        )
+        if existing is None:
+            return candidate
+    return f"{base}-{secrets.token_hex(4)}"
+
+
+async def _unique_org_code(session: AsyncSession) -> str:
+    for _ in range(10):
+        code = _generate_org_code()
+        existing = await session.scalar(
+            select(Organization.id).where(Organization.org_code == code)
+        )
+        if existing is None:
+            return code
+    raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, detail="unable to allocate org code")
+
+
+def _serialize_member(member: OrgMember) -> MemberView:
+    return MemberView(
+        id=str(member.id),
+        email=member.email,
+        name=member.name,
+        role=member.role,
+    )
+
+
+def _serialize_org(org: Organization) -> OrganizationView:
+    return OrganizationView(
+        id=str(org.id),
+        name=org.name,
+        slug=org.slug,
+        org_code=org.org_code,
+        plan=org.plan,
+    )
+
+
+class SignupRequest(BaseModel):
+    org_name: str = Field(min_length=2, max_length=120)
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+    name: str | None = Field(default=None, max_length=120)
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+    org_slug: str | None = Field(default=None, min_length=2, max_length=120)
+
+
+class MemberView(BaseModel):
+    id: str
     email: str
-    name: str
-    workspace_id: str
+    name: str | None
     role: str
 
 
-@router.post("/google", status_code=status.HTTP_200_OK)
-async def exchange_google_token(
-    response: Response,
-    session: DbSession,
-    payload: Annotated[GoogleTokenRequest | None, Body()] = None,
-    authorization: Annotated[str | None, Header()] = None,
-) -> AuthTokens:
-    id_token = _google_token_from_request(payload, authorization)
-    try:
-        identity = await verify_google_id_token(id_token)
-    except GoogleTokenError as exc:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Google token rejected") from exc
-
-    workspace = await _workspace_for_domain(session, identity.hd)
-    if workspace is None:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="workspace domain is not allowed")
-
-    user = await _get_or_create_user(session, workspace, identity)
-    tokens = await _issue_session_tokens(session, response, user)
-    await write_event(
-        session=session,
-        workspace_id=workspace.id,
-        actor_type="user",
-        actor_id=str(user.id),
-        actor_email=user.email,
-        action="auth.login",
-        category="auth",
-        resource_type="user",
-        resource_id=str(user.id),
-        after_state={"email": user.email, "role": user.role},
-        metadata={"google_hd": identity.hd},
-    )
-    await session.commit()
-    return tokens
+class OrganizationView(BaseModel):
+    id: str
+    name: str
+    slug: str
+    org_code: str
+    plan: str
 
 
-@router.post("/refresh")
-async def refresh_token(
-    response: Response,
-    session: DbSession,
-    refresh_cookie: Annotated[str | None, Cookie(alias=REFRESH_COOKIE_NAME)] = None,
-) -> AuthTokens:
-    if not refresh_cookie:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="missing refresh token")
-
-    token_row, secret = await _load_refresh_token(session, refresh_cookie)
-    user = await session.scalar(select(User).where(User.id == token_row.user_id))
-    if user is None:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="unknown refresh user")
-
-    now = datetime.now(UTC)
-    token_row.revoked_at = now
-    tokens = await _issue_session_tokens(session, response, user)
-    await write_event(
-        session=session,
-        workspace_id=user.workspace_id,
-        actor_type="user",
-        actor_id=str(user.id),
-        actor_email=user.email,
-        action="auth.refresh",
-        category="auth",
-        resource_type="refresh_token",
-        resource_id=str(token_row.id),
-        before_state={"revoked": False},
-        after_state={"revoked": True},
-        metadata={"rotated": True, "secret_verified": bool(secret)},
-    )
-    await session.commit()
-    return tokens
+class AuthResponse(BaseModel):
+    access_token: str
+    expires_in: int
+    member: MemberView
+    organization: OrganizationView
 
 
-@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-async def logout(
-    response: Response,
-    session: DbSession,
-    refresh_cookie: Annotated[str | None, Cookie(alias=REFRESH_COOKIE_NAME)] = None,
+def _set_refresh_cookie(
+    response: Response, token: str, settings: Settings, expires: datetime
 ) -> None:
-    response.delete_cookie(REFRESH_COOKIE_NAME)
-    if not refresh_cookie:
-        return
-    try:
-        token_id, _secret = parse_refresh_token(refresh_cookie)
-    except TokenError:
-        return
-
-    token_row = await session.scalar(select(RefreshToken).where(RefreshToken.id == token_id))
-    if token_row is None or token_row.revoked_at is not None:
-        return
-
-    token_row.revoked_at = datetime.now(UTC)
-    user = await session.scalar(select(User).where(User.id == token_row.user_id))
-    if user is not None:
-        await write_event(
-            session=session,
-            workspace_id=user.workspace_id,
-            actor_type="user",
-            actor_id=str(user.id),
-            actor_email=user.email,
-            action="auth.logout",
-            category="auth",
-            resource_type="refresh_token",
-            resource_id=str(token_row.id),
-            before_state={"revoked": False},
-            after_state={"revoked": True},
-        )
-    await session.commit()
-
-
-@router.get("/me")
-async def me(user: CurrentUser) -> UserProfile:
-    return UserProfile(
-        user_id=str(user.user_id),
-        email=user.email,
-        name=user.email,
-        workspace_id=str(user.workspace_id),
-        role=user.role,
+    response.set_cookie(
+        key=settings.refresh_cookie_name,
+        value=token,
+        httponly=True,
+        secure=settings.refresh_cookie_secure,
+        samesite=settings.refresh_cookie_samesite,
+        expires=expires,
+        path="/api/v1/auth",
     )
 
 
-def _google_token_from_request(
-    payload: GoogleTokenRequest | None,
-    authorization: str | None,
-) -> str:
-    if payload is not None:
-        return payload.id_token
-    if authorization and authorization.lower().startswith("bearer "):
-        _scheme, _separator, token = authorization.partition(" ")
-        if token:
-            return token
-    raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="missing Google ID token")
-
-
-async def _workspace_for_domain(session: AsyncSession, domain: str) -> Workspace | None:
-    return await session.scalar(select(Workspace).where(any_(Workspace.google_domains) == domain))
-
-
-async def _get_or_create_user(
-    session: AsyncSession,
-    workspace: Workspace,
-    identity: GoogleIdentity,
-) -> User:
-    user = await session.scalar(
-        select(User).where(
-            User.workspace_id == workspace.id,
-            User.email == identity.email,
-        )
+def _clear_refresh_cookie(response: Response, settings: Settings) -> None:
+    response.delete_cookie(
+        key=settings.refresh_cookie_name,
+        path="/api/v1/auth",
     )
-    if user is not None:
-        return user
-
-    user = User(workspace_id=workspace.id, email=identity.email, role="user")
-    session.add(user)
-    try:
-        await session.flush()
-    except IntegrityError:
-        await session.rollback()
-        existing = await session.scalar(
-            select(User).where(
-                User.workspace_id == workspace.id,
-                User.email == identity.email,
-            )
-        )
-        if existing is None:
-            raise
-        return existing
-
-    await write_event(
-        session=session,
-        workspace_id=workspace.id,
-        actor_type="user",
-        actor_id=str(user.id),
-        actor_email=user.email,
-        action="user.created",
-        category="auth",
-        resource_type="user",
-        resource_id=str(user.id),
-        after_state={"email": user.email, "role": user.role},
-    )
-    return user
 
 
-async def _issue_session_tokens(
+def _refresh_cookie(request: Request, settings: Settings) -> str | None:
+    return request.cookies.get(settings.refresh_cookie_name)
+
+
+async def _issue_session(
     session: AsyncSession,
     response: Response,
-    user: User,
-) -> AuthTokens:
+    member: OrgMember,
+    org: Organization,
+) -> AuthResponse:
     settings = get_settings()
-    refresh = await asyncio.to_thread(issue_refresh_token, ttl_days=settings.jwt_refresh_ttl_days)
+    access_token = issue_access_token(str(member.id), str(org.id), member.role)
+    issued = await asyncio.to_thread(issue_refresh_token, ttl_days=settings.jwt_refresh_ttl_days)
     session.add(
         RefreshToken(
-            id=refresh.id,
-            user_id=user.id,
-            token_hash=refresh.token_hash,
-            expires_at=refresh.expires_at,
+            id=issued.id,
+            member_id=member.id,
+            token_hash=issued.token_hash,
+            expires_at=issued.expires_at,
         )
     )
-    access_token = issue_access_token(
-        str(user.id),
-        str(user.workspace_id),
-        user.role,
-        settings=settings,
-    )
-    response.set_cookie(
-        REFRESH_COOKIE_NAME,
-        refresh.raw_token,
-        max_age=settings.jwt_refresh_ttl_days * 24 * 60 * 60,
-        httponly=True,
-        secure=True,
-        samesite="strict",
-    )
-    return AuthTokens(
+    member.last_login_at = datetime.now(UTC)
+    await session.commit()
+    _set_refresh_cookie(response, issued.raw_token, settings, issued.expires_at)
+    return AuthResponse(
         access_token=access_token,
         expires_in=settings.jwt_access_ttl_seconds,
+        member=_serialize_member(member),
+        organization=_serialize_org(org),
     )
 
 
-async def _load_refresh_token(
-    session: AsyncSession,
-    raw_token: str,
-) -> tuple[RefreshToken, str]:
+async def _login_member(
+    session: AsyncSession, email: str, org_slug: str | None
+) -> OrgMember | None:
+    if org_slug:
+        org_id = await session.scalar(
+            select(Organization.id).where(Organization.slug == _slugify(org_slug))
+        )
+        if org_id is None:
+            return None
+        return await session.scalar(
+            select(OrgMember).where(
+                OrgMember.org_id == org_id,
+                OrgMember.email == email,
+                OrgMember.status == "active",
+            )
+        )
+
+    rows = (
+        await session.scalars(
+            select(OrgMember).where(OrgMember.email == email, OrgMember.status == "active").limit(2)
+        )
+    ).all()
+    members = list(rows)
+    if len(members) > 1:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail="email belongs to multiple organizations; include org_slug",
+        )
+    return members[0] if members else None
+
+
+@router.post("/signup", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
+async def signup(payload: SignupRequest, response: Response, session: DbSession) -> AuthResponse:
+    email = str(payload.email).lower().strip()
+    slug = await _unique_slug(session, _slugify(payload.org_name))
+    org_code = await _unique_org_code(session)
+    password_hash = await asyncio.to_thread(_hash_password, payload.password)
+
     try:
-        token_id, secret = parse_refresh_token(raw_token)
+        org = Organization(name=payload.org_name.strip(), slug=slug, org_code=org_code)
+        session.add(org)
+        await session.flush()
+
+        member = OrgMember(
+            org_id=org.id,
+            email=email,
+            name=payload.name,
+            password_hash=password_hash,
+            role="owner",
+            status="active",
+        )
+        session.add(member)
+        await session.flush()
+        return await _issue_session(session, response, member, org)
+    except IntegrityError as exc:
+        await session.rollback()
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, detail="organization or member already exists"
+        ) from exc
+
+
+@router.post("/login", response_model=AuthResponse)
+async def login(payload: LoginRequest, response: Response, session: DbSession) -> AuthResponse:
+    email = str(payload.email).lower().strip()
+    member = await _login_member(session, email, payload.org_slug)
+    if member is None or member.password_hash is None:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="invalid credentials")
+
+    password_ok = await asyncio.to_thread(_verify_password, payload.password, member.password_hash)
+    if not password_ok:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="invalid credentials")
+
+    org = await session.get(Organization, member.org_id)
+    if org is None:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="organization missing")
+    return await _issue_session(session, response, member, org)
+
+
+@router.post("/refresh", response_model=AuthResponse)
+async def refresh(response: Response, request: Request, session: DbSession) -> AuthResponse:
+    settings = get_settings()
+    refresh_cookie = _refresh_cookie(request, settings)
+    if not refresh_cookie:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="missing refresh token")
+    try:
+        token_id, secret = parse_refresh_token(refresh_cookie)
     except TokenError as exc:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="invalid refresh token") from exc
 
-    token_row = await session.scalar(select(RefreshToken).where(RefreshToken.id == token_id))
-    now = datetime.now(UTC)
-    if token_row is None or not refresh_token_is_active(
-        expires_at=token_row.expires_at,
-        revoked_at=token_row.revoked_at,
-        now=now,
-    ):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="expired refresh token")
-
-    is_valid = await asyncio.to_thread(verify_refresh_secret, secret, token_row.token_hash)
-    if not is_valid:
-        await session.execute(
-            update(RefreshToken).where(RefreshToken.id == token_row.id).values(revoked_at=now)
-        )
-        user = await session.scalar(select(User).where(User.id == token_row.user_id))
-        if user is not None:
-            await write_event(
-                session=session,
-                workspace_id=user.workspace_id,
-                actor_type="user",
-                actor_id=str(user.id),
-                actor_email=user.email,
-                action="auth.refresh_rejected",
-                category="auth",
-                resource_type="refresh_token",
-                resource_id=str(token_row.id),
-                before_state={"revoked": False},
-                after_state={"revoked": True},
-                metadata={"reason": "invalid_secret"},
-            )
-        await session.commit()
+    record = await session.get(RefreshToken, token_id)
+    if record is None:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="invalid refresh token")
+    secret_ok = await asyncio.to_thread(verify_refresh_secret, secret, record.token_hash)
+    if not secret_ok:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="invalid refresh token")
 
-    return token_row, secret
+    now = datetime.now(UTC)
+    if record.expires_at <= now:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="refresh token expired")
+    if record.revoked_at is not None:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="refresh token already used")
+
+    member = await session.get(OrgMember, record.member_id)
+    if member is None or member.status != "active":
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="member inactive")
+    org = await session.get(Organization, member.org_id)
+    if org is None:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="organization missing")
+
+    if record.revoked_at is None:
+        record.revoked_at = now
+    return await _issue_session(session, response, member, org)
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def logout(response: Response, request: Request, session: DbSession) -> Response:
+    settings = get_settings()
+    refresh_cookie = _refresh_cookie(request, settings)
+    if refresh_cookie:
+        try:
+            token_id, _ = parse_refresh_token(refresh_cookie)
+            record = await session.get(RefreshToken, token_id)
+            if record is not None and record.revoked_at is None:
+                record.revoked_at = datetime.now(UTC)
+                await session.commit()
+        except TokenError:
+            pass
+    _clear_refresh_cookie(response, settings)
+    response.status_code = status.HTTP_204_NO_CONTENT
+    return response
+
+
+@router.get("/me", response_model=AuthResponse)
+async def me(member: CurrentMember, session: DbSession) -> AuthResponse:
+    org = await session.get(Organization, member.org_id)
+    if org is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="organization missing")
+    db_member = await session.get(OrgMember, member.member_id)
+    if db_member is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="member missing")
+    return AuthResponse(
+        access_token="",
+        expires_in=0,
+        member=_serialize_member(db_member),
+        organization=_serialize_org(org),
+    )

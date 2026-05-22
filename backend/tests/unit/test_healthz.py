@@ -24,7 +24,7 @@ async def test_readyz_returns_component_status() -> None:
                 ComponentStatus(name="database", ok=True, detail="ok"),
                 ComponentStatus(name="redis", ok=True, detail="reachable"),
             ),
-    )
+        )
 
     app = create_app(readiness_probe=ready)
     async with AsyncClient(transport=client_transport(app), base_url="http://test") as ac:

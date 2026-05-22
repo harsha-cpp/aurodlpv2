@@ -1,10 +1,15 @@
-"""Async SQLAlchemy engine and session factory."""
+"""Async SQLAlchemy engine and session factory.
+
+Neon's transaction-mode pooler does not support prepared statements, so we
+disable both the asyncpg statement cache and SQLAlchemy's own prepared
+statement cache when ``database_disable_prepared_statements`` is set.
+"""
 
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from functools import lru_cache
-from typing import cast
+from typing import Any, cast
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
@@ -20,11 +25,21 @@ from aurodlpv2_backend.settings import get_settings
 @lru_cache(maxsize=1)
 def get_engine() -> AsyncEngine:
     settings = get_settings()
+
+    connect_args: dict[str, Any] = {}
+    execution_options: dict[str, Any] = {}
+    if settings.database_disable_prepared_statements and "asyncpg" in settings.database_url:
+        connect_args["statement_cache_size"] = 0
+        connect_args["prepared_statement_cache_size"] = 0
+        execution_options["compiled_cache"] = None
+
     return create_async_engine(
         settings.database_url,
         pool_size=settings.database_pool_size,
         max_overflow=settings.database_max_overflow,
         pool_pre_ping=True,
+        connect_args=connect_args,
+        execution_options=execution_options,
     )
 
 

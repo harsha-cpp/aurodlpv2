@@ -12,16 +12,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aurodlpv2_backend.auth.jwt import TokenError, decode_access_token
-from aurodlpv2_backend.db.models import User, UserRole, Workspace
+from aurodlpv2_backend.db.models import MemberRole, OrgMember
 from aurodlpv2_backend.db.session import get_session
 
 
 @dataclass(frozen=True, slots=True)
 class Principal:
-    user_id: UUID
-    workspace_id: UUID
+    member_id: UUID
+    org_id: UUID
     email: str
-    role: UserRole
+    role: MemberRole
 
 
 async def db_session() -> AsyncIterator[AsyncSession]:
@@ -32,52 +32,55 @@ async def db_session() -> AsyncIterator[AsyncSession]:
 DbSession = Annotated[AsyncSession, Depends(db_session)]
 
 
-async def current_user(
+async def current_member(
     session: DbSession,
     authorization: Annotated[str | None, Header()] = None,
 ) -> Principal:
     if not authorization or not authorization.lower().startswith("bearer "):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="missing bearer token")
 
-    _scheme, _separator, token = authorization.partition(" ")
-    if not token:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="missing bearer token")
+    scheme, _separator, token = authorization.partition(" ")
     token = token.strip()
+    if scheme.lower() != "bearer" or not token:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="missing bearer token")
+
     try:
         claims = decode_access_token(token)
-        user_id = UUID(claims.sub)
-        workspace_id = UUID(claims.workspace_id)
+        member_id = UUID(claims.sub)
+        org_id = UUID(claims.org_id)
     except (TokenError, ValueError) as exc:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="invalid bearer token") from exc
 
-    user = await session.scalar(
-        select(User).where(
-            User.id == user_id,
-            User.workspace_id == workspace_id,
+    member = await session.scalar(
+        select(OrgMember).where(
+            OrgMember.id == member_id,
+            OrgMember.org_id == org_id,
+            OrgMember.status == "active",
         )
     )
-    if user is None:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="unknown user")
-
-    workspace = await session.scalar(select(Workspace.id).where(Workspace.id == workspace_id))
-    if workspace is None:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="unknown workspace")
+    if member is None:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="unknown member")
 
     return Principal(
-        user_id=user.id,
-        workspace_id=user.workspace_id,
-        email=user.email,
-        role=user.role,
+        member_id=member.id,
+        org_id=member.org_id,
+        email=member.email,
+        role=member.role,
     )
 
 
-CurrentUser = Annotated[Principal, Depends(current_user)]
+CurrentMember = Annotated[Principal, Depends(current_member)]
 
 
-def require_role(*allowed: UserRole) -> Callable[[Principal], Awaitable[Principal]]:
-    async def _gate(user: CurrentUser) -> Principal:
-        if user.role not in allowed:
+def require_role(*allowed: MemberRole) -> Callable[[Principal], Awaitable[Principal]]:
+    async def _gate(member: CurrentMember) -> Principal:
+        if member.role not in allowed:
             raise HTTPException(status.HTTP_403_FORBIDDEN, detail="insufficient role")
-        return user
+        return member
 
     return _gate
+
+
+OwnerOnly = Annotated[Principal, Depends(require_role("owner"))]
+OwnerOrAdmin = Annotated[Principal, Depends(require_role("owner", "admin"))]
+DomainEditor = Annotated[Principal, Depends(require_role("owner", "admin", "analyst"))]
