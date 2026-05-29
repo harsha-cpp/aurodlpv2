@@ -4,32 +4,44 @@ import { detectPhi, stripHtml } from './phi';
 import { isScannable, scanAttachments } from './attachments';
 import { scanAttachmentRefs } from './attachments';
 
-console.log('[Auro DLP v2] Content script loaded on Gmail');
+console.log('[AURO] Content script loaded on Gmail');
 
 const BACKEND_URL = 'http://localhost:8000';
 
 let orgCode: string | null = null;
 let approvedDomains: Set<string> = new Set();
+let approvedEmails: Set<string> = new Set();
 let blockedDomains: Set<string> = new Set();
+
+function splitAllowList(entries: Array<{ domain: string }>): { domains: Set<string>; emails: Set<string> } {
+  const domains = new Set<string>();
+  const emails = new Set<string>();
+  for (const entry of entries) {
+    const value = entry.domain.toLowerCase();
+    if (value.includes('@')) emails.add(value);
+    else domains.add(value);
+  }
+  return { domains, emails };
+}
 
 async function loadOrgState(): Promise<void> {
   const result = await chrome.storage.local.get(['aurodlp_org_code', 'aurodlp_config']);
   orgCode = (result.aurodlp_org_code as string | undefined) ?? null;
-  approvedDomains = new Set(
-    ((result.aurodlp_config?.domains ?? []) as Array<{ domain: string }>).map((d) =>
-      d.domain.toLowerCase(),
-    ),
-  );
+  const allow = splitAllowList((result.aurodlp_config?.domains ?? []) as Array<{ domain: string }>);
+  approvedDomains = allow.domains;
+  approvedEmails = allow.emails;
   blockedDomains = new Set(
     ((result.aurodlp_config?.blocked_domains ?? []) as Array<{ domain: string }>).map((d) =>
       d.domain.toLowerCase(),
     ),
   );
   console.log(
-    '[Auro DLP] org_code=',
+    '[AURO] org_code=',
     orgCode,
     'approved_domains=',
     [...approvedDomains],
+    'approved_emails=',
+    [...approvedEmails],
     'blocked_domains=',
     [...blockedDomains],
   );
@@ -40,24 +52,25 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (changes.aurodlp_org_code) {
     orgCode = (changes.aurodlp_org_code.newValue as string | undefined)?.trim().toUpperCase() ?? null;
     approvedDomains = new Set();
+    approvedEmails = new Set();
     blockedDomains = new Set();
   }
   if (changes.aurodlp_config) {
-    approvedDomains = new Set(
-      ((changes.aurodlp_config.newValue?.domains ?? []) as Array<{ domain: string }>).map((d) =>
-        d.domain.toLowerCase(),
-      ),
+    const allow = splitAllowList(
+      (changes.aurodlp_config.newValue?.domains ?? []) as Array<{ domain: string }>,
     );
+    approvedDomains = allow.domains;
+    approvedEmails = allow.emails;
     blockedDomains = new Set(
       ((changes.aurodlp_config.newValue?.blocked_domains ?? []) as Array<{ domain: string }>).map(
         (d) => d.domain.toLowerCase(),
       ),
     );
-    console.log('[Auro DLP] approved_domains updated:', [...approvedDomains]);
+    console.log('[AURO] approved updated:', [...approvedDomains], [...approvedEmails]);
   }
 });
 
-void loadOrgState();
+void loadOrgState().then(() => maybeShowOrgBanner());
 
 function showOrgCodeBanner(): void {
   if (document.getElementById('aurodlp-org-banner')) return;
@@ -68,8 +81,7 @@ function showOrgCodeBanner(): void {
     <div style="position:fixed;bottom:24px;right:24px;z-index:2147483646;background:#0a0a0a;color:#fafafa;padding:16px 18px;display:flex;flex-direction:column;gap:10px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;width:320px;border:1px solid #262626;border-radius:10px;box-shadow:0 20px 50px rgba(0,0,0,0.5);">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
         <div style="display:flex;align-items:center;gap:8px;">
-          <span style="display:inline-flex;width:22px;height:22px;align-items:center;justify-content:center;background:#dc2626;border-radius:5px;font-weight:700;font-size:11px;">A</span>
-          <span style="font-weight:600;letter-spacing:-0.01em;">Auro DLP</span>
+          <span style="font-weight:700;letter-spacing:0.18em;font-size:14px;">AURO</span>
         </div>
         <button id="aurodlp-org-skip" aria-label="Dismiss" style="background:transparent;border:none;color:#737373;font-size:18px;cursor:pointer;line-height:1;padding:0 4px;">×</button>
       </div>
@@ -97,7 +109,7 @@ function showOrgCodeBanner(): void {
     }
     await chrome.storage.local.set({ aurodlp_org_code: code, aurodlp_org_skipped: false });
     banner.remove();
-    console.log('[Auro DLP v2] Org code saved:', code);
+    console.log('[AURO] Org code saved:', code);
   });
 
   document.getElementById('aurodlp-org-skip')!.addEventListener('click', async () => {
@@ -113,14 +125,11 @@ async function maybeShowOrgBanner(): Promise<void> {
   setTimeout(showOrgCodeBanner, 1500);
 }
 
-void maybeShowOrgBanner();
-
 function reportEvent(verdict: Verdict, userEmail: string, recipients: string[]): void {
   if (!orgCode) return;
 
   const payload = {
     org_code: orgCode,
-    client_event_id: verdict.scan_id,
     user_email: userEmail,
     action: verdict.action,
     severity: verdict.severity,
@@ -146,6 +155,15 @@ function recipientDomain(addr: string): string {
   return cleaned.slice(at + 1).trim().toLowerCase();
 }
 
+function recipientAddress(addr: string): string {
+  return addr.replace(/^.*<|>.*$/g, '').trim().toLowerCase();
+}
+
+function recipientApproved(addr: string): boolean {
+  if (approvedEmails.has(recipientAddress(addr))) return true;
+  return domainMatchesApproved(recipientDomain(addr));
+}
+
 function domainMatchesApproved(recipientDom: string): boolean {
   if (!recipientDom) return false;
   for (const approved of approvedDomains) {
@@ -156,8 +174,9 @@ function domainMatchesApproved(recipientDom: string): boolean {
 }
 
 function allRecipientsApproved(recipients: string[]): boolean {
-  if (approvedDomains.size === 0 || recipients.length === 0) return false;
-  return recipients.every((r) => domainMatchesApproved(recipientDomain(r)));
+  if (recipients.length === 0) return false;
+  if (approvedDomains.size === 0 && approvedEmails.size === 0) return true;
+  return recipients.every((r) => recipientApproved(r));
 }
 
 function anyRecipientBlocked(recipients: string[]): boolean {
@@ -210,9 +229,11 @@ function buildVerdict(entities: EntityHit[], recipients: string[]): Verdict {
   const riskScore = hasAadhaar || hasPan ? 85 : hasAbha ? 65 : 50;
 
   const types = [...new Set(entities.map((e) => e.type))];
+  const unapproved = [...new Set(recipients.filter((r) => !recipientApproved(r)).map((r) => recipientAddress(r)).filter(Boolean))];
+
   const message = approved
-    ? `Sensitive data detected (${types.join(', ')}) but recipients are on approved partner list — allowed.`
-    : `This email contains sensitive Indian health/identity data (${types.join(', ')}). Sending is blocked to protect patient privacy.`;
+    ? `Sensitive data detected (${types.join(', ')}) but all recipients are on the approved list — allowed.`
+    : `This email contains sensitive data (${types.join(', ')}). Blocked because recipient${unapproved.length > 1 ? 's' : ''} [${unapproved.join(', ')}] ${unapproved.length > 1 ? 'are' : 'is'} not on your approved list.`;
 
   return {
     scan_id: crypto.randomUUID(),
@@ -285,14 +306,26 @@ function extractComposeData(compose: Element) {
   const bodyHtml = bodyEl?.innerHTML ?? '';
   const body = stripHtml(bodyHtml);
 
+  // Gmail stores recipients as chips (spans with email attribute) AND in the input field.
+  // The input[name="to"] is often EMPTY — Gmail moves entered addresses into chip elements.
+  const recipients: string[] = [];
+
+  // Method 1: Read from chip elements (primary — Gmail stores finalized recipients here)
+  compose.querySelectorAll<HTMLElement>('[email], [data-hovercard-id]').forEach((chip) => {
+    const email = chip.getAttribute('email') || chip.getAttribute('data-hovercard-id') || '';
+    if (email && email.includes('@')) recipients.push(email.trim());
+  });
+
+  // Method 2: Also check input fields (catches mid-typing addresses)
   const toInputs = compose.querySelectorAll<HTMLInputElement>('input[name="to"]');
   const ccInputs = compose.querySelectorAll<HTMLInputElement>('input[name="cc"]');
   const bccInputs = compose.querySelectorAll<HTMLInputElement>('input[name="bcc"]');
-  const recipients: string[] = [];
   [...toInputs, ...ccInputs, ...bccInputs].forEach((input) => {
     if (input.value)
       recipients.push(...input.value.split(',').map((s) => s.trim()).filter(Boolean));
   });
+
+  const uniqueRecipients = [...new Set(recipients.map((r) => r.toLowerCase()))];
 
   const userEmail =
     document
@@ -303,7 +336,9 @@ function extractComposeData(compose: Element) {
   const composeFiles = Array.from(getAttachmentMap(compose).values());
   const attachments = composeFiles.length > 0 ? composeFiles : Array.from(globalAttachments.values());
 
-  return { subject, body, recipients, userEmail, attachments };
+  console.log('[AURO] Recipients extracted:', uniqueRecipients, 'Approved domains:', [...approvedDomains]);
+
+  return { subject, body, recipients: uniqueRecipients, userEmail, attachments };
 }
 
 interface AttachmentRef {
@@ -353,7 +388,7 @@ async function handleSendIntercept(compose: Element, sendBtn: HTMLElement): Prom
     if (refs.length > 0) {
       attachmentEntities = await scanAttachmentRefs(refs);
       if (attachmentEntities.length > 0) {
-        console.log(`[Auro DLP v2] Attachment URL fallback matched ${attachmentEntities.length} entities`);
+        console.log(`[AURO] Attachment URL fallback matched ${attachmentEntities.length} entities`);
       }
     }
   }
@@ -362,7 +397,7 @@ async function handleSendIntercept(compose: Element, sendBtn: HTMLElement): Prom
   const verdict = buildVerdict(entities, recipients);
 
   console.log(
-    '[Auro DLP v2] Local scan:',
+    '[AURO] Local scan:',
     verdict.action,
     `(${entities.length} entities found; ${attachments.length} attachments)`,
   );
@@ -399,7 +434,7 @@ function captureFiles(compose: Element, files: FileList | File[] | null): void {
 
   if (captured > 0) {
     console.log(
-      `[Auro DLP v2] Captured ${captured} scannable attachment(s) for compose (pool=${globalAttachments.size})`,
+      `[AURO] Captured ${captured} scannable attachment(s) for compose (pool=${globalAttachments.size})`,
     );
   }
 }
@@ -409,7 +444,7 @@ function instrumentCompose(compose: Element): void {
   instrumentedComposes.add(compose);
   composeRegistry.add(compose);
 
-  console.log('[Auro DLP v2] Instrumenting compose window');
+  console.log('[AURO] Instrumenting compose window');
 
   // Track focus to know which compose window gets document-level file inputs.
   compose.addEventListener('focusin', () => {
@@ -431,7 +466,7 @@ function instrumentCompose(compose: Element): void {
       if (!sendBtn) return;
       const label = (sendBtn.getAttribute('aria-label') ?? '').toLowerCase();
       if (label.includes('schedule') || label.includes('discard')) return;
-      console.log('[Auro DLP v2] Send button clicked — intercepting');
+      console.log('[AURO] Send button clicked — intercepting');
       event.stopPropagation();
       event.preventDefault();
       void handleSendIntercept(compose, sendBtn);
@@ -447,7 +482,7 @@ function instrumentCompose(compose: Element): void {
       if (!(e.key === 'Enter' && (e.ctrlKey || e.metaKey))) return;
       const sendBtn = compose.querySelector<HTMLElement>('[role="button"][aria-label*="Send" i]');
       if (!sendBtn) return;
-      console.log('[Auro DLP v2] Ctrl+Enter — intercepting');
+      console.log('[AURO] Ctrl+Enter — intercepting');
       e.stopPropagation();
       e.preventDefault();
       void handleSendIntercept(compose, sendBtn);
