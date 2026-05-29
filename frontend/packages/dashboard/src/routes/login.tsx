@@ -5,17 +5,20 @@ import { ApiError } from '../lib/api';
 
 interface LocationState {
   from?: string;
+  email?: string;
+  switchSlug?: string;
 }
 
 export default function LoginRoute() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as LocationState | null)?.from ?? '/';
+  const state = location.state as LocationState | null;
+  const from = state?.from ?? '/';
+  const switchSlug = state?.switchSlug;
 
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(state?.email ?? '');
   const [password, setPassword] = useState('');
-  const [orgSlug, setOrgSlug] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,9 +27,13 @@ export default function LoginRoute() {
     setError(null);
     setSubmitting(true);
     try {
-      await login({ email, password, org_slug: orgSlug.trim() || undefined });
+      await login({ email, password, org_slug: switchSlug });
       navigate(from, { replace: true });
     } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        navigate('/select-org', { state: { email, password } });
+        return;
+      }
       const detail = err instanceof ApiError ? err.detail : 'Login failed';
       setError(typeof detail === 'string' ? detail : 'Invalid credentials');
     } finally {
@@ -37,12 +44,11 @@ export default function LoginRoute() {
   return (
     <div className="auth-shell">
       <div className="auth-card">
-        <div className="auth-brand">
-          <ShieldGlyph />
-          <span>Auro DLP</span>
-        </div>
+        <div className="auth-brand">AURO</div>
         <h1 className="h1">Sign in</h1>
-        <p className="muted">Welcome back. Access your organization dashboard.</p>
+        <p className="muted">
+          {switchSlug ? 'Confirm your password to switch organization.' : 'Welcome back. Access your organization dashboard.'}
+        </p>
         <form onSubmit={onSubmit} className="col gap-4" style={{ marginTop: 24 }}>
           <div className="field">
             <label className="label">Work email</label>
@@ -53,7 +59,7 @@ export default function LoginRoute() {
               onChange={(e) => setEmail(e.target.value)}
               required
               autoComplete="email"
-              autoFocus
+              autoFocus={!email}
             />
           </div>
           <div className="field">
@@ -66,16 +72,7 @@ export default function LoginRoute() {
               required
               autoComplete="current-password"
               minLength={8}
-            />
-          </div>
-          <div className="field">
-            <label className="label">Organization slug <span className="subtle">(only if your email is in multiple orgs)</span></label>
-            <input
-              className="input"
-              value={orgSlug}
-              onChange={(e) => setOrgSlug(e.target.value)}
-              autoComplete="organization"
-              placeholder="apollo-health"
+              autoFocus={Boolean(email)}
             />
           </div>
           {error && <div className="error">{error}</div>}
@@ -89,13 +86,5 @@ export default function LoginRoute() {
         </div>
       </div>
     </div>
-  );
-}
-
-function ShieldGlyph() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-    </svg>
   );
 }

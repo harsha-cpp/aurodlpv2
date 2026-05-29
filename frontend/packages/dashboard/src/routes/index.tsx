@@ -7,6 +7,7 @@ const Layout = lazy(() => import('../components/Layout'));
 const Login = lazy(() => import('./login'));
 const Signup = lazy(() => import('./signup'));
 const AcceptInvite = lazy(() => import('./accept-invite'));
+const SelectOrg = lazy(() => import('./select-org'));
 const Onboarding = lazy(() => import('./onboarding'));
 const Overview = lazy(() => import('./overview'));
 const Domains = lazy(() => import('./domains'));
@@ -27,6 +28,7 @@ export const routes: RouteObject[] = [
     children: [
       { path: '/login', element: <RedirectIfAuthed><Login /></RedirectIfAuthed> },
       { path: '/signup', element: <RedirectIfAuthed><Signup /></RedirectIfAuthed> },
+      { path: '/select-org', element: <SelectOrg /> },
       { path: '/accept-invite', element: <AcceptInvite /> },
       {
         element: <RequireAuth><Layout /></RequireAuth>,
