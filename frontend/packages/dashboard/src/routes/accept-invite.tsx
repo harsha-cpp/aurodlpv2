@@ -42,10 +42,7 @@ export default function AcceptInviteRoute() {
   return (
     <div className="auth-shell">
       <div className="auth-card">
-        <div className="auth-brand">
-          <ShieldGlyph />
-          <span>Auro DLP</span>
-        </div>
+        <div className="auth-brand">AURO</div>
         <h1 className="h1">Accept your invite</h1>
         <p className="muted">Set a password to join the organization.</p>
         {!token && <div className="error" style={{ marginTop: 16 }}>No invite token in URL.</div>}
@@ -79,13 +76,5 @@ export default function AcceptInviteRoute() {
         </form>
       </div>
     </div>
-  );
-}
-
-function ShieldGlyph() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-    </svg>
   );
 }
