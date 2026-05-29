@@ -18,10 +18,23 @@ router = APIRouter()
 _DOMAIN_RE = re.compile(
     r"^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$"
 )
+_EMAIL_RE = re.compile(
+    r"^[a-z0-9._%+-]+@[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$"
+)
 
 
 def _normalize_domain(raw: str) -> str:
-    value = raw.strip().lower().lstrip("@")
+    """Accept either a bare domain (apollo.com) or a full email (john@gmail.com).
+
+    Full emails are stored verbatim and matched exactly by the extension, so a
+    hospital can whitelist individual senders even without owning a domain.
+    """
+    value = raw.strip().lower()
+    if "@" in value and not value.startswith("@"):
+        if not _EMAIL_RE.match(value):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=f"invalid email: {raw}")
+        return value
+    value = value.lstrip("@")
     if not _DOMAIN_RE.match(value):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=f"invalid domain: {raw}")
     return value
