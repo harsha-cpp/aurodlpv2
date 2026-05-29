@@ -31,6 +31,12 @@ export default function DomainsRoute() {
   const [notes, setNotes] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
 
+  const [email, setEmail] = useState('');
+  const [emailError, setEmailError] = useState<string | null>(null);
+
+  const domainRows = (data ?? []).filter((d) => !d.domain.includes('@'));
+  const emailRows = (data ?? []).filter((d) => d.domain.includes('@'));
+
   async function onAdd(e: FormEvent) {
     e.preventDefault();
     setFormError(null);
@@ -40,6 +46,17 @@ export default function DomainsRoute() {
       setNotes('');
     } catch (err) {
       setFormError(err instanceof ApiError ? String(err.detail) : 'Failed to add domain');
+    }
+  }
+
+  async function onAddEmail(e: FormEvent) {
+    e.preventDefault();
+    setEmailError(null);
+    try {
+      await create.mutateAsync({ domain: email.trim().toLowerCase(), direction: 'both', classification: 'partner' });
+      setEmail('');
+    } catch (err) {
+      setEmailError(err instanceof ApiError ? String(err.detail) : 'Failed to add email');
     }
   }
 
@@ -95,10 +112,10 @@ export default function DomainsRoute() {
       </div>
 
       <div className="card">
-        <h2 className="h2" style={{ marginBottom: 12 }}>Configured ({data?.length ?? 0})</h2>
+        <h2 className="h2" style={{ marginBottom: 12 }}>Configured ({domainRows.length})</h2>
         {isLoading && <span className="subtle">Loading…</span>}
-        {data && data.length === 0 && <span className="subtle">No domains yet. Add one above.</span>}
-        {data && data.length > 0 && (
+        {!isLoading && domainRows.length === 0 && <span className="subtle">No domains yet. Add one above.</span>}
+        {domainRows.length > 0 && (
           <table className="table">
             <thead>
               <tr>
@@ -110,7 +127,7 @@ export default function DomainsRoute() {
               </tr>
             </thead>
             <tbody>
-              {data.map((d) => (
+              {domainRows.map((d) => (
                 <DomainRow
                   key={d.id}
                   domain={d}
@@ -118,6 +135,59 @@ export default function DomainsRoute() {
                   onDelete={() => remove.mutate(d.id)}
                   busy={update.isPending || remove.isPending}
                 />
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      <div className="card" style={{ marginTop: 24 }}>
+        <h2 className="h2" style={{ marginBottom: 4 }}>Whitelist emails</h2>
+        <p className="muted" style={{ marginBottom: 12 }}>
+          Allow individual addresses (e.g. Gmail) to receive sensitive emails — even without owning a domain.
+        </p>
+        <form onSubmit={onAddEmail} className="row gap-3" style={{ flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 16 }}>
+          <div className="field grow" style={{ minWidth: 240 }}>
+            <label className="label">Email address</label>
+            <input
+              className="input"
+              type="email"
+              value={email}
+              onChange={(ev) => setEmail(ev.target.value)}
+              placeholder="doctor@gmail.com"
+              required
+            />
+          </div>
+          <button type="submit" className="btn btn-primary" disabled={create.isPending}>
+            {create.isPending ? 'Adding…' : 'Add email'}
+          </button>
+        </form>
+        {emailError && <div className="error" style={{ marginBottom: 12 }}>{emailError}</div>}
+
+        {!isLoading && emailRows.length === 0 && <span className="subtle">No whitelisted emails yet.</span>}
+        {emailRows.length > 0 && (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {emailRows.map((d) => (
+                <tr key={d.id}>
+                  <td className="mono">{d.domain}</td>
+                  <td className="text-right">
+                    <button
+                      type="button"
+                      className="btn btn-danger btn-sm"
+                      onClick={() => remove.mutate(d.id)}
+                      disabled={remove.isPending}
+                    >
+                      Remove
+                    </button>
+                  </td>
+                </tr>
               ))}
             </tbody>
           </table>

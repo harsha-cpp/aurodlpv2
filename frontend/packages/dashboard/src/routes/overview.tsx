@@ -125,9 +125,13 @@ function Stat({ label, value, loading, accent }: { label: string; value: number 
   return (
     <div className="stat-card">
       <div className="stat-label">{label}</div>
-      <div className="stat-value" style={{ color: accent ? 'var(--accent)' : 'var(--text)' }}>
-        {loading ? '—' : value}
-      </div>
+      {loading ? (
+        <div className="skeleton skeleton-stat" />
+      ) : (
+        <div className="stat-value" style={{ color: accent ? 'var(--accent)' : 'var(--text)' }}>
+          {value}
+        </div>
+      )}
     </div>
   );
 }
