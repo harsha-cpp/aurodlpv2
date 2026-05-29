@@ -39,10 +39,19 @@ export interface LoginBody {
   org_slug?: string | undefined;
 }
 
+export interface OrgListItem {
+  id: string;
+  name: string;
+  slug: string;
+  org_code: string;
+  role: string;
+}
+
 export const authApi = {
   signup: (body: SignupBody) => request<AuthResponse>('/api/v1/auth/signup', { method: 'POST', body, skipAuth: true }),
   login: (body: LoginBody) => request<AuthResponse>('/api/v1/auth/login', { method: 'POST', body, skipAuth: true }),
   refresh: () => request<AuthResponse>('/api/v1/auth/refresh', { method: 'POST', skipAuth: true }),
   logout: () => request<void>('/api/v1/auth/logout', { method: 'POST' }),
   me: () => request<AuthResponse>('/api/v1/auth/me'),
+  myOrgs: (email: string) => request<OrgListItem[]>(`/api/v1/auth/my-orgs`, { query: { email }, skipAuth: true }),
 };

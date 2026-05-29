@@ -66,11 +66,9 @@ export function refreshSession(): Promise<RefreshResult> {
       onAuthLost?.();
       return { accessToken: null, data: null };
     } finally {
-      // Clear after a microtask so a burst of parallel callers all share the
-      // same in-flight promise but the next user action gets a fresh refresh.
       setTimeout(() => {
         refreshPromise = null;
-      }, 0);
+      }, 2000);
     }
   })();
   return refreshPromise;
