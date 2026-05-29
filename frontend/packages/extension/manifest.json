@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Auro DLP v2",
+  "name": "AURO",
   "version": "0.2.0",
   "description": "Block accidental PHI/PII leaks from Gmail before send.",
   "minimum_chrome_version": "120",

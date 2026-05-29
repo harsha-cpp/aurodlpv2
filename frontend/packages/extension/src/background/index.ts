@@ -32,7 +32,7 @@ async function fetchConfig(orgCode: string): Promise<ConfigFetchResult> {
     const url = `${BACKEND_URL}/api/v1/public/orgs/${encodeURIComponent(orgCode)}/config`;
     const res = await fetch(url, { method: 'GET' });
     if (!res.ok) {
-      console.warn('[Auro DLP] Config fetch failed:', res.status);
+      console.warn('[AURO] Config fetch failed:', res.status);
       if (res.status === 404) return { status: 'not_found' };
       return { status: 'transient_error' };
     }
@@ -48,7 +48,7 @@ async function fetchConfig(orgCode: string): Promise<ConfigFetchResult> {
       },
     };
   } catch (err) {
-    console.warn('[Auro DLP] Config fetch error', err);
+    console.warn('[AURO] Config fetch error', err);
     return { status: 'transient_error' };
   }
 }

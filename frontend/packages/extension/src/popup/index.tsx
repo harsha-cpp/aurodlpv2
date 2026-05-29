@@ -60,11 +60,8 @@ function Popup() {
     <div className="popup">
       <div className="popup-header">
         <div className="popup-brand">
-          <div className="popup-logo">
-            <ShieldIcon />
-          </div>
           <div>
-            <div className="popup-title">Auro DLP</div>
+            <div className="popup-title">AURO</div>
             <div className="popup-version">v0.2.0</div>
           </div>
         </div>
@@ -117,8 +114,7 @@ function Popup() {
       </div>
 
       <div className="popup-footer">
-        <ShieldIcon />
-        <span className="popup-footer-text">Protected by Auro DLP</span>
+        <span className="popup-footer-text">Protected by AURO</span>
       </div>
     </div>
   );
