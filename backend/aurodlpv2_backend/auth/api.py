@@ -263,6 +263,9 @@ async def login(payload: LoginRequest, response: Response, session: DbSession) -
 
 @router.post("/refresh", response_model=AuthResponse)
 async def refresh(response: Response, request: Request, session: DbSession) -> AuthResponse:
+    """Validate refresh cookie → issue new access token. Does NOT rotate the
+    refresh token — the same cookie stays valid until expiry or explicit logout.
+    This eliminates race conditions from concurrent/double refresh calls."""
     settings = get_settings()
     refresh_cookie = _refresh_cookie(request, settings)
     if not refresh_cookie:
@@ -283,7 +286,7 @@ async def refresh(response: Response, request: Request, session: DbSession) -> A
     if record.expires_at <= now:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="refresh token expired")
     if record.revoked_at is not None:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="refresh token already used")
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="refresh token revoked")
 
     member = await session.get(OrgMember, record.member_id)
     if member is None or member.status != "active":
@@ -292,9 +295,14 @@ async def refresh(response: Response, request: Request, session: DbSession) -> A
     if org is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="organization missing")
 
-    if record.revoked_at is None:
-        record.revoked_at = now
-    return await _issue_session(session, response, member, org)
+    # Issue new access token only — refresh token stays as-is.
+    access_token = issue_access_token(str(member.id), str(org.id), member.role)
+    return AuthResponse(
+        access_token=access_token,
+        expires_in=settings.jwt_access_ttl_seconds,
+        member=_serialize_member(member),
+        organization=_serialize_org(org),
+    )
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
@@ -329,3 +337,31 @@ async def me(member: CurrentMember, session: DbSession) -> AuthResponse:
         member=_serialize_member(db_member),
         organization=_serialize_org(org),
     )
+
+
+class OrgListItem(BaseModel):
+    id: str
+    name: str
+    slug: str
+    org_code: str
+    role: str
+
+
+@router.get("/my-orgs")
+async def my_orgs(email: str, session: DbSession) -> list[OrgListItem]:
+    """List all organizations an email belongs to (unauthenticated, for org picker)."""
+    normalized = email.lower().strip()
+    members = (
+        await session.scalars(
+            select(OrgMember).where(
+                OrgMember.email == normalized,
+                OrgMember.status == "active",
+            )
+        )
+    ).all()
+    results: list[OrgListItem] = []
+    for m in members:
+        org = await session.get(Organization, m.org_id)
+        if org:
+            results.append(OrgListItem(id=str(org.id), name=org.name, slug=org.slug, org_code=org.org_code, role=m.role))
+    return results
