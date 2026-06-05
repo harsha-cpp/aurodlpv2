@@ -1,4 +1,4 @@
-# Auro DLP v2 Frontend Build Plan
+# Auro Healthcare DLP Frontend Build Plan
 
 > Scope: Chrome Extension (MV3) that intercepts Gmail compose, talks to the FastAPI backend, and surfaces warning / block / quarantine flows. Plus the standalone **Admin Dashboard SPA** consumed by analysts and workspace admins.
 >
@@ -190,7 +190,7 @@ frontend/
 ```jsonc
 {
   "manifest_version": 3,
-  "name": "Auro DLP v2",
+  "name": "Auro Healthcare DLP",
   "version": "0.1.0",
   "description": "Healthcare DLP for Gmail — blocks PHI leaks before Send.",
   "minimum_chrome_version": "120",
@@ -786,7 +786,7 @@ Scenarios:
 3. **Default verdict action when backend is down** — fail-closed (block all) or fail-open with audit (allow + log)? PRD success metric implies fail-closed.
 4. **Drive-attached files** — out of scope for v1, but do we need a hard block, soft warn, or silent log?
 5. **Admin dashboard hosting** — same vendor domain (`admin.aurodlpv2.io`) for all tenants, or per-tenant subdomain (`<tenant>.aurodlpv2.io`)?
-6. **Branding** — single Auro DLP v2 brand, or whitelabel per hospital network?
+6. **Branding** — single Auro Healthcare DLP brand, or whitelabel per hospital network?
 7. **Localisation** — English-only for v1, or Hindi at launch given Indian healthcare focus?
 8. **Telemetry default** — opt-in or opt-out? (legal preference is opt-in for healthcare deployments.)
 9. **User override of block** — allowed at all? If yes, which roles, which severities, with what justification UX?

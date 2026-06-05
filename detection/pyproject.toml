@@ -1,11 +1,11 @@
 [project]
 name = "aurodlpv2-detection"
 version = "0.1.0"
-description = "Auro DLP v2 healthcare DLP detection engine: Presidio + custom recognizers + OCR + risk scoring."
+description = "Auro Healthcare DLP detection engine: Presidio + custom recognizers + OCR + risk scoring."
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 license = { text = "MIT" }
-authors = [{ name = "Auro DLP v2" }]
+authors = [{ name = "Auro Healthcare DLP" }]
 
 dependencies = [
     "pydantic>=2.9.0",

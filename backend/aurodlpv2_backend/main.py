@@ -59,7 +59,7 @@ def create_app(
     probe = readiness_probe or build_readiness_probe(resolved_settings)
 
     app = FastAPI(
-        title="Auro DLP v2 Backend",
+        title="Auro Healthcare DLP Backend",
         version="0.1.0",
         docs_url="/docs" if resolved_settings.app_env != "production" else None,
         redoc_url=None,

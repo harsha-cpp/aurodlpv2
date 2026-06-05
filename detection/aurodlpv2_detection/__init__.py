@@ -1,4 +1,4 @@
-"""Auro DLP v2 healthcare DLP detection engine.
+"""Auro Healthcare DLP detection engine.
 
 Spec: ``docs/plans/detection-engine.md``.
 """

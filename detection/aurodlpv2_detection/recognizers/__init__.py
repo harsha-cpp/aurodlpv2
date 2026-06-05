@@ -1,4 +1,4 @@
-"""Custom Auro DLP v2 Presidio recognizers."""
+"""Custom Auro Healthcare DLP Presidio recognizers."""
 
 from aurodlpv2_detection.recognizers.abha import AbhaRecognizer
 from aurodlpv2_detection.recognizers.icd10 import Icd10Recognizer

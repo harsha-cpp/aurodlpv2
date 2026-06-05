@@ -1,4 +1,4 @@
-"""Auro DLP v2 backend service.
+"""Auro Healthcare DLP backend service.
 
 Authoritative spec: ``docs/plans/backend.md``.
 """

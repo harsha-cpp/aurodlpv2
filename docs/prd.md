@@ -1,10 +1,10 @@
-# Auro DLP v2 — Product Requirements Document (PRD)
+# Auro Healthcare DLP — Product Requirements Document (PRD)
 
 ## 1. Product Overview
 
 ### Product Name
 
-**Auro DLP v2**
+**Auro Healthcare DLP**
 
 ### Product Type
 
@@ -12,7 +12,7 @@ Healthcare-focused Data Loss Prevention (DLP) system for Gmail on Google Workspa
 
 ### Product Summary
 
-Auro DLP v2 is a Chrome Extension + Backend DLP platform that prevents accidental leakage of sensitive healthcare information through Gmail in hospital environments.
+Auro Healthcare DLP is a Chrome Extension + Backend DLP platform that prevents accidental leakage of sensitive healthcare information through Gmail in hospital environments.
 
 The system scans:
 
@@ -444,4 +444,4 @@ Email is blocked or escalated.
 
 # 14. Conclusion
 
-Auro DLP v2 aims to provide a healthcare-native security layer for Google Workspace that prevents accidental leakage of patient-sensitive information while preserving operational efficiency in hospitals.
+Auro Healthcare DLP aims to provide a healthcare-native security layer for Google Workspace that prevents accidental leakage of patient-sensitive information while preserving operational efficiency in hospitals.

@@ -1,4 +1,4 @@
-# Auro DLP v2 Detection Engine — Build Plan
+# Auro Healthcare DLP Detection Engine — Build Plan
 
 > Scope: Python detection pipeline that ingests email content + attachments and emits a structured `ScanResult` (entities, confidences, severity, decision-input score). This plan covers identifier detection, OCR, NER, scoring, and packaging. Auth, queuing, audit logs, dashboard APIs live in `backend.md`.
 

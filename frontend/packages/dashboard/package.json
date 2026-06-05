@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Auro DLP v2 admin dashboard (static SPA). See docs/plans/frontend.md.",
+  "description": "Auro Healthcare DLP admin dashboard (static SPA). See docs/plans/frontend.md.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

@@ -2,7 +2,7 @@
   "name": "aurodlpv2-frontend",
   "version": "0.1.0",
   "private": true,
-  "description": "Auro DLP v2 Chrome extension + admin dashboard. See docs/plans/frontend.md.",
+  "description": "Auro Healthcare DLP Chrome extension + admin dashboard. See docs/plans/frontend.md.",
   "license": "MIT",
   "packageManager": "pnpm@9.12.3",
   "engines": {

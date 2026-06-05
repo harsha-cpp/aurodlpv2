@@ -1,4 +1,4 @@
-"""Database models for Auro DLP v2.
+"""Database models for Auro Healthcare DLP.
 
 Schema:
 - organizations: tenant root, owns an org_code (extension auth key)

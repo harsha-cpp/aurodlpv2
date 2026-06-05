@@ -1,11 +1,11 @@
 [project]
 name = "aurodlpv2-backend"
 version = "0.1.0"
-description = "Auro DLP v2 backend - FastAPI service for healthcare DLP scanning, policy enforcement, audit logging, and admin dashboard APIs."
+description = "Auro Healthcare DLP backend - FastAPI service for healthcare DLP scanning, policy enforcement, audit logging, and admin dashboard APIs."
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 license = { text = "MIT" }
-authors = [{ name = "Auro DLP v2" }]
+authors = [{ name = "Auro Healthcare DLP" }]
 
 dependencies = [
     # Web

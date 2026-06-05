@@ -1,4 +1,4 @@
-# Auro DLP v2 Backend — Build Plan
+# Auro Healthcare DLP Backend — Build Plan
 
 > Scope: Python FastAPI + Celery + Redis + PostgreSQL backend that the Chrome extension and admin dashboard talk to. Owns auth, scan orchestration, policy evaluation, quarantine, audit log, and admin APIs. Detection logic lives in the separate `aurodlpv2_detection` package (see `detection-engine.md`).
 
@@ -114,7 +114,7 @@ All endpoints scoped under `/v1`. JSON only. Errors use [RFC 7807 Problem Detail
 ### 3.1 Auth (called by both extension and dashboard)
 | Method | Path | Purpose |
 |---|---|---|
-| `POST` | `/v1/auth/google` | Exchange Google ID token → Auro DLP v2 access JWT + refresh cookie. Enforces `hd` claim against tenant's allowed Workspace domains |
+| `POST` | `/v1/auth/google` | Exchange Google ID token → Auro Healthcare DLP access JWT + refresh cookie. Enforces `hd` claim against tenant's allowed Workspace domains |
 | `POST` | `/v1/auth/refresh` | Refresh access token using refresh cookie |
 | `POST` | `/v1/auth/logout` | Revoke refresh token |
 | `GET` | `/v1/auth/me` | Current user profile + role |
