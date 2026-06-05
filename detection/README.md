@@ -1,6 +1,6 @@
 # aurodlpv2-detection
 
-Pure-Python PHI/PII detection engine used by the Auro DLP v2 backend.
+Pure-Python PHI/PII detection engine for the Auro Healthcare DLP platform.
 
 Authoritative build spec: [`docs/plans/detection-engine.md`](../docs/plans/detection-engine.md).
 
@@ -43,4 +43,4 @@ System packages (host or Docker):
 
 ## Status
 
-Scaffold only. Implement per phases in [`docs/plans/detection-engine.md`](../docs/plans/detection-engine.md) §13.
+Phased build plan: [`docs/plans/detection-engine.md`](../docs/plans/detection-engine.md) §13.

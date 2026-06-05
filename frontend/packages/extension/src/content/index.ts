@@ -4,8 +4,6 @@ import { detectPhi, stripHtml } from './phi';
 import { isScannable, scanAttachments } from './attachments';
 import { scanAttachmentRefs } from './attachments';
 
-console.log('[AURO] Content script loaded on Gmail');
-
 const BACKEND_URL = 'http://localhost:8000';
 
 let orgCode: string | null = null;
@@ -35,16 +33,6 @@ async function loadOrgState(): Promise<void> {
       d.domain.toLowerCase(),
     ),
   );
-  console.log(
-    '[AURO] org_code=',
-    orgCode,
-    'approved_domains=',
-    [...approvedDomains],
-    'approved_emails=',
-    [...approvedEmails],
-    'blocked_domains=',
-    [...blockedDomains],
-  );
 }
 
 chrome.storage.onChanged.addListener((changes, area) => {
@@ -66,7 +54,6 @@ chrome.storage.onChanged.addListener((changes, area) => {
         (d) => d.domain.toLowerCase(),
       ),
     );
-    console.log('[AURO] approved updated:', [...approvedDomains], [...approvedEmails]);
   }
 });
 
@@ -109,7 +96,6 @@ function showOrgCodeBanner(): void {
     }
     await chrome.storage.local.set({ aurodlp_org_code: code, aurodlp_org_skipped: false });
     banner.remove();
-    console.log('[AURO] Org code saved:', code);
   });
 
   document.getElementById('aurodlp-org-skip')!.addEventListener('click', async () => {
@@ -336,8 +322,6 @@ function extractComposeData(compose: Element) {
   const composeFiles = Array.from(getAttachmentMap(compose).values());
   const attachments = composeFiles.length > 0 ? composeFiles : Array.from(globalAttachments.values());
 
-  console.log('[AURO] Recipients extracted:', uniqueRecipients, 'Approved domains:', [...approvedDomains]);
-
   return { subject, body, recipients: uniqueRecipients, userEmail, attachments };
 }
 
@@ -387,20 +371,11 @@ async function handleSendIntercept(compose: Element, sendBtn: HTMLElement): Prom
     const refs = extractAttachmentRefs(compose);
     if (refs.length > 0) {
       attachmentEntities = await scanAttachmentRefs(refs);
-      if (attachmentEntities.length > 0) {
-        console.log(`[AURO] Attachment URL fallback matched ${attachmentEntities.length} entities`);
-      }
     }
   }
 
   const entities = [...bodyEntities, ...attachmentEntities];
   const verdict = buildVerdict(entities, recipients);
-
-  console.log(
-    '[AURO] Local scan:',
-    verdict.action,
-    `(${entities.length} entities found; ${attachments.length} attachments)`,
-  );
 
   reportEvent(verdict, userEmail, recipients);
 
@@ -422,20 +397,12 @@ function captureFiles(compose: Element, files: FileList | File[] | null): void {
   if (!files) return;
 
   const map = getAttachmentMap(compose);
-  let captured = 0;
 
   for (const f of Array.from(files)) {
     if (!isScannable(f)) continue;
     const key = fileKey(f);
     map.set(key, f);
     globalAttachments.set(key, f);
-    captured++;
-  }
-
-  if (captured > 0) {
-    console.log(
-      `[AURO] Captured ${captured} scannable attachment(s) for compose (pool=${globalAttachments.size})`,
-    );
   }
 }
 
@@ -443,8 +410,6 @@ function instrumentCompose(compose: Element): void {
   if (instrumentedComposes.has(compose)) return;
   instrumentedComposes.add(compose);
   composeRegistry.add(compose);
-
-  console.log('[AURO] Instrumenting compose window');
 
   // Track focus to know which compose window gets document-level file inputs.
   compose.addEventListener('focusin', () => {
@@ -466,7 +431,6 @@ function instrumentCompose(compose: Element): void {
       if (!sendBtn) return;
       const label = (sendBtn.getAttribute('aria-label') ?? '').toLowerCase();
       if (label.includes('schedule') || label.includes('discard')) return;
-      console.log('[AURO] Send button clicked — intercepting');
       event.stopPropagation();
       event.preventDefault();
       void handleSendIntercept(compose, sendBtn);
@@ -482,7 +446,6 @@ function instrumentCompose(compose: Element): void {
       if (!(e.key === 'Enter' && (e.ctrlKey || e.metaKey))) return;
       const sendBtn = compose.querySelector<HTMLElement>('[role="button"][aria-label*="Send" i]');
       if (!sendBtn) return;
-      console.log('[AURO] Ctrl+Enter — intercepting');
       e.stopPropagation();
       e.preventDefault();
       void handleSendIntercept(compose, sendBtn);

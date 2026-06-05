@@ -67,12 +67,9 @@ async function extractText(file: File): Promise<string> {
 
 export async function scanAttachment(file: File): Promise<AttachmentScanResult> {
   try {
-    console.log(`[AURO] Scanning attachment: ${file.name} (${file.type}, ${file.size} bytes)`);
     const text = await extractText(file);
-    console.log(`[AURO] Extracted text (${text.length} chars):`, text.slice(0, 200));
     if (!text) return { filename: file.name, entities: [] };
     const entities = detectPhi(text, 'attachment', file.name);
-    console.log(`[AURO] Attachment entities:`, entities.length);
     return { filename: file.name, entities };
   } catch (err) {
     console.error(`[AURO] Attachment scan FAILED for ${file.name}:`, err);

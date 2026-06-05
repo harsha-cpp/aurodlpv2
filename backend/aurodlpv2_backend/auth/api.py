@@ -363,5 +363,13 @@ async def my_orgs(email: str, session: DbSession) -> list[OrgListItem]:
     for m in members:
         org = await session.get(Organization, m.org_id)
         if org:
-            results.append(OrgListItem(id=str(org.id), name=org.name, slug=org.slug, org_code=org.org_code, role=m.role))
+            results.append(
+                OrgListItem(
+                    id=str(org.id),
+                    name=org.name,
+                    slug=org.slug,
+                    org_code=org.org_code,
+                    role=m.role,
+                )
+            )
     return results
