@@ -51,6 +51,12 @@ def detect_email(payload: EmailPayload, config: DetectionConfig | None = None) -
                 deadline=deadline,
             )
             ocr_pages += ocr_result.pages
+            if (
+                ocr_result.pages != len(extraction.ocr_images)
+                or not ocr_result.text.strip()
+                or ocr_result.confidence < resolved_config.ocr.fallback_confidence_threshold
+            ):
+                extraction_errors.append(f"{attachment.id}: OCR incomplete")
             if ocr_result.text:
                 entities.extend(
                     _detect_text(
@@ -91,8 +97,7 @@ def _detect_text(
         score_threshold=MIN_ENTITY_SCORE,
     )
     return [
-        _entity_from_result(text, result, source, attachment_id=attachment_id)
-        for result in results
+        _entity_from_result(text, result, source, attachment_id=attachment_id) for result in results
     ]
 
 
@@ -126,4 +131,6 @@ def _enabled_entities(config: DetectionConfig) -> list[str]:
         entities.append("MRN")
     if config.recognizers.enable_icd10:
         entities.append("ICD10")
+    if config.recognizers.enable_patient_demographics:
+        entities.extend(["PATIENT_NAME", "PATIENT_DOB", "PATIENT_EMAIL", "PATIENT_PHONE"])
     return entities

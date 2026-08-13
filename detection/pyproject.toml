@@ -10,14 +10,13 @@ authors = [{ name = "Auro Healthcare DLP" }]
 dependencies = [
     "pydantic>=2.9.0",
     "presidio-analyzer>=2.2.355",
-    "presidio-anonymizer>=2.2.355",
     "spacy>=3.7.6",
     "python-stdnum>=1.20",
     "simple-icd-10-cm>=1.5.0,<2.0.0",
     "pymupdf>=1.24.10",
     "python-docx>=1.1.2",
     "openpyxl>=3.1.5",
-    "Pillow>=11.0.0",
+    "Pillow>=12.3.0",
     "python-magic>=0.4.27",
     "regex>=2024.9.11",
     "structlog>=24.4.0",
@@ -60,6 +59,8 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "A", "C4", "RET", "SIM", "RUF"]
 [tool.pyright]
 pythonVersion = "3.12"
 typeCheckingMode = "strict"
+venvPath = "."
+venv = ".venv"
 reportMissingTypeStubs = false
 
 [tool.pytest.ini_options]

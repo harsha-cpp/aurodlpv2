@@ -24,6 +24,7 @@ logger = structlog.get_logger(__name__)
 
 DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024
 
 
 class _MagicModule(Protocol):
@@ -41,8 +42,11 @@ def extract_attachment(attachment: Attachment) -> ExtractionResult:
     if attachment.local_path is None:
         return ExtractionResult("", [], [f"{attachment.id}: missing local path"])
 
+    path = Path(attachment.local_path)
     try:
-        data = Path(attachment.local_path).read_bytes()
+        if path.stat().st_size > MAX_ATTACHMENT_BYTES:
+            return ExtractionResult("", [], [f"{attachment.id}: attachment too large"])
+        data = path.read_bytes()
     except OSError:
         logger.warning("attachment read failed", attachment_id=attachment.id)
         return ExtractionResult("", [], [f"{attachment.id}: read failed"])

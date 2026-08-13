@@ -3,10 +3,16 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
+import pytest
 from docx import Document
+from PIL import Image
 
+import aurodlpv2_detection.api as detection_api
 from aurodlpv2_detection.api import detect_email
+from aurodlpv2_detection.config import DetectionConfig
+from aurodlpv2_detection.extractors import ExtractionResult
 from aurodlpv2_detection.models import Attachment, EmailPayload
+from aurodlpv2_detection.ocr import OcrResult
 
 
 def test_detect_email_finds_abha() -> None:
@@ -60,3 +66,52 @@ def test_detect_email_text_path_perf_under_budget() -> None:
 
     assert len(result.entities) == 3
     assert elapsed_ms < 500
+
+
+@pytest.mark.parametrize(
+    ("ocr_result", "expected_error"),
+    [
+        (OcrResult(text="", confidence=0.0, pages=1), True),
+        (OcrResult(text="clear text", confidence=0.2, pages=1), True),
+        (OcrResult(text="clear text", confidence=0.9, pages=0), True),
+        (OcrResult(text="clear text", confidence=0.9, pages=1), False),
+    ],
+)
+def test_detect_email_reports_incomplete_ocr(
+    monkeypatch: pytest.MonkeyPatch,
+    ocr_result: OcrResult,
+    expected_error: bool,
+) -> None:
+    image = Image.new("RGB", (1, 1))
+
+    def extract_attachment(_attachment: Attachment) -> ExtractionResult:
+        return ExtractionResult(text="", ocr_images=[image], errors=[])
+
+    def extract_ocr_text(
+        _images: list[Image.Image],
+        _config: DetectionConfig,
+        *,
+        deadline: float | None = None,
+    ) -> OcrResult:
+        del deadline
+        return ocr_result
+
+    monkeypatch.setattr(detection_api, "extract_attachment", extract_attachment)
+    monkeypatch.setattr(detection_api, "extract_ocr_text", extract_ocr_text)
+
+    result = detect_email(
+        EmailPayload(
+            attachments=[
+                Attachment(
+                    id="image-1",
+                    filename="scan.png",
+                    mime_type="image/png",
+                    size_bytes=1,
+                    sha256="placeholder",
+                    local_path="unused",
+                )
+            ]
+        )
+    )
+
+    assert bool(result.extraction_errors) is expected_error

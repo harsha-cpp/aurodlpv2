@@ -22,7 +22,7 @@ class Icd10Recognizer(PatternRecognizer):
         super().__init__(
             supported_entity="ICD10",
             name="Icd10Recognizer",
-            patterns=[Pattern("ICD10 candidate", r"\b[A-TV-Z]\d{2}(?:\.\d{1,4})?\b", 0.4)],
+            patterns=[Pattern("ICD10 candidate", r"\b[A-Z]\d{2}(?:\.\d{1,4})?\b", 0.4)],
             context=["diagnosis", "ICD", "condition"],
         )
 
@@ -34,7 +34,10 @@ class Icd10Recognizer(PatternRecognizer):
         regex_flags: int | None = None,
     ) -> list[RecognizerResult]:
         results = super().analyze(text, entities, nlp_artifacts, regex_flags)
+        valid_results: list[RecognizerResult] = []
         for result in results:
             code = text[result.start : result.end].upper()
-            result.score = 0.9 if icd.is_valid_item(code) else 0.4
-        return results
+            if icd.is_valid_item(code):
+                result.score = 0.9
+                valid_results.append(result)
+        return valid_results

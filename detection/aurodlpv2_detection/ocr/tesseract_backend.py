@@ -50,9 +50,7 @@ def run(image: Image.Image, config: DetectionConfig) -> tuple[str, float]:
     confidences = [_parse_confidence(value) for value in data.get("conf", [])]
     valid_confidences = [confidence for confidence in confidences if confidence >= 0.0]
     mean_confidence = (
-        sum(valid_confidences) / (len(valid_confidences) * 100.0)
-        if valid_confidences
-        else 0.0
+        sum(valid_confidences) / (len(valid_confidences) * 100.0) if valid_confidences else 0.0
     )
     return " ".join(texts), round(mean_confidence, 3)
 
