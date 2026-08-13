@@ -1,17 +1,17 @@
-export type Action = 'allow' | 'warn' | 'block' | 'quarantine' | 'escalate';
-export type Severity = 'none' | 'low' | 'medium' | 'high' | 'critical';
+export type Action = "allow" | "warn" | "block" | "quarantine" | "escalate";
+export type Severity = "none" | "low" | "medium" | "high" | "critical";
 export type RecipientClass =
-  | 'internal'
-  | 'approved_partner'
-  | 'external'
-  | 'public_email'
-  | 'unknown';
+  | "internal"
+  | "approved_partner"
+  | "external"
+  | "public_email"
+  | "unknown";
 
 export interface EntityHit {
   type: string;
   masked_value: string;
   confidence: number;
-  source: 'body' | 'subject' | 'attachment';
+  source: "body" | "subject" | "attachment";
   attachment_id?: string | undefined;
 }
 
@@ -30,31 +30,41 @@ export interface Verdict {
   recipients: RecipientHit[];
   user_message: string;
   created_at: string;
+  quarantine_id?: string | null | undefined;
+  degraded?: boolean | undefined;
 }
 
 export interface ScanEmailPayload {
+  org_code: string;
+  client_scan_id: string;
   subject: string;
   body: string;
   recipients: string[];
+  user_email?: string | undefined;
 }
 
 export interface AttachmentUploadResult {
-  scan_id: string;
-  status: 'scanned' | 'queued';
-  filename: string;
-  size_bytes: number;
-  mime_type: string;
+  attachment_scan_id: string;
+  status: "scanned" | "queued" | "failed";
+  verdict?: Verdict | null | undefined;
+  error?: string | null | undefined;
 }
 
 export interface ScanFinalizePayload {
-  scan_id: string;
+  org_code: string;
+  client_scan_id: string;
+  subject: string;
+  body: string;
+  recipients: string[];
+  user_email?: string | undefined;
   attachment_scan_ids: string[];
+  approved_quarantine_id?: string | undefined;
 }
 
 export interface AuthTokens {
   access_token: string;
   expires_in: number;
-  token_type: 'Bearer';
+  token_type: "Bearer";
 }
 
 export interface UserProfile {
@@ -62,5 +72,5 @@ export interface UserProfile {
   email: string;
   name: string;
   workspace_id: string;
-  role: 'user' | 'analyst' | 'admin' | 'super_admin';
+  role: "user" | "analyst" | "admin" | "super_admin";
 }

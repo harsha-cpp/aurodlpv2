@@ -10,6 +10,8 @@ const AcceptInvite = lazy(() => import('./accept-invite'));
 const SelectOrg = lazy(() => import('./select-org'));
 const Onboarding = lazy(() => import('./onboarding'));
 const Overview = lazy(() => import('./overview'));
+const Quarantine = lazy(() => import('./quarantine'));
+const Audit = lazy(() => import('./audit'));
 const Domains = lazy(() => import('./domains'));
 const Members = lazy(() => import('./members'));
 const Settings = lazy(() => import('./settings'));
@@ -34,6 +36,8 @@ export const routes: RouteObject[] = [
         element: <RequireAuth><Layout /></RequireAuth>,
         children: [
           { path: '/', element: <Overview /> },
+          { path: '/quarantine', element: <Quarantine /> },
+          { path: '/audit', element: <Audit /> },
           { path: '/onboarding', element: <Onboarding /> },
           { path: '/domains', element: <Domains /> },
           { path: '/members', element: <Members /> },

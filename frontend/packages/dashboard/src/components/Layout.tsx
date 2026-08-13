@@ -19,7 +19,7 @@ export default function Layout() {
   useEffect(() => {
     if (!open || orgs.length > 0 || !member?.email) return;
     authApi
-      .myOrgs(member.email)
+      .myOrgs()
       .then(setOrgs)
       .catch(() => setOrgs([]));
   }, [open, orgs.length, member?.email]);
@@ -47,6 +47,8 @@ export default function Layout() {
         <div className="sidebar-brand">AURO</div>
         <nav className="sidebar-nav">
           <NavItem to="/" end>Overview</NavItem>
+          <NavItem to="/quarantine">Quarantine</NavItem>
+          <NavItem to="/audit">Audit</NavItem>
           <NavItem to="/domains">Approved domains</NavItem>
           <NavItem to="/members">Members</NavItem>
           <NavItem to="/settings">Settings</NavItem>

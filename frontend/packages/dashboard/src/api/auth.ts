@@ -43,7 +43,6 @@ export interface OrgListItem {
   id: string;
   name: string;
   slug: string;
-  org_code: string;
   role: string;
 }
 
@@ -53,5 +52,5 @@ export const authApi = {
   refresh: () => request<AuthResponse>('/api/v1/auth/refresh', { method: 'POST', skipAuth: true }),
   logout: () => request<void>('/api/v1/auth/logout', { method: 'POST' }),
   me: () => request<AuthResponse>('/api/v1/auth/me'),
-  myOrgs: (email: string) => request<OrgListItem[]>(`/api/v1/auth/my-orgs`, { query: { email }, skipAuth: true }),
+  myOrgs: () => request<OrgListItem[]>(`/api/v1/auth/my-orgs`),
 };
