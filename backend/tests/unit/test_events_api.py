@@ -8,6 +8,7 @@ from fastapi import HTTPException
 from pydantic import ValidationError
 
 from aurodlpv2_backend.db.models import ScanEvent
+from aurodlpv2_backend.deps import ExtensionActor
 from aurodlpv2_backend.events.api import EventPayload, ingest_event
 
 
@@ -47,11 +48,20 @@ def _payload(**overrides: object) -> EventPayload:
     return EventPayload.model_validate(data)
 
 
+def _extension(org_id: object) -> ExtensionActor:
+    return ExtensionActor(
+        client_id=uuid4(),
+        org_id=org_id,  # type: ignore[arg-type]
+        org_code="AUR-ABC123",
+        label="test",
+    )
+
+
 @pytest.mark.unit
 async def test_ingest_event_is_idempotent_and_normalizes_payload() -> None:
     org_id = uuid4()
-    session = _FakeSession([org_id, None])
-    result = await ingest_event(_payload(), session)  # type: ignore[arg-type]
+    session = _FakeSession([None])
+    result = await ingest_event(_payload(), session, _extension(org_id))  # type: ignore[arg-type]
 
     assert result == {"status": "accepted"}
     assert session.commits == 1
@@ -66,8 +76,9 @@ async def test_ingest_event_is_idempotent_and_normalizes_payload() -> None:
 
 @pytest.mark.unit
 async def test_ingest_event_duplicate_does_not_double_count() -> None:
-    session = _FakeSession([uuid4(), uuid4()])
-    result = await ingest_event(_payload(), session)  # type: ignore[arg-type]
+    org_id = uuid4()
+    session = _FakeSession([uuid4()])
+    result = await ingest_event(_payload(), session, _extension(org_id))  # type: ignore[arg-type]
 
     assert result == {"status": "duplicate"}
     assert session.added == []
@@ -84,10 +95,11 @@ def test_event_payload_rejects_unknown_actions(bad_action: str) -> None:
 @pytest.mark.unit
 async def test_ingest_event_rejects_future_timestamp() -> None:
     payload = _payload(timestamp=datetime.now(UTC) + timedelta(minutes=10))
-    session = _FakeSession([uuid4(), None])
+    org_id = uuid4()
+    session = _FakeSession([None])
 
     with pytest.raises(HTTPException) as exc_info:
-        await ingest_event(payload, session)  # type: ignore[arg-type]
+        await ingest_event(payload, session, _extension(org_id))  # type: ignore[arg-type]
 
     assert exc_info.value.status_code == 422
     assert session.commits == 0

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Annotated
 from uuid import UUID
 
@@ -12,8 +13,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aurodlpv2_backend.auth.jwt import TokenError, decode_access_token
-from aurodlpv2_backend.db.models import MemberRole, OrgMember
+from aurodlpv2_backend.db.models import ExtensionClient, MemberRole, Organization, OrgMember
 from aurodlpv2_backend.db.session import get_session
+from aurodlpv2_backend.extension_clients.security import (
+    ExtensionTokenError,
+    parse_extension_token,
+    verify_extension_secret,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,6 +28,14 @@ class Principal:
     org_id: UUID
     email: str
     role: MemberRole
+
+
+@dataclass(frozen=True, slots=True)
+class ExtensionActor:
+    client_id: UUID
+    org_id: UUID
+    org_code: str
+    label: str
 
 
 async def db_session() -> AsyncIterator[AsyncSession]:
@@ -72,6 +86,51 @@ async def current_member(
 CurrentMember = Annotated[Principal, Depends(current_member)]
 
 
+async def current_extension(
+    session: DbSession,
+    authorization: Annotated[str | None, Header()] = None,
+) -> ExtensionActor:
+    if not authorization:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="missing extension credential")
+    scheme, separator, raw_token = authorization.partition(" ")
+    if not separator or scheme.lower() != "auroextension" or not raw_token.strip():
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="invalid extension credential")
+    try:
+        client_id, secret = parse_extension_token(raw_token)
+    except ExtensionTokenError as exc:
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED, detail="invalid extension credential"
+        ) from exc
+
+    client = await session.scalar(
+        select(ExtensionClient).where(
+            ExtensionClient.id == client_id,
+            ExtensionClient.status == "active",
+        )
+    )
+    now = datetime.now(UTC)
+    if (
+        client is None
+        or client.expires_at <= now
+        or client.revoked_at is not None
+        or not verify_extension_secret(secret, client.token_hash)
+    ):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="invalid extension credential")
+
+    org = await session.get(Organization, client.org_id)
+    if org is None:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="invalid extension credential")
+    return ExtensionActor(
+        client_id=client.id,
+        org_id=client.org_id,
+        org_code=org.org_code,
+        label=client.label,
+    )
+
+
+ExtensionPrincipal = Annotated[ExtensionActor, Depends(current_extension)]
+
+
 def require_role(*allowed: MemberRole) -> Callable[[Principal], Awaitable[Principal]]:
     async def _gate(member: CurrentMember) -> Principal:
         if member.role not in allowed:
@@ -84,3 +143,4 @@ def require_role(*allowed: MemberRole) -> Callable[[Principal], Awaitable[Princi
 OwnerOnly = Annotated[Principal, Depends(require_role("owner"))]
 OwnerOrAdmin = Annotated[Principal, Depends(require_role("owner", "admin"))]
 DomainEditor = Annotated[Principal, Depends(require_role("owner", "admin", "analyst"))]
+QuarantineReviewer = Annotated[Principal, Depends(require_role("owner", "admin", "analyst"))]

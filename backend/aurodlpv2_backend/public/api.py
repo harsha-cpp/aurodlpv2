@@ -1,4 +1,4 @@
-"""Public unauthenticated endpoints — used by the browser extension."""
+"""Organization configuration for authenticated browser extensions."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 
 from aurodlpv2_backend.db.models import ApprovedDomain, Organization
-from aurodlpv2_backend.deps import DbSession
+from aurodlpv2_backend.deps import DbSession, ExtensionPrincipal
 
 router = APIRouter()
 
@@ -32,11 +32,17 @@ class PublicConfig(BaseModel):
 
 
 @router.get("/orgs/{org_code}/config", response_model=PublicConfig)
-async def get_public_config(org_code: str, session: DbSession) -> PublicConfig:
+async def get_public_config(
+    org_code: str,
+    session: DbSession,
+    extension: ExtensionPrincipal,
+) -> PublicConfig:
     normalized = org_code.strip().upper()
-    org = await session.scalar(select(Organization).where(Organization.org_code == normalized))
-    if org is None:
+    if normalized != extension.org_code:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="unknown org code")
+    org = await session.get(Organization, extension.org_id)
+    if org is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="unknown organization")
 
     domains = (
         await session.scalars(

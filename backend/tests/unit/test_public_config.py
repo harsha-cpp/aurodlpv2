@@ -6,6 +6,7 @@ from uuid import uuid4
 import pytest
 
 from aurodlpv2_backend.db.models import ApprovedDomain, Organization
+from aurodlpv2_backend.deps import ExtensionActor
 from aurodlpv2_backend.public.api import get_public_config
 
 
@@ -22,7 +23,7 @@ class _FakeSession:
         self.org = org
         self.domains = domains
 
-    async def scalar(self, _statement: object) -> Organization:
+    async def get(self, _model: object, _id: object) -> Organization:
         return self.org
 
     async def scalars(self, _statement: object) -> _ScalarRows:
@@ -52,7 +53,13 @@ async def test_public_config_never_returns_blocked_or_sender_only_domains_as_all
         ],
     )
 
-    config = await get_public_config("aur-abc123", session)  # type: ignore[arg-type]
+    extension = ExtensionActor(
+        client_id=uuid4(),
+        org_id=org.id,
+        org_code=org.org_code,
+        label="test",
+    )
+    config = await get_public_config("aur-abc123", session, extension)  # type: ignore[arg-type]
 
     assert [domain.domain for domain in config.domains] == ["allowed.example"]
     assert [domain.domain for domain in config.blocked_domains] == ["blocked.example"]

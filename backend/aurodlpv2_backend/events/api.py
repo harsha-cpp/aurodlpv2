@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 from uuid import UUID
@@ -10,10 +11,10 @@ from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy import DateTime, bindparam, func, select, text
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 
-from aurodlpv2_backend.db.models import EventAction, EventSeverity, Organization, ScanEvent
-from aurodlpv2_backend.deps import CurrentMember, DbSession
+from aurodlpv2_backend.db.models import EventAction, EventSeverity, ScanEvent
+from aurodlpv2_backend.deps import CurrentMember, DbSession, ExtensionPrincipal
 
 router = APIRouter()
 
@@ -21,6 +22,8 @@ _MAX_CLOCK_SKEW = timedelta(minutes=5)
 _MAX_EVENT_AGE = timedelta(days=366)
 _MAX_ENTITIES_PER_EVENT = 500
 _MAX_RECIPIENTS_PER_EVENT = 200
+_ANALYTICS_CACHE_TTL_SECONDS = 10.0
+_ANALYTICS_CACHE: dict[tuple[UUID, int], tuple[float, StatsResponse]] = {}
 
 
 class EntityReport(BaseModel):
@@ -38,6 +41,7 @@ def _empty_recipients() -> list[EmailStr]:
 
 class EventPayload(BaseModel):
     org_code: str = Field(min_length=3, max_length=64)
+    client_event_id: str = Field(min_length=8, max_length=128)
     user_email: EmailStr
     action: EventAction
     severity: EventSeverity
@@ -50,6 +54,11 @@ class EventPayload(BaseModel):
     @classmethod
     def normalize_code(cls, value: str) -> str:
         return value.strip().upper()
+
+    @field_validator("client_event_id")
+    @classmethod
+    def normalize_client_event_id(cls, value: str) -> str:
+        return value.strip()
 
     @field_validator("entities")
     @classmethod
@@ -128,18 +137,26 @@ def _event_time(payload: EventPayload) -> datetime:
     return event_time
 
 
-async def _resolve_org_id(session: AsyncSession, org_code: str) -> UUID:
-    org_id = await session.scalar(select(Organization.id).where(Organization.org_code == org_code))
-    if org_id is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="unknown org code")
-    return org_id
-
-
 @router.post("", status_code=status.HTTP_202_ACCEPTED)
-async def ingest_event(payload: EventPayload, session: DbSession) -> dict[str, str]:
-    org_id = await _resolve_org_id(session, payload.org_code)
+async def ingest_event(
+    payload: EventPayload,
+    session: DbSession,
+    extension: ExtensionPrincipal,
+) -> dict[str, str]:
+    if payload.org_code != extension.org_code:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="unknown org code")
+    org_id = extension.org_id
+    existing = await session.scalar(
+        select(ScanEvent.id).where(
+            ScanEvent.org_id == org_id,
+            ScanEvent.client_event_id == payload.client_event_id,
+        )
+    )
+    if existing is not None:
+        return {"status": "duplicate"}
 
     event = ScanEvent(
+        client_event_id=payload.client_event_id,
         org_id=org_id,
         user_email=str(payload.user_email).lower(),
         action=payload.action,
@@ -150,7 +167,12 @@ async def ingest_event(payload: EventPayload, session: DbSession) -> dict[str, s
         event_time=_event_time(payload),
     )
     session.add(event)
-    await session.commit()
+    try:
+        await session.commit()
+    except IntegrityError:
+        await session.rollback()
+        return {"status": "duplicate"}
+    _clear_analytics_cache(org_id)
     return {"status": "accepted"}
 
 
@@ -162,6 +184,10 @@ async def get_analytics(
 ) -> StatsResponse:
     since = datetime.now(UTC) - timedelta(days=days)
     org_id = member.org_id
+    cached = _get_cached_analytics(org_id, days)
+    if cached is not None:
+        return cached
+
     base_filter = (ScanEvent.org_id == org_id, ScanEvent.event_time >= since)
 
     aggregate_row = (
@@ -258,7 +284,7 @@ async def get_analytics(
         for event in recent_rows
     ]
 
-    return StatsResponse(
+    response = StatsResponse(
         total_scans=int(total_scans or 0),
         total_blocks=int(total_blocks or 0),
         total_allows=int(total_allows or 0),
@@ -272,3 +298,26 @@ async def get_analytics(
         daily_trend=daily_trend,
         recent_events=recent_events,
     )
+    _set_cached_analytics(org_id, days, response)
+    return response
+
+
+def _get_cached_analytics(org_id: UUID, days: int) -> StatsResponse | None:
+    cached = _ANALYTICS_CACHE.get((org_id, days))
+    if cached is None:
+        return None
+    cached_at, response = cached
+    if time.monotonic() - cached_at > _ANALYTICS_CACHE_TTL_SECONDS:
+        _ANALYTICS_CACHE.pop((org_id, days), None)
+        return None
+    return response
+
+
+def _set_cached_analytics(org_id: UUID, days: int, response: StatsResponse) -> None:
+    _ANALYTICS_CACHE[(org_id, days)] = (time.monotonic(), response)
+
+
+def _clear_analytics_cache(org_id: UUID) -> None:
+    for key in list(_ANALYTICS_CACHE):
+        if key[0] == org_id:
+            _ANALYTICS_CACHE.pop(key, None)

@@ -12,10 +12,11 @@ from argon2.exceptions import VerificationError, VerifyMismatchError
 from argon2.low_level import Type
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from aurodlpv2_backend.audit.service import write_audit_event
 from aurodlpv2_backend.auth.jwt import (
     TokenError,
     issue_access_token,
@@ -23,6 +24,7 @@ from aurodlpv2_backend.auth.jwt import (
     parse_refresh_token,
     verify_refresh_secret,
 )
+from aurodlpv2_backend.auth.rate_limit import login_rate_limiter
 from aurodlpv2_backend.db.models import Organization, OrgMember, RefreshToken
 from aurodlpv2_backend.deps import CurrentMember, DbSession
 from aurodlpv2_backend.settings import Settings, get_settings
@@ -30,7 +32,7 @@ from aurodlpv2_backend.settings import Settings, get_settings
 router = APIRouter()
 
 _PASSWORD_HASHER = PasswordHasher(type=Type.ID)
-_ORG_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+_ORG_CODE_BYTES = 18
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
 
 
@@ -51,7 +53,8 @@ def _slugify(name: str) -> str:
 
 
 def _generate_org_code() -> str:
-    return "AUR-" + "".join(secrets.choice(_ORG_CODE_ALPHABET) for _ in range(6))
+    suffix = secrets.token_urlsafe(_ORG_CODE_BYTES).replace("-", "").replace("_", "")
+    return "AUR-" + suffix.upper()
 
 
 async def _unique_slug(session: AsyncSession, base: str) -> str:
@@ -155,6 +158,11 @@ def _refresh_cookie(request: Request, settings: Settings) -> str | None:
     return request.cookies.get(settings.refresh_cookie_name)
 
 
+def _require_csrf_header(request: Request) -> None:
+    if request.headers.get("x-auro-csrf") != "1":
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="csrf check failed")
+
+
 async def _issue_session(
     session: AsyncSession,
     response: Response,
@@ -169,6 +177,7 @@ async def _issue_session(
             id=issued.id,
             member_id=member.id,
             token_hash=issued.token_hash,
+            family_id=issued.id,
             expires_at=issued.expires_at,
         )
     )
@@ -183,35 +192,55 @@ async def _issue_session(
     )
 
 
-async def _login_member(
+async def _login_members(
     session: AsyncSession, email: str, org_slug: str | None
-) -> OrgMember | None:
+) -> list[OrgMember]:
     if org_slug:
         org_id = await session.scalar(
             select(Organization.id).where(Organization.slug == _slugify(org_slug))
         )
         if org_id is None:
-            return None
-        return await session.scalar(
+            return []
+        member = await session.scalar(
             select(OrgMember).where(
                 OrgMember.org_id == org_id,
                 OrgMember.email == email,
                 OrgMember.status == "active",
             )
         )
+        return [member] if member is not None else []
 
     rows = (
         await session.scalars(
-            select(OrgMember).where(OrgMember.email == email, OrgMember.status == "active").limit(2)
+            select(OrgMember).where(OrgMember.email == email, OrgMember.status == "active")
         )
     ).all()
-    members = list(rows)
-    if len(members) > 1:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT,
-            detail="email belongs to multiple organizations; include org_slug",
+    return list(rows)
+
+
+async def _audit_login_lockout(
+    session: AsyncSession,
+    *,
+    email: str,
+    org_slug: str | None,
+    retry_after_seconds: int,
+) -> None:
+    members = await _login_members(session, email, org_slug)
+    seen_orgs: set[object] = set()
+    for member in members:
+        if member.org_id in seen_orgs:
+            continue
+        seen_orgs.add(member.org_id)
+        await write_audit_event(
+            session,
+            org_id=member.org_id,
+            actor=f"login:{email}",
+            category="auth",
+            action="login_rate_limited",
+            metadata={"email": email, "retry_after_seconds": retry_after_seconds},
         )
-    return members[0] if members else None
+    if seen_orgs:
+        await session.commit()
 
 
 @router.post("/signup", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
@@ -245,16 +274,55 @@ async def signup(payload: SignupRequest, response: Response, session: DbSession)
 
 
 @router.post("/login", response_model=AuthResponse)
-async def login(payload: LoginRequest, response: Response, session: DbSession) -> AuthResponse:
+async def login(
+    payload: LoginRequest,
+    response: Response,
+    request: Request,
+    session: DbSession,
+) -> AuthResponse:
     email = str(payload.email).lower().strip()
-    member = await _login_member(session, email, payload.org_slug)
-    if member is None or member.password_hash is None:
+    limit = await login_rate_limiter.check(request, email)
+    if not limit.allowed:
+        await _audit_login_lockout(
+            session,
+            email=email,
+            org_slug=payload.org_slug,
+            retry_after_seconds=limit.retry_after_seconds,
+        )
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="too many login attempts",
+            headers={"Retry-After": str(limit.retry_after_seconds)},
+        )
+    members = await _login_members(session, email, payload.org_slug)
+    if not members:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="invalid credentials")
 
-    password_ok = await asyncio.to_thread(_verify_password, payload.password, member.password_hash)
-    if not password_ok:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="invalid credentials")
+    verified_members: list[OrgMember] = []
+    for candidate in members:
+        if candidate.password_hash is None:
+            continue
+        password_ok = await asyncio.to_thread(
+            _verify_password,
+            payload.password,
+            candidate.password_hash,
+        )
+        if password_ok:
+            verified_members.append(candidate)
 
+    if not verified_members:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="invalid credentials")
+    if payload.org_slug is None and len(verified_members) > 1:
+        choices = await _org_choices(session, verified_members)
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail={
+                "code": "org_selection_required",
+                "organizations": [choice.model_dump() for choice in choices],
+            },
+        )
+
+    member = verified_members[0]
     org = await session.get(Organization, member.org_id)
     if org is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="organization missing")
@@ -263,9 +331,8 @@ async def login(payload: LoginRequest, response: Response, session: DbSession) -
 
 @router.post("/refresh", response_model=AuthResponse)
 async def refresh(response: Response, request: Request, session: DbSession) -> AuthResponse:
-    """Validate refresh cookie → issue new access token. Does NOT rotate the
-    refresh token — the same cookie stays valid until expiry or explicit logout.
-    This eliminates race conditions from concurrent/double refresh calls."""
+    """Rotate a refresh token and revoke its family if an ancestor is replayed."""
+    _require_csrf_header(request)
     settings = get_settings()
     refresh_cookie = _refresh_cookie(request, settings)
     if not refresh_cookie:
@@ -275,18 +342,33 @@ async def refresh(response: Response, request: Request, session: DbSession) -> A
     except TokenError as exc:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="invalid refresh token") from exc
 
-    record = await session.get(RefreshToken, token_id)
+    record = await session.get(RefreshToken, token_id, with_for_update=True)
     if record is None:
+        _clear_refresh_cookie(response, settings)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="invalid refresh token")
     secret_ok = await asyncio.to_thread(verify_refresh_secret, secret, record.token_hash)
     if not secret_ok:
+        _clear_refresh_cookie(response, settings)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="invalid refresh token")
 
     now = datetime.now(UTC)
     if record.expires_at <= now:
+        record.revoked_at = record.revoked_at or now
+        await session.commit()
+        _clear_refresh_cookie(response, settings)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="refresh token expired")
-    if record.revoked_at is not None:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="refresh token revoked")
+    if record.used_at is not None or record.revoked_at is not None:
+        await session.execute(
+            update(RefreshToken)
+            .where(
+                RefreshToken.family_id == record.family_id,
+                RefreshToken.revoked_at.is_(None),
+            )
+            .values(revoked_at=now)
+        )
+        await session.commit()
+        _clear_refresh_cookie(response, settings)
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="refresh token reuse detected")
 
     member = await session.get(OrgMember, record.member_id)
     if member is None or member.status != "active":
@@ -295,7 +377,25 @@ async def refresh(response: Response, request: Request, session: DbSession) -> A
     if org is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="organization missing")
 
-    # Issue new access token only — refresh token stays as-is.
+    issued = await asyncio.to_thread(
+        issue_refresh_token,
+        ttl_days=settings.jwt_refresh_ttl_days,
+    )
+    record.used_at = now
+    record.revoked_at = now
+    session.add(
+        RefreshToken(
+            id=issued.id,
+            member_id=member.id,
+            token_hash=issued.token_hash,
+            family_id=record.family_id,
+            rotated_from_id=record.id,
+            expires_at=issued.expires_at,
+        )
+    )
+    await session.commit()
+    _set_refresh_cookie(response, issued.raw_token, settings, issued.expires_at)
+
     access_token = issue_access_token(str(member.id), str(org.id), member.role)
     return AuthResponse(
         access_token=access_token,
@@ -307,6 +407,7 @@ async def refresh(response: Response, request: Request, session: DbSession) -> A
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(response: Response, request: Request, session: DbSession) -> Response:
+    _require_csrf_header(request)
     settings = get_settings()
     refresh_cookie = _refresh_cookie(request, settings)
     if refresh_cookie:
@@ -343,22 +444,10 @@ class OrgListItem(BaseModel):
     id: str
     name: str
     slug: str
-    org_code: str
     role: str
 
 
-@router.get("/my-orgs")
-async def my_orgs(email: str, session: DbSession) -> list[OrgListItem]:
-    """List all organizations an email belongs to (unauthenticated, for org picker)."""
-    normalized = email.lower().strip()
-    members = (
-        await session.scalars(
-            select(OrgMember).where(
-                OrgMember.email == normalized,
-                OrgMember.status == "active",
-            )
-        )
-    ).all()
+async def _org_choices(session: AsyncSession, members: list[OrgMember]) -> list[OrgListItem]:
     results: list[OrgListItem] = []
     for m in members:
         org = await session.get(Organization, m.org_id)
@@ -368,8 +457,21 @@ async def my_orgs(email: str, session: DbSession) -> list[OrgListItem]:
                     id=str(org.id),
                     name=org.name,
                     slug=org.slug,
-                    org_code=org.org_code,
                     role=m.role,
                 )
             )
     return results
+
+
+@router.get("/my-orgs", response_model=list[OrgListItem])
+async def my_orgs(member: CurrentMember, session: DbSession) -> list[OrgListItem]:
+    """List organizations for the authenticated member's email."""
+    members = (
+        await session.scalars(
+            select(OrgMember).where(
+                OrgMember.email == member.email,
+                OrgMember.status == "active",
+            )
+        )
+    ).all()
+    return await _org_choices(session, list(members))
