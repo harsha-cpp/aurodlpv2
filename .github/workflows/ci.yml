@@ -2,53 +2,232 @@ name: ci
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_FROZEN: "1"
+  UV_NO_PROGRESS: "1"
+
 jobs:
+  security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          fetch-depth: 0
+      - name: Validate GitHub Actions workflow
+        run: |
+          curl --fail --silent --show-error --location \
+            --output /tmp/actionlint_1.7.12_linux_amd64.tar.gz \
+            https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz
+          echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  /tmp/actionlint_1.7.12_linux_amd64.tar.gz" \
+            | sha256sum --check
+          tar --extract --gzip --file /tmp/actionlint_1.7.12_linux_amd64.tar.gz --directory /tmp actionlint
+          /tmp/actionlint -color
+      - name: Scan Git history for committed secrets
+        run: >-
+          docker run --rm
+          --volume "${{ github.workspace }}:/repo:ro"
+          zricethezav/gitleaks:v8.18.4@sha256:75bdb2b2f4db213cde0b8295f13a88d6b333091bbfbf3012a4e083d00d31caba
+          detect --source=/repo --config=/repo/.gitleaks.toml --redact --no-banner
+      - name: Static application security analysis
+        run: >-
+          docker run --rm
+          --env SEMGREP_SEND_METRICS=off
+          --volume "${{ github.workspace }}:/src:ro"
+          --workdir /src
+          semgrep/semgrep:1.172.0@sha256:65dcd4408adda7c183a6b4550cb1e9b19f7f627a6fbb7e0559bd466bedc44d7b
+          semgrep scan --config=p/security-audit --config=p/owasp-top-ten
+          --error --metrics=off
+          --exclude-rule=python.lang.security.audit.insecure-file-permissions.insecure-file-permissions
+          --exclude-rule=python.flask.security.audit.directly-returned-format-string.directly-returned-format-string
+          --exclude=.git --exclude=.venv --exclude=node_modules --exclude=dist
+          --exclude=infra/data --exclude=output
+      - name: Scan repository dependencies, secrets, and configuration
+        run: >-
+          docker run --rm
+          --volume "${{ github.workspace }}:/repo:ro"
+          aquasec/trivy:0.73.0@sha256:7cced7cae583819fc7806d4cbc0dbbc7cad18b99f7d3e235192e6da8c091045c
+          fs --scanners=vuln,secret,misconfig --severity=HIGH,CRITICAL
+          --exit-code=1 --no-progress
+          --skip-dirs=/repo/.git --skip-dirs=/repo/frontend/node_modules
+          --skip-dirs=/repo/backend/.venv --skip-dirs=/repo/detection/.venv
+          /repo
+
   backend:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v3
-        with: { enable-cache: true }
-      - name: Install
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
+        with:
+          enable-cache: true
+          python-version: "3.12"
+      - name: Install locked dependencies
         run: |
-          cd detection && uv sync --all-extras
-          cd ../backend && uv sync --all-extras
+          cd detection
+          uv sync --extra dev
+          cd ../backend
+          uv sync --extra dev
       - name: Lint
         run: cd backend && uv run ruff check .
       - name: Typecheck
         run: cd backend && uv run pyright
-      - name: Test
-        run: cd backend && uv run pytest -q
+      - name: Unit tests
+        run: cd backend && uv run pytest -q -m "not integration and not e2e"
       - name: Dependency audit
-        run: cd backend && uv run pip-audit
-      - name: SBOM
-        run: cd backend && uvx --from cyclonedx-bom cyclonedx-py environment -o cyclonedx.json
+        run: cd backend && uv run pip-audit --local
 
   detection:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v3
-      - run: cd detection && uv sync --all-extras
-      - run: cd detection && uv run ruff check .
-      - run: cd detection && uv run pyright
-      - run: cd detection && uv run pytest -q
-      - run: cd detection && uv run pip-audit
-      - run: cd detection && uvx --from cyclonedx-bom cyclonedx-py environment -o cyclonedx.json
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
+        with:
+          enable-cache: true
+          python-version: "3.12"
+      - name: Install locked dependencies
+        run: cd detection && uv sync --extra dev
+      - name: Lint
+        run: cd detection && uv run ruff check .
+      - name: Typecheck
+        run: cd detection && uv run pyright
+      - name: Tests
+        run: cd detection && uv run pytest -q
+      - name: Dependency audit
+        run: cd detection && uv run pip-audit --local
 
   frontend:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: '20' }
-      - uses: pnpm/action-setup@v4
-        with: { version: 9 }
-      - run: cd frontend && pnpm install --frozen-lockfile
-      - run: cd frontend && pnpm typecheck
-      - run: cd frontend && pnpm lint
-      - run: cd frontend && pnpm test
-      - run: cd frontend && pnpm build
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - uses: pnpm/action-setup@008330803749db0355799c700092d9a85fd074e9
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: Install locked dependencies
+        run: cd frontend && pnpm install --frozen-lockfile
+      - name: Typecheck
+        run: cd frontend && pnpm typecheck
+      - name: Lint
+        run: cd frontend && pnpm lint
+      - name: Tests
+        run: cd frontend && pnpm test
+      - name: Build
+        run: cd frontend && pnpm build
+      - name: Dependency audit
+        run: cd frontend && pnpm audit --prod --audit-level high
+
+  backend-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16-alpine@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777
+        env:
+          POSTGRES_USER: aurodlpv2
+          POSTGRES_PASSWORD: aurodlpv2
+          POSTGRES_DB: aurodlpv2
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U aurodlpv2"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+      redis:
+        image: redis:7-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      AURODLPV2_INTEGRATION: "1"
+      DATABASE_URL: postgresql+asyncpg://aurodlpv2:aurodlpv2@127.0.0.1:5432/aurodlpv2
+      DATABASE_SYNC_URL: postgresql+psycopg://aurodlpv2:aurodlpv2@127.0.0.1:5432/aurodlpv2
+      REDIS_URL: redis://127.0.0.1:6379/15
+      OBJECT_STORAGE_ENDPOINT_URL: http://127.0.0.1:9000
+      OBJECT_STORAGE_ACCESS_KEY: aurodlpv2
+      OBJECT_STORAGE_SECRET_KEY: aurodlpv2-secret
+      JWT_SECRET: integration-test-secret-longer-than-32-bytes
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
+        with:
+          enable-cache: true
+          python-version: "3.12"
+      - name: Start private object storage
+        run: |
+          docker run --detach --name aurodlpv2-minio \
+            --publish 9000:9000 \
+            --env MINIO_ROOT_USER=aurodlpv2 \
+            --env MINIO_ROOT_PASSWORD=aurodlpv2-secret \
+            minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e \
+            server /data
+          for _ in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:9000/minio/health/live >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs aurodlpv2-minio
+          exit 1
+      - name: Install locked dependencies
+        run: |
+          cd detection
+          uv sync --extra dev
+          cd ../backend
+          uv sync --extra dev
+      - name: Apply clean database migrations
+        run: cd backend && uv run alembic upgrade head
+      - name: Live security and durability tests
+        run: cd backend && uv run pytest -q tests/integration
+
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [backend, detection, security]
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - name: Build production image
+        run: docker build --file backend/Dockerfile --tag aurodlpv2-api:test .
+      - name: Verify non-root runtime
+        run: test "$(docker image inspect aurodlpv2-api:test --format '{{.Config.User}}')" = "aurodlp"
+      - name: Scan runtime image
+        run: >-
+          docker run --rm
+          --volume /var/run/docker.sock:/var/run/docker.sock
+          aquasec/trivy:0.73.0@sha256:7cced7cae583819fc7806d4cbc0dbbc7cad18b99f7d3e235192e6da8c091045c
+          image --scanners=vuln --severity=HIGH,CRITICAL --exit-code=1
+          --ignore-unfixed --no-progress aurodlpv2-api:test
+      - name: Generate CycloneDX SBOM
+        run: >-
+          docker run --rm
+          --volume /var/run/docker.sock:/var/run/docker.sock
+          --volume "${{ github.workspace }}:/work"
+          aquasec/trivy:0.73.0@sha256:7cced7cae583819fc7806d4cbc0dbbc7cad18b99f7d3e235192e6da8c091045c
+          image --format=cyclonedx --output=/work/aurodlpv2-api.cdx.json
+          --no-progress aurodlpv2-api:test
+      - name: Upload SBOM
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: aurodlpv2-api-sbom
+          path: aurodlpv2-api.cdx.json
+          if-no-files-found: error
+          retention-days: 7

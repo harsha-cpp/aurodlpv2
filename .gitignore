@@ -21,7 +21,6 @@ htmlcov/
 
 # uv
 .uv/
-uv.lock
 
 # Node / pnpm
 node_modules/
@@ -45,6 +44,8 @@ frontend/packages/extension/.crx/
 playwright-report/
 test-results/
 .playwright/
+.playwright-cli/
+output/playwright/
 
 # Env / secrets
 .env
@@ -67,6 +68,7 @@ Thumbs.db
 # Sisyphus / opencode scratch
 .sisyphus/
 .kiro/
+.omo/
 
 # Attachment scratch
 tmp/
