@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 
 from aurodlpv2_backend.db.session import check_database
 from aurodlpv2_backend.settings import Settings
+from aurodlpv2_backend.storage.objects import S3ObjectStore
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,11 +39,12 @@ ReadinessProbe = Callable[[], Awaitable[ReadinessStatus]]
 
 def build_readiness_probe(settings: Settings) -> ReadinessProbe:
     async def probe() -> ReadinessStatus:
-        database, redis = await asyncio.gather(
+        database, redis, object_storage = await asyncio.gather(
             database_status(),
             redis_status(settings.redis_url),
+            object_storage_status(settings),
         )
-        components = (database, redis)
+        components = (database, redis, object_storage)
         return ReadinessStatus(
             ready=all(component.ok for component in components),
             components=components,
@@ -75,3 +77,14 @@ async def redis_status(redis_url: str) -> ComponentStatus:
     writer.close()
     await writer.wait_closed()
     return ComponentStatus(name="redis", ok=True, detail="reachable")
+
+
+async def object_storage_status(settings: Settings) -> ComponentStatus:
+    store = S3ObjectStore(settings)
+    try:
+        await asyncio.wait_for(asyncio.to_thread(store.check), timeout=2.0)
+    except TimeoutError:
+        return ComponentStatus(name="object_storage", ok=False, detail="timeout")
+    except Exception as exc:
+        return ComponentStatus(name="object_storage", ok=False, detail=type(exc).__name__)
+    return ComponentStatus(name="object_storage", ok=True, detail="ok")

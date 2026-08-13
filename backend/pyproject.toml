@@ -9,25 +9,26 @@ authors = [{ name = "Auro Healthcare DLP" }]
 
 dependencies = [
     # Web
-    "fastapi>=0.115.0",
+    "fastapi>=0.141.1",
     "uvicorn[standard]>=0.32.0",
-    "starlette>=0.41.0",
+    "starlette>=1.4.1",
     "pydantic>=2.9.0",
-    "pydantic-settings>=2.6.0",
-    "python-multipart>=0.0.17",
+    "pydantic-settings>=2.15.0",
+    "python-multipart>=0.0.32",
     "httpx>=0.27.2",
     # Database
     "sqlalchemy[asyncio]>=2.0.36",
     "alembic>=1.13.3",
     "asyncpg>=0.29.0",
     "psycopg[binary]>=3.2.3",
-    # Task queue
-    "celery[redis]>=5.4.0",
+    # Durable private object storage
+    "boto3>=1.35.0",
+    # Distributed login throttling
     "redis>=5.1.1",
-    "flower>=2.0.1",
     # Auth
     "google-auth>=2.35.0",
-    "pyjwt[crypto]>=2.9.0",
+    "pyjwt[crypto]>=2.13.0",
+    "cryptography>=50.0.0",
     "argon2-cffi>=23.1.0",
     # Detection (local package)
     "aurodlpv2-detection",
@@ -49,6 +50,9 @@ dependencies = [
     "tenacity>=9.0.0",
     "email-validator>=2.2.0",
 ]
+
+[project.scripts]
+aurodlpv2-worker = "aurodlpv2_backend.tasks.scan_worker:main"
 
 [project.optional-dependencies]
 dev = [
@@ -93,6 +97,9 @@ ignore = ["PLR0913"]  # Allow many args (DI handlers).
 [tool.pyright]
 pythonVersion = "3.12"
 typeCheckingMode = "strict"
+venvPath = "."
+venv = ".venv"
+extraPaths = ["../detection"]
 reportMissingTypeStubs = false
 reportPrivateImportUsage = false
 exclude = ["aurodlpv2_backend/db/migrations/versions", ".venv", "**/__pycache__"]
@@ -100,6 +107,8 @@ exclude = ["aurodlpv2_backend/db/migrations/versions", ".venv", "**/__pycache__"
 [tool.pytest.ini_options]
 minversion = "8.0"
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
 testpaths = ["tests"]
 addopts = "-ra --strict-markers --cov=aurodlpv2_backend --cov-report=term-missing"
 markers = [

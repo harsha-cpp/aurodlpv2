@@ -48,6 +48,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         authorization = request.headers.get("authorization")
         if authorization:
             digest = hashlib.sha256(authorization.encode("utf-8")).hexdigest()
-            return f"auth:{digest}"
+            return "auth:" + digest
         client = request.client.host if request.client else "unknown"
         return f"ip:{client}"
