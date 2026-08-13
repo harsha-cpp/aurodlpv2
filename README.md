@@ -1,123 +1,268 @@
 # Auro Healthcare DLP
 
-Healthcare Data-Loss-Prevention for Gmail, web applications, and browser-based AI tools.
+Healthcare data-loss prevention for **Gmail**, **web apps**, and **browser-based AI tools**.
 
-A Chrome extension inspects outgoing Gmail messages — subject, body, recipients, and
-supported attachment types (see [Supported file formats](#supported-file-formats)) — for
-Indian healthcare PHI/PII (Aadhaar, PAN, ABHA, MRN/UHID, ICD-10, patient identifiers) and
-warns or blocks before the message is sent. A FastAPI backend handles multi-tenant auth,
-organization + domain allowlists, and scan-event analytics, and an admin dashboard surfaces
-what was detected, blocked, and allowed across the org.
+- **Chrome extension** — blocks Indian healthcare PHI/PII before it leaves the browser (Gmail send, paste, typing, drag-drop, Enter, form submit, common SPA send buttons).
+- **FastAPI backend** — multi-tenant auth, scan decisions, quarantine, audit trail, attachment pipeline.
+- **Admin dashboard** — org setup, members, domains, quarantine review, extension enrollment.
+- **`detection/`** — standalone Python PHI/PII engine (recognizers, document extractors, optional OCR).
 
-The `detection/` package is a standalone Python PHI/PII engine — recognizers, document
-extractors, and OCR backends — built to power deeper server-side scans.
+> **Demo scope:** this README gets you running locally in ~10 minutes. It is not a production deployment guide. See [`requirements/`](requirements/) and [`docs/`](docs/) for launch decisions.
 
-The extension also installs a local, pre-insertion web input guard. Supported patient
-identifiers are blocked during paste, text insertion, drag-and-drop, input, Enter, form submit,
-and common SPA send actions in supported editable fields. Candidate text remains in the browser
-and notices show entity categories rather than matched values.
+---
 
-## Repository
+## What you'll see in the demo
+
+| Scenario | Where | Expected |
+| -------- | ----- | -------- |
+| Unsafe patient data in a text box | Any website (ChatGPT, Google, etc.) | Blocked locally — text cleared, category notice shown |
+| Safe de-identified text | Same | Allowed |
+| Password field | Any site | **Not** scanned (intentionally) |
+| Unsafe Gmail compose | mail.google.com | Blocked or quarantined via backend |
+| Safe Gmail compose | mail.google.com | Send proceeds |
+
+---
+
+## Prerequisites
+
+Install these before you start:
+
+| Tool | Version | Check |
+| ---- | ------- | ----- |
+| [Docker Desktop](https://www.docker.com/products/docker-desktop/) | running | `docker info` |
+| [uv](https://docs.astral.sh/uv/) | latest | `uv --version` |
+| [Node.js](https://nodejs.org/) | ≥ 20.18 | `node --version` |
+| [pnpm](https://pnpm.io/) | 11.20.x | `pnpm --version` |
+| Google Chrome | ≥ 120 | for the extension |
+
+---
+
+## Demo setup (one time)
+
+```bash
+git clone https://github.com/harsha-cpp/aurodlpv2.git
+cd aurodlpv2
+
+make install
+cp backend/.env.example backend/.env
+cp frontend/packages/dashboard/.env.example frontend/packages/dashboard/.env
+```
+
+Edit `frontend/packages/dashboard/.env`:
+
+```env
+VITE_API_BASE_URL=http://localhost:8000
+```
+
+The extension defaults to `http://localhost:8000` — no extension `.env` needed for local demo.
+
+Start local Postgres, Redis, and MinIO, then migrate:
+
+```bash
+make dev-up
+make migrate
+```
+
+If `make migrate` fails with `Can't locate revision identified by '20260520_1000'`, your old local DB volume is stale. Reset it:
+
+```bash
+make dev-down
+rm -rf infra/data/postgres
+make dev-up
+make migrate
+```
+
+Build the extension once:
+
+```bash
+cd frontend && pnpm build --filter @aurodlpv2/extension
+```
+
+---
+
+## Run the demo (4 terminals)
+
+Open four terminal tabs in the repo root:
+
+```bash
+# Terminal 1 — API
+make backend-dev          # http://localhost:8000
+
+# Terminal 2 — attachment worker (needed for Gmail attachments)
+make worker-dev
+
+# Terminal 3 — admin dashboard
+make dashboard-dev        # http://localhost:5173
+
+# Terminal 4 — extension rebuilds on change (optional but handy)
+make extension-dev
+```
+
+Sanity check:
+
+```bash
+curl http://localhost:8000/healthz   # → {"status":"ok"}
+```
+
+Open http://localhost:5173 — the dashboard should load.
+
+---
+
+## Load the extension in Chrome
+
+1. Open **`chrome://extensions`**
+2. Enable **Developer mode** (top right)
+3. Click **Load unpacked**
+4. Select this folder:
+
+   ```
+   aurodlpv2/frontend/packages/extension/dist
+   ```
+
+5. Pin the **AURO** icon in the toolbar
+6. Click the icon — popup should show **v0.3.0**
+
+After loading, copy your **Extension ID** from `chrome://extensions` and add it to `backend/.env`:
+
+```env
+CORS_ORIGINS=http://localhost:5173,chrome-extension://YOUR_EXTENSION_ID_HERE
+```
+
+Restart `make backend-dev` if you change CORS.
+
+> **Important:** `CORS_ORIGINS` must be comma-separated URLs — not JSON.  
+> ✅ `http://localhost:5173,chrome-extension://abc123`  
+> ❌ `["http://localhost:5173"]`
+
+---
+
+## Enroll the extension (needed for Gmail)
+
+### 1. Create an organization
+
+1. Open http://localhost:5173/signup
+2. Fill in org name, email, password → **Create account**
+3. On onboarding, copy your **org code** (also visible later under **Settings**)
+
+### 2. Create an extension token
+
+1. Go to **Settings → Extension enrollment**
+2. Enter a label (e.g. `my-laptop`) → **Create token**
+3. Copy the token immediately — it is shown **once**
+
+### 3. Save enrollment in the extension
+
+1. Click the AURO toolbar icon
+2. Paste **org code** and **enrollment token**
+3. Click **Save** — org name should appear after policy refresh
+
+---
+
+## Try the demo
+
+### A. Web / AI input guard (works without backend enrollment)
+
+Open any page with a textarea or chat input. Paste these strings:
+
+**Should block:**
+
+```
+ABHA 12-3456-7890-1234 for discharge summary
+MRN HSP-2026-0012 requires review
+Aadhaar 234567890124 appears in the mail
+```
+
+**Should allow:**
+
+```
+Please review the de-identified case summary for ward rounds.
+```
+
+Also try paste, drag-drop, and Enter in a chat box. Type an ABHA-like value in a **password** field — it should be left alone.
+
+### B. Gmail DLP (needs enrollment + backend running)
+
+1. Open https://mail.google.com
+2. **Compose** a new message
+3. Paste the unsafe ABHA line above → click **Send**
+4. AURO should block or quarantine with a modal
+5. Replace with the safe line → send should proceed
+
+Check the dashboard:
+
+- **Overview** — scan events
+- **Quarantine** — held messages
+- **Audit** — decision trail
+
+---
+
+## Troubleshooting
+
+| Problem | Fix |
+| ------- | --- |
+| **Signup failed** / CORS error in browser console | Check `CORS_ORIGINS` in `backend/.env` is comma-separated (see above). Restart `make backend-dev`. |
+| Extension does nothing after code changes | `chrome://extensions` → AURO → **Reload**. Keep `make extension-dev` running or rebuild with `pnpm build --filter @aurodlpv2/extension`. |
+| Gmail send stuck / attachment never completes | Ensure `make worker-dev` is running and `make dev-up` started MinIO. |
+| `make migrate` fails on old revision | Wipe `infra/data/postgres` and re-run (see setup section). |
+| Dashboard can't reach API | Confirm `VITE_API_BASE_URL=http://localhost:8000` in `frontend/packages/dashboard/.env`. |
+| Port 8000 already in use | Stop the other process: `lsof -ti :8000 \| xargs kill` then restart `make backend-dev`. |
+
+---
+
+## Repository layout
 
 ```
 aurodlpv2/
-├── backend/        FastAPI + Postgres (SQLAlchemy async)          (Python 3.12, uv)
-├── detection/      Pure-Python PHI/PII detection engine           (Python 3.12, uv)
-├── frontend/       pnpm workspace                                 (Node 22.16, pnpm 11.20)
+├── backend/        FastAPI API + worker          (Python 3.12, uv)
+├── detection/      PHI/PII detection engine      (Python 3.12, uv)
+├── frontend/
 │   └── packages/
-│       ├── extension/   Chrome MV3 + Vite + InboxSDK + React 19 + Tailwind/Shadow DOM
-│       ├── dashboard/   Admin SPA (Vite + React 19 + TanStack + shadcn/ui + Recharts)
-│       └── shared/      Cross-package types + zod schemas + API client
-├── docs/
-│   ├── prd.md                          product requirements
-│   ├── srs.md                          software requirements
-│   ├── privacy.md                      data-use and Chrome permission disclosure
-│   ├── architecture/                   C4 context, container, deployment, and flow views
-│   ├── adr/                            accepted architecture decisions
-│   └── plans/                          implemented architecture and remaining release work
-├── infra/          docker-compose dev stack (postgres, redis, minio)
-├── requirements/   non-secret production decisions and owner input checklists
-├── scripts/        dev helpers
-├── Makefile
-├── LICENSE         MIT
-└── README.md
+│       ├── extension/   Chrome MV3 extension
+│       ├── dashboard/   Admin SPA
+│       └── shared/      Shared types + API client
+├── docs/               PRD, SRS, architecture, ADRs, privacy
+├── infra/              docker-compose (postgres, redis, minio)
+├── requirements/       Production decision checklists
+└── Makefile            Common dev commands
 ```
+
+---
 
 ## Stack
 
-| Layer         | Choice                                                                               |
-| ------------- | ------------------------------------------------------------------------------------ |
-| Extension     | Chrome MV3, Vite + @crxjs/vite-plugin, React 19, TS strict, InboxSDK, Tailwind v3    |
-| Dashboard     | Vite, React 19, React Router 7, TanStack Query/Table, shadcn/ui, Recharts            |
-| API           | Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2.0 (asyncpg), Alembic                 |
-| Detection     | Presidio, spaCy, python-stdnum, simple_icd_10_cm, PyMuPDF, python-docx, openpyxl     |
-| OCR           | Optional Tesseract/PaddleOCR profiles; not installed by the default dev/runtime path |
-| Database      | PostgreSQL 16 (SQLAlchemy 2.0 async, Alembic migrations + durable scan jobs)         |
-| Object store  | Private S3-compatible storage (MinIO locally; R2/S3-compatible in production)        |
-| Observability | structlog JSON, Prometheus metrics                                                   |
-| Auth          | Email/password (argon2id) → JWT access + 30-day httpOnly refresh cookie              |
-| Tooling       | uv locks, Node 22.16, pnpm 11.20, ruff, strict Pyright/TypeScript, Vitest            |
+| Layer | Choice |
+| ----- | ------ |
+| Extension | Chrome MV3, Vite, React 19, InboxSDK |
+| Dashboard | Vite, React 19, React Router 7, TanStack, shadcn/ui |
+| API | FastAPI, Pydantic v2, SQLAlchemy 2.0 async, Alembic |
+| Detection | Presidio, spaCy, python-stdnum, simple_icd_10_cm, PyMuPDF |
+| Database | PostgreSQL 16 |
+| Object store | MinIO locally (S3-compatible in production) |
+| Auth | Argon2id passwords, JWT access + httpOnly refresh cookie |
 
-## Quickstart
+---
 
-```bash
-git clone <repo>
-cd aurodlpv2
+## Supported attachment formats (Gmail)
 
-make dev-up                 # docker-compose: postgres, redis, minio
-make install                # uv sync backend + detection, pnpm install
-make migrate                # alembic upgrade head
+| Format | Status |
+| ------ | ------ |
+| PDF `.pdf` | Scanned (text extraction; OCR when configured) |
+| Word `.docx` | Scanned |
+| Excel `.xlsx` | Scanned |
+| Images | Queued — requires OCR worker + configured OCR backend |
 
-make backend-dev            # FastAPI on :8000
-make worker-dev             # durable attachment scan worker
-make dashboard-dev          # dashboard (Vite) on :5173
-make extension-dev          # extension with crxjs HMR
-```
+Unsupported, oversized, unreadable, or failed attachments block send (fail-closed).
 
-Load the extension in Chrome → `chrome://extensions` → Developer mode → Load unpacked →
-`frontend/packages/extension/dist`.
+---
 
-## Revamp branch status
+## Further reading
 
-- **Extension** — local all-web/AI input prevention plus authenticated Gmail interception,
-  complete attachment accounting, fail-closed degraded behavior, content-bound quarantine
-  release, and validated production API-origin configuration.
-- **Dashboard** — signup/login/session recovery, tenant administration, domains, members,
-  quarantine, audit, analytics, and revocable extension enrollment.
-- **Backend** — tenant-bound human and extension principals, rotating refresh families, CSRF,
-  distributed login throttling, durable PostgreSQL scan jobs, private object storage, locked
-  quarantine decisions, masked hash-chained audit events, and readiness checks.
-- **Detector** — contextual India-focused healthcare identifiers, bounded `0–100` scoring,
-  fail-closed extraction, and an expanded regression corpus.
-- **Release gates** — strict lint/type checks, unit and live PostgreSQL/MinIO security tests,
-  dependency audits, browser validation, clean migrations, immutable CI dependencies,
-  committed-secret/SAST/container scans, CycloneDX SBOM generation, and a non-root API image.
+- [`docs/srs.md`](docs/srs.md) — software requirements
+- [`docs/privacy.md`](docs/privacy.md) — Chrome permissions and data handling
+- [`docs/architecture/`](docs/architecture/) — C4 diagrams
+- [`requirements/`](requirements/) — what you need before production
 
-The branch is a complete local engineering deliverable, not a claim of zero residual risk or
-regulatory certification. Production launch still requires the non-secret owner decisions in
-[`requirements/`](requirements/), provider secrets supplied through a secret manager, a
-de-identified detector evaluation, Chrome Web Store review, legal/privacy review, and an
-independent penetration test.
-
-Architecture and operating details are in [`docs/architecture/`](docs/architecture/),
-[`docs/adr/`](docs/adr/), [`docs/srs.md`](docs/srs.md), and
-[`docs/privacy.md`](docs/privacy.md).
-
-## Supported file formats
-
-The extension scans lightweight text locally and sends captured content to the backend for
-the authoritative pre-send decision. The backend supports:
-
-| Attachment      | Scanned today | How                                                            |
-| --------------- | ------------- | -------------------------------------------------------------- |
-| PDF — `.pdf`    | yes           | PyMuPDF text extraction; image pages enter OCR when configured |
-| Word — `.docx`  | yes           | `python-docx` extraction                                       |
-| Excel — `.xlsx` | yes           | `openpyxl` read-only extraction                                |
-| Images          | queued        | OCR worker when an OCR backend is configured                   |
-
-Unsupported, oversized, unreadable, queued, or failed attachments block finalization. Queued
-inputs use short-lived private object storage and are deleted by a separately retryable cleanup
-phase before a scan becomes terminal. A bucket lifecycle independently expires stranded objects.
+---
 
 ## License
 
