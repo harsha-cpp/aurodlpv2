@@ -1,0 +1,10 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Exact synthetic identifiers and local-only MinIO fixture secret"
+regexTarget = "secret"
+regexes = [
+  '''^evt-123456789$''',
+  '''^aurodlpv2-secret$''',
+]
