@@ -8,7 +8,15 @@ See ``docs/plans/detection-engine.md`` §6. Implements as a Presidio
 
 from __future__ import annotations
 
-from presidio_analyzer import Pattern, PatternRecognizer
+import re
+from typing import TYPE_CHECKING
+
+from presidio_analyzer import Pattern, PatternRecognizer, RecognizerResult
+
+if TYPE_CHECKING:
+    from presidio_analyzer.nlp_engine import NlpArtifacts
+
+_ABHA_CONTEXT = re.compile(r"\b(?:abha|health\s+id|ayushman|nha)\b", re.IGNORECASE)
 
 
 class AbhaRecognizer(PatternRecognizer):
@@ -24,3 +32,19 @@ class AbhaRecognizer(PatternRecognizer):
             ],
             context=["ABHA", "health ID", "Ayushman", "NHA"],
         )
+
+    def analyze(
+        self,
+        text: str,
+        entities: list[str],
+        nlp_artifacts: NlpArtifacts | None = None,
+        regex_flags: int | None = None,
+    ) -> list[RecognizerResult]:
+        results = super().analyze(text, entities, nlp_artifacts, regex_flags)
+        filtered: list[RecognizerResult] = []
+        for result in results:
+            if result.score > 0.5 or _ABHA_CONTEXT.search(
+                text[max(0, result.start - 40) : min(len(text), result.end + 20)]
+            ):
+                filtered.append(result)
+        return filtered

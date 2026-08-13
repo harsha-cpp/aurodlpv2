@@ -51,12 +51,42 @@
     "name": "icd10_regex_only",
     "subject": "",
     "body": "ICD A01.9999 came from a malformed template",
+    "expected": {}
+  },
+  {
+    "name": "valid_u_code",
+    "subject": "COVID diagnosis",
+    "body": "Confirmed diagnosis U07.1",
     "expected": {"ICD10": 1}
   },
   {
     "name": "no_entities",
     "subject": "Lunch",
     "body": "Can we meet in the cafeteria at noon?",
+    "expected": {}
+  },
+  {
+    "name": "patient_demographics",
+    "subject": "Patient details",
+    "body": "Patient name: Ananya Rao; DOB: 17/04/1992; patient email: ananya.rao@example.com; mobile: +91 98765-43210",
+    "expected": {"PATIENT_NAME": 1, "PATIENT_DOB": 1, "PATIENT_EMAIL": 1, "PATIENT_PHONE": 1}
+  },
+  {
+    "name": "unlabelled_demographics",
+    "subject": "Contact card",
+    "body": "Ananya Rao, 17/04/1992, ananya.rao@example.com, +91 98765-43210",
+    "expected": {}
+  },
+  {
+    "name": "version_not_mrn",
+    "subject": "Release",
+    "body": "Deploy APP-2026-0012 after approval",
+    "expected": {}
+  },
+  {
+    "name": "random_14_digit_not_abha",
+    "subject": "Invoice",
+    "body": "Invoice reference 12345678901234",
     "expected": {}
   }
 ]

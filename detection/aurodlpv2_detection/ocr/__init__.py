@@ -76,9 +76,8 @@ def extract_image_text(
         return "", 0.0
 
     text, confidence = tesseract_backend.run(image, config)
-    should_fallback = (
-        confidence < config.ocr.fallback_confidence_threshold
-        or (config.ocr.use_paddle_for_indic and _has_indic_script(text))
+    should_fallback = confidence < config.ocr.fallback_confidence_threshold or (
+        config.ocr.use_paddle_for_indic and _has_indic_script(text)
     )
     if not should_fallback:
         return text, confidence

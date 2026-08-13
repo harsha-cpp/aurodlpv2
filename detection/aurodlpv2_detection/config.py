@@ -24,6 +24,7 @@ class RecognizerConfig(BaseModel):
     enable_abha: bool = True
     enable_mrn: bool = True
     enable_icd10: bool = True
+    enable_patient_demographics: bool = True
     custom_mrn_patterns: list[str] = Field(default_factory=list)
 
 

@@ -19,7 +19,12 @@ from presidio_analyzer.predefined_recognizers import InAadhaarRecognizer, InPanR
 from spacy.language import Language
 
 from aurodlpv2_detection.config import DetectionConfig
-from aurodlpv2_detection.recognizers import AbhaRecognizer, Icd10Recognizer, MrnRecognizer
+from aurodlpv2_detection.recognizers import (
+    AbhaRecognizer,
+    Icd10Recognizer,
+    MrnRecognizer,
+    patient_recognizers,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -103,6 +108,7 @@ def _cached_analyzer(
     enable_abha: bool,
     enable_mrn: bool,
     enable_icd10: bool,
+    enable_patient_demographics: bool,
     custom_mrn_patterns: tuple[str, ...],
     context_boost_multiplier: float,
 ) -> AnalyzerEngine:
@@ -117,6 +123,9 @@ def _cached_analyzer(
         registry.add_recognizer(MrnRecognizer(custom_mrn_patterns))
     if enable_icd10:
         registry.add_recognizer(Icd10Recognizer())
+    if enable_patient_demographics:
+        for recognizer in patient_recognizers():
+            registry.add_recognizer(recognizer)
 
     nlp_engine = _TokenizerOnlyNlpEngine(spacy_model)
     enhancer = LemmaContextAwareEnhancer(
@@ -139,6 +148,7 @@ def build_analyzer(config: DetectionConfig) -> AnalyzerEngine:
         config.recognizers.enable_abha,
         config.recognizers.enable_mrn,
         config.recognizers.enable_icd10,
+        config.recognizers.enable_patient_demographics,
         tuple(config.recognizers.custom_mrn_patterns),
         config.nlp.context_boost_multiplier,
     )

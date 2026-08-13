@@ -14,6 +14,10 @@ SENSITIVITY_WEIGHTS: dict[str, float] = {
     "IN_ABHA": 9.0,
     "MRN": 8.0,
     "ICD10": 4.0,
+    "PATIENT_NAME": 4.0,
+    "PATIENT_DOB": 6.0,
+    "PATIENT_EMAIL": 5.0,
+    "PATIENT_PHONE": 5.0,
     "PERSON": 2.0,
     "EMAIL_ADDRESS": 1.0,
     "PHONE_NUMBER": 1.5,
@@ -23,12 +27,13 @@ SENSITIVITY_WEIGHTS: dict[str, float] = {
 }
 
 CHECKSUM_VALIDATED_BOOST = 1.25
+RISK_NORMALIZATION_SCALE = 3.0
 
 SEVERITY_BUCKETS: list[tuple[float, Severity]] = [
-    (0.5, "none"),
-    (2.0, "low"),
-    (4.0, "medium"),
-    (7.0, "high"),
+    (0.01, "none"),
+    (25.0, "low"),
+    (50.0, "medium"),
+    (75.0, "high"),
     (float("inf"), "critical"),
 ]
 

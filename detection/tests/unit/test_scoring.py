@@ -12,11 +12,11 @@ from aurodlpv2_detection.scoring.weights import bucket
     ("score", "expected"),
     [
         (0.0, "none"),
-        (0.4, "none"),
-        (1.0, "low"),
-        (3.0, "medium"),
-        (6.5, "high"),
-        (15.0, "critical"),
+        (0.4, "low"),
+        (24.99, "low"),
+        (25.0, "medium"),
+        (50.0, "high"),
+        (75.0, "critical"),
     ],
 )
 def test_bucket(score: float, expected: str) -> None:
@@ -31,8 +31,8 @@ def test_score_uses_weighted_log_formula() -> None:
         ]
     )
 
-    assert risk_score == 2.66
-    assert severity == "medium"
+    assert risk_score == 58.75
+    assert severity == "high"
 
 
 def test_score_applies_checksum_boost_for_aadhaar() -> None:
@@ -47,8 +47,8 @@ def test_score_applies_checksum_boost_for_aadhaar() -> None:
         ]
     )
 
-    assert risk_score == 2.6
-    assert severity == "medium"
+    assert risk_score == 58.0
+    assert severity == "high"
 
 
 def test_score_applies_medical_context_multiplier() -> None:
@@ -67,4 +67,16 @@ def test_score_applies_medical_context_multiplier() -> None:
         config,
     )
 
-    assert risk_score == 2.3
+    assert risk_score == 53.57
+
+
+def test_score_is_bounded_to_percentage_contract() -> None:
+    entities = [
+        Entity(type="IN_AADHAAR", masked_value="********0124", confidence=1.0, source="body")
+        for _ in range(100)
+    ]
+
+    risk_score, severity = score(entities)
+
+    assert 58 < risk_score <= 100
+    assert severity == "critical"

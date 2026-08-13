@@ -13,6 +13,7 @@ from PIL import Image
 
 logger = structlog.get_logger(__name__)
 LOW_TEXT_CHARS = 50
+MAX_PDF_PAGES = 50
 
 
 class _Pixmap(Protocol):
@@ -53,7 +54,10 @@ def extract_pages(data: bytes) -> list[PdfPageText]:
 
     pages: list[PdfPageText] = []
     try:
-        for page in document:
+        for page_index, page in enumerate(document, start=1):
+            if page_index > MAX_PDF_PAGES:
+                logger.warning("pdf attachment page limit reached", max_pages=MAX_PDF_PAGES)
+                break
             text = page.get_text("text").strip()
             image_count = len(page.get_images(full=True))
             ocr_image = (
