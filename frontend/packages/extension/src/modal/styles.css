@@ -71,6 +71,16 @@
   line-height: 1.6;
 }
 
+.auro-degraded {
+  margin: -6px 22px 14px;
+  padding: 8px 10px;
+  border: 1px solid #404040;
+  border-radius: 6px;
+  background: #171717;
+  color: #a3a3a3;
+  font-size: 12px;
+}
+
 .auro-entities {
   padding: 0 22px 16px;
 }
@@ -131,6 +141,13 @@
   color: #737373;
 }
 
+.auro-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .auro-btn {
   flex-shrink: 0;
   padding: 9px 18px;
@@ -146,6 +163,16 @@
 
 .auro-btn:hover {
   background: #e5e5e5;
+}
+
+.auro-btn-secondary {
+  color: #fafafa;
+  background: #171717;
+  border: 1px solid #262626;
+}
+
+.auro-btn-secondary:hover {
+  background: #262626;
 }
 
 .auro-btn:focus-visible {

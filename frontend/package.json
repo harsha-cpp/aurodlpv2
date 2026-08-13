@@ -4,10 +4,10 @@
   "private": true,
   "description": "Auro Healthcare DLP Chrome extension + admin dashboard. See docs/plans/frontend.md.",
   "license": "MIT",
-  "packageManager": "pnpm@9.12.3",
+  "packageManager": "pnpm@11.20.0",
   "engines": {
     "node": ">=20.18.0",
-    "pnpm": ">=9.0.0"
+    "pnpm": ">=11.20.0"
   },
   "scripts": {
     "dev:extension": "pnpm --filter @aurodlpv2/extension dev",

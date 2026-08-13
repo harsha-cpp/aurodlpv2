@@ -52,6 +52,7 @@ export function refreshSession(): Promise<RefreshResult> {
       const res = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
         method: 'POST',
         credentials: 'include',
+        headers: { 'X-Auro-CSRF': '1' },
       });
       if (!res.ok) {
         accessToken = null;
@@ -93,7 +94,7 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
     if (s) url += `?${s}`;
   }
 
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { 'X-Auro-CSRF': '1' };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (!skipAuth && accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
 

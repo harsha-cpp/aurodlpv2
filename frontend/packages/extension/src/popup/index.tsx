@@ -1,6 +1,6 @@
-import { StrictMode, useEffect, useState, useCallback } from 'react';
-import { createRoot } from 'react-dom/client';
-import './styles.css';
+import { StrictMode, useEffect, useState, useCallback } from "react";
+import { createRoot } from "react-dom/client";
+import "./styles.css";
 
 const ShieldIcon = () => (
   <svg viewBox="0 0 24 24">
@@ -15,24 +15,30 @@ interface CachedConfig {
 }
 
 function Popup() {
-  const [orgCode, setOrgCodeInput] = useState('');
+  const [orgCode, setOrgCodeInput] = useState("");
+  const [enrollmentToken, setEnrollmentToken] = useState("");
   const [savedCode, setSavedCode] = useState<string | null>(null);
+  const [hasEnrollment, setHasEnrollment] = useState(false);
   const [orgName, setOrgName] = useState<string | null>(null);
-  const [showSaved, setShowSaved] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    chrome.storage.local.get(['aurodlp_org_code', 'aurodlp_config'], (result) => {
-      const code = (result.aurodlp_org_code as string | undefined) ?? '';
-      setOrgCodeInput(code);
-      setSavedCode(code || null);
-      const config = result.aurodlp_config as CachedConfig | undefined;
-      setOrgName(config?.organization_name ?? null);
-    });
+    chrome.storage.local.get(
+      ["aurodlp_org_code", "aurodlp_extension_token", "aurodlp_config"],
+      (result) => {
+        const code = (result.aurodlp_org_code as string | undefined) ?? "";
+        setOrgCodeInput(code);
+        setSavedCode(code || null);
+        setHasEnrollment(Boolean(result.aurodlp_extension_token));
+        const config = result.aurodlp_config as CachedConfig | undefined;
+        setOrgName(config?.organization_name ?? null);
+      },
+    );
     const listener = (
       changes: { [k: string]: chrome.storage.StorageChange },
       area: chrome.storage.AreaName,
     ): void => {
-      if (area !== 'local') return;
+      if (area !== "local") return;
       if (changes.aurodlp_config) {
         const cfg = changes.aurodlp_config.newValue as CachedConfig | undefined;
         setOrgName(cfg?.organization_name ?? null);
@@ -42,19 +48,51 @@ function Popup() {
     return () => chrome.storage.onChanged.removeListener(listener);
   }, []);
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     const trimmed = orgCode.trim().toUpperCase();
-    if (trimmed.length < 4 || trimmed === savedCode) return;
-    chrome.storage.local.set({ aurodlp_org_code: trimmed, aurodlp_org_skipped: false });
+    const token = enrollmentToken.trim();
+    if (trimmed.length < 4 || (!hasEnrollment && !token)) return;
+    if (trimmed !== savedCode && !token) {
+      setMessage("A new organization requires its enrollment token.");
+      return;
+    }
+    const values: Record<string, string | boolean> = {
+      aurodlp_org_code: trimmed,
+      aurodlp_org_skipped: false,
+    };
+    if (token) values.aurodlp_extension_token = token;
+    await chrome.storage.local.set(values);
     setSavedCode(trimmed);
-    setShowSaved(true);
-    setTimeout(() => setShowSaved(false), 2000);
-    chrome.runtime.sendMessage({ type: 'REFRESH_CONFIG' }).catch(() => {
-      /* sw inactive */
-    });
-  }, [orgCode, savedCode]);
+    setHasEnrollment(true);
+    setEnrollmentToken("");
+    setMessage("Enrollment saved. Validating organization policy…");
+    await chrome.runtime
+      .sendMessage({ type: "REFRESH_CONFIG" })
+      .catch(() => undefined);
+    setTimeout(() => setMessage(null), 3000);
+  }, [enrollmentToken, hasEnrollment, orgCode, savedCode]);
 
-  const hasChanges = orgCode.trim().toUpperCase() !== (savedCode ?? '') && orgCode.trim().length >= 4;
+  const handleDisconnect = useCallback(async () => {
+    await chrome.storage.local.remove([
+      "aurodlp_org_code",
+      "aurodlp_extension_token",
+      "aurodlp_config",
+    ]);
+    setOrgCodeInput("");
+    setEnrollmentToken("");
+    setSavedCode(null);
+    setHasEnrollment(false);
+    setOrgName(null);
+    setMessage(
+      "Server enrollment removed. Local web protection remains active.",
+    );
+  }, []);
+
+  const canSave =
+    orgCode.trim().length >= 4 &&
+    Boolean(enrollmentToken.trim() || hasEnrollment) &&
+    (orgCode.trim().toUpperCase() !== (savedCode ?? "") ||
+      Boolean(enrollmentToken.trim()));
 
   return (
     <div className="popup">
@@ -62,12 +100,14 @@ function Popup() {
         <div className="popup-brand">
           <div>
             <div className="popup-title">AURO</div>
-            <div className="popup-version">v0.2.0</div>
+            <div className="popup-version">v0.3.0</div>
           </div>
         </div>
-        <div className="popup-status">
+        <div
+          className={`popup-status ${hasEnrollment ? "is-enrolled" : "needs-setup"}`}
+        >
           <div className="popup-status-dot" />
-          Active
+          {hasEnrollment ? "Enrolled" : "Local only"}
         </div>
       </div>
 
@@ -77,7 +117,10 @@ function Popup() {
         </div>
         <div>
           <div className="status-label">Protection Active</div>
-          <div className="status-desc">Scanning emails and attachments for PHI</div>
+          <div className="status-desc">
+            Web and AI input protection is active. Server scanning requires
+            enrollment.
+          </div>
         </div>
       </div>
 
@@ -94,18 +137,46 @@ function Popup() {
               spellCheck={false}
               value={orgCode}
               onChange={(e) => setOrgCodeInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+              onKeyDown={(e) => e.key === "Enter" && handleSave()}
             />
+          </div>
+          <label className="settings-label" htmlFor="enrollment-token">
+            Enrollment Token
+          </label>
+          <input
+            id="enrollment-token"
+            className="settings-input token-input"
+            type="password"
+            placeholder={
+              hasEnrollment
+                ? "Configured — paste to rotate"
+                : "Paste one-time token"
+            }
+            autoComplete="off"
+            spellCheck={false}
+            value={enrollmentToken}
+            onChange={(event) => setEnrollmentToken(event.target.value)}
+            onKeyDown={(event) => event.key === "Enter" && void handleSave()}
+          />
+          <div className="settings-actions">
             <button
               className="settings-btn settings-btn-save"
-              onClick={handleSave}
-              disabled={!hasChanges}
+              onClick={() => void handleSave()}
+              disabled={!canSave}
             >
-              Save
+              {hasEnrollment ? "Update" : "Enroll"}
             </button>
+            {hasEnrollment && (
+              <button
+                className="settings-btn settings-btn-disconnect"
+                onClick={() => void handleDisconnect()}
+              >
+                Disconnect
+              </button>
+            )}
           </div>
-          {showSaved && <div className="settings-saved">Connected</div>}
-          {orgName && savedCode && !showSaved && (
+          {message && <div className="settings-message">{message}</div>}
+          {orgName && savedCode && (
             <div className="settings-meta">
               Connected to <span className="settings-meta-org">{orgName}</span>
             </div>
@@ -120,5 +191,10 @@ function Popup() {
   );
 }
 
-const root = document.getElementById('root');
-if (root) createRoot(root).render(<StrictMode><Popup /></StrictMode>);
+const root = document.getElementById("root");
+if (root)
+  createRoot(root).render(
+    <StrictMode>
+      <Popup />
+    </StrictMode>,
+  );

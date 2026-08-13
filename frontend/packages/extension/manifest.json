@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "AURO",
-  "version": "0.2.0",
-  "description": "Block accidental PHI/PII leaks from Gmail before send.",
+  "version": "0.3.0",
+  "description": "Block accidental PHI/PII leaks from Gmail and web-based AI tools.",
   "minimum_chrome_version": "120",
   "icons": {
     "16": "icons/icon-16.png",
@@ -20,6 +20,13 @@
   },
   "content_scripts": [
     {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["src/content/llm-dlp.ts"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "match_about_blank": true
+    },
+    {
       "matches": ["https://mail.google.com/*"],
       "js": ["src/content/index.ts"],
       "run_at": "document_idle",
@@ -27,10 +34,7 @@
     }
   ],
   "permissions": ["storage", "alarms"],
-  "host_permissions": [
-    "https://mail.google.com/*",
-    "http://localhost:8000/*"
-  ],
+  "host_permissions": ["http://*/*", "https://*/*"],
   "web_accessible_resources": [
     {
       "resources": ["assets/*"],

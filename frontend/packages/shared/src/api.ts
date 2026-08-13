@@ -81,31 +81,40 @@ export function createApiClient(opts: ApiClientOptions) {
     },
     scan: {
       async email(payload: ScanEmailPayload): Promise<Verdict> {
-        const h = await authHeaders('application/json');
         return request(
           '/api/v1/scan/email',
-          { method: 'POST', headers: h, body: JSON.stringify(payload) },
+          {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(payload),
+          },
           (raw) => verdictSchema.parse(raw),
         );
       },
-      async uploadAttachment(scanId: string, file: File): Promise<AttachmentUploadResult> {
-        const h = await authHeaders();
+      async uploadAttachment(
+        orgCode: string,
+        clientScanId: string,
+        attachmentId: string,
+        file: File,
+      ): Promise<AttachmentUploadResult> {
         const form = new FormData();
+        form.append('org_code', orgCode);
+        form.append('client_scan_id', clientScanId);
+        form.append('attachment_id', attachmentId);
         form.append('file', file);
         return request(
-          `/api/v1/scan/attachment?scan_id=${encodeURIComponent(scanId)}`,
-          { method: 'POST', headers: h, body: form },
+          '/api/v1/scan/attachment',
+          { method: 'POST', body: form },
           (raw) => attachmentUploadResultSchema.parse(raw),
         );
       },
       async finalize(payload: ScanFinalizePayload): Promise<Verdict> {
-        const h = await authHeaders('application/json');
         return request(
-          `/api/v1/scan/${payload.scan_id}/finalize`,
+          '/api/v1/scan/finalize',
           {
             method: 'POST',
-            headers: h,
-            body: JSON.stringify({ attachment_scan_ids: payload.attachment_scan_ids }),
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(payload),
           },
           (raw) => verdictSchema.parse(raw),
         );

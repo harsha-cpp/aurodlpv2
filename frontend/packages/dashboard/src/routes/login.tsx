@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { ApiError } from '../lib/api';
+import type { OrgListItem } from '../api/auth';
 
 interface LocationState {
   from?: string;
@@ -31,7 +32,12 @@ export default function LoginRoute() {
       navigate(from, { replace: true });
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
-        navigate('/select-org', { state: { email, password } });
+        const orgs = orgChoicesFromDetail(err.detail);
+        if (orgs.length > 0) {
+          navigate('/select-org', { state: { email, orgs } });
+          return;
+        }
+        setError('Choose an organization to continue.');
         return;
       }
       const detail = err instanceof ApiError ? err.detail : 'Login failed';
@@ -86,5 +92,23 @@ export default function LoginRoute() {
         </div>
       </div>
     </div>
+  );
+}
+
+function orgChoicesFromDetail(detail: string | object): OrgListItem[] {
+  if (typeof detail !== 'object' || detail === null) return [];
+  const value = detail as { code?: unknown; organizations?: unknown };
+  if (value.code !== 'org_selection_required' || !Array.isArray(value.organizations)) return [];
+  return value.organizations.filter(isOrgListItem);
+}
+
+function isOrgListItem(value: unknown): value is OrgListItem {
+  if (typeof value !== 'object' || value === null) return false;
+  const item = value as Record<string, unknown>;
+  return (
+    typeof item.id === 'string' &&
+    typeof item.name === 'string' &&
+    typeof item.slug === 'string' &&
+    typeof item.role === 'string'
   );
 }

@@ -8,7 +8,8 @@ export default function OverviewRoute() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['analytics', 30],
     queryFn: () => eventsApi.analytics(30),
-    refetchInterval: 15_000,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
   });
 
   return (

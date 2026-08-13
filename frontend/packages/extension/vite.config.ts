@@ -8,7 +8,7 @@ export default defineConfig({
   plugins: [react(), crx({ manifest: manifest as unknown as ManifestV3Export })],
   build: {
     target: 'chrome120',
-    sourcemap: true,
+    sourcemap: false,
     rollupOptions: {
       output: {
         manualChunks: {

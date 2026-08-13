@@ -33,14 +33,15 @@ export const verdictSchema = z.object({
   recipients: z.array(recipientHitSchema),
   user_message: z.string(),
   created_at: z.string(),
+  quarantine_id: z.string().nullable().optional(),
+  degraded: z.boolean().optional(),
 });
 
 export const attachmentUploadResultSchema = z.object({
-  scan_id: z.string(),
-  status: z.enum(['scanned', 'queued']),
-  filename: z.string(),
-  size_bytes: z.number(),
-  mime_type: z.string(),
+  attachment_scan_id: z.string(),
+  status: z.enum(['scanned', 'queued', 'failed']),
+  verdict: verdictSchema.nullable().optional(),
+  error: z.string().nullable().optional(),
 });
 
 export const authTokensSchema = z.object({
@@ -56,4 +57,3 @@ export const userProfileSchema = z.object({
   workspace_id: z.string(),
   role: z.enum(['user', 'analyst', 'admin', 'super_admin']),
 });
-
