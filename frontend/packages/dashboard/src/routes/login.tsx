@@ -2,6 +2,9 @@ import { useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { ApiError } from '../lib/api';
+import { errorMessage } from '../lib/errors';
+import type { MfaChallenge, OrgListItem } from '../api/auth';
+import MfaChallengeForm from '../components/MfaChallengeForm';
 
 interface LocationState {
   from?: string;
@@ -21,24 +24,54 @@ export default function LoginRoute() {
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [challenge, setChallenge] = useState<MfaChallenge | null>(null);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
     try {
-      await login({ email, password, org_slug: switchSlug });
+      const pending = await login({ email, password, org_slug: switchSlug });
+      if (pending) {
+        setChallenge(pending);
+        setPassword('');
+        return;
+      }
       navigate(from, { replace: true });
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
-        navigate('/select-org', { state: { email, password } });
+        const orgs = orgChoicesFromDetail(err.detail);
+        if (orgs.length > 0) {
+          navigate('/select-org', { state: { email, orgs } });
+          return;
+        }
+        setError('Choose an organization to continue.');
         return;
       }
-      const detail = err instanceof ApiError ? err.detail : 'Login failed';
-      setError(typeof detail === 'string' ? detail : 'Invalid credentials');
+      setError(errorMessage(err, 'Login failed'));
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (challenge) {
+    return (
+      <div className="auth-shell">
+        <div className="auth-card">
+          <div className="auth-brand">AURO</div>
+          <h1 className="h1">Two-factor check</h1>
+          <p className="muted">
+            Your password was accepted. Enter the code from your authenticator app to finish signing
+            in as {email}.
+          </p>
+          <MfaChallengeForm
+            challenge={challenge}
+            onVerified={() => navigate(from, { replace: true })}
+            onCancel={() => setChallenge(null)}
+          />
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -51,8 +84,9 @@ export default function LoginRoute() {
         </p>
         <form onSubmit={onSubmit} className="col gap-4" style={{ marginTop: 24 }}>
           <div className="field">
-            <label className="label">Work email</label>
+            <label className="label" htmlFor="login-email">Work email</label>
             <input
+              id="login-email"
               className="input"
               type="email"
               value={email}
@@ -63,8 +97,9 @@ export default function LoginRoute() {
             />
           </div>
           <div className="field">
-            <label className="label">Password</label>
+            <label className="label" htmlFor="login-password">Password</label>
             <input
+              id="login-password"
               className="input"
               type="password"
               value={password}
@@ -80,11 +115,31 @@ export default function LoginRoute() {
             {submitting ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
-        <div className="auth-footer">
-          <span className="subtle">No account?</span>{' '}
-          <Link to="/signup">Create one</Link>
+        <div className="auth-footer row between">
+          <span>
+            <span className="subtle">No account?</span> <Link to="/signup">Create one</Link>
+          </span>
+          <Link to="/forgot-password">Forgot password?</Link>
         </div>
       </div>
     </div>
+  );
+}
+
+function orgChoicesFromDetail(detail: string | object): OrgListItem[] {
+  if (typeof detail !== 'object' || detail === null) return [];
+  const value = detail as { code?: unknown; organizations?: unknown };
+  if (value.code !== 'org_selection_required' || !Array.isArray(value.organizations)) return [];
+  return value.organizations.filter(isOrgListItem);
+}
+
+function isOrgListItem(value: unknown): value is OrgListItem {
+  if (typeof value !== 'object' || value === null) return false;
+  const item = value as Record<string, unknown>;
+  return (
+    typeof item.id === 'string' &&
+    typeof item.name === 'string' &&
+    typeof item.slug === 'string' &&
+    typeof item.role === 'string'
   );
 }

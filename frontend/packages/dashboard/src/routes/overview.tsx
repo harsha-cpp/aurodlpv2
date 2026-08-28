@@ -1,127 +1,184 @@
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { Download } from 'lucide-react';
 import { eventsApi, type RecentEvent } from '../api/events';
 import { useAuth } from '../lib/auth';
+import { entityLabel } from '../lib/entities';
+import { formatRisk, severityOf, severityLabel } from '../lib/risk';
+import { downloadCsv, formatTime, senderKey, senderLabel, isUnattributed } from '../lib/format';
+import { analyticsCsv, buildTrend, interventionRate, SERIES } from '../lib/analytics';
+import { errorMessage } from '../lib/errors';
+import ActionPill from '../components/ActionPill';
+import SeverityPill from '../components/SeverityPill';
+import RiskMeter from '../components/RiskMeter';
+import HBarList from '../components/HBarList';
+import TrendChart from '../components/TrendChart';
+
+const RANGES = [
+  { days: 7, label: '7d' },
+  { days: 30, label: '30d' },
+  { days: 90, label: '90d' },
+  { days: 365, label: '1y' },
+] as const;
 
 export default function OverviewRoute() {
   const { organization } = useAuth();
+  const [days, setDays] = useState<number>(30);
+
   const { data, isLoading, error } = useQuery({
-    queryKey: ['analytics', 30],
-    queryFn: () => eventsApi.analytics(30),
-    refetchInterval: 15_000,
+    queryKey: ['analytics', days],
+    queryFn: () => eventsApi.analytics(days),
+    refetchInterval: 60_000,
+    staleTime: 30_000,
   });
+
+  const trend = useMemo(() => buildTrend(data?.daily_trend ?? [], days), [data?.daily_trend, days]);
+  const rate = data ? interventionRate(data) : null;
+  const avgSeverity = data ? severityOf(data.avg_risk_score) : 'none';
 
   return (
     <div>
       <div className="page-header">
         <div>
           <h1 className="h1">Overview</h1>
-          <p className="muted">Last 30 days of scan activity for {organization?.name ?? 'your organization'}.</p>
+          <p className="muted">
+            Scan activity for {organization?.name ?? 'your organization'} over the last {days} days.
+          </p>
+        </div>
+        <div className="toolbar">
+          <div className="segmented" role="group" aria-label="Time range">
+            {RANGES.map((r) => (
+              <button
+                key={r.days}
+                type="button"
+                aria-pressed={days === r.days}
+                onClick={() => setDays(r.days)}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            className="btn btn-sm"
+            disabled={!data}
+            onClick={() => {
+              if (data) downloadCsv(`auro-analytics-${days}d.csv`, analyticsCsv(data, days));
+            }}
+          >
+            <Download size={14} />
+            Export CSV
+          </button>
         </div>
       </div>
 
-      {error && <div className="error" style={{ marginBottom: 16 }}>Failed to load analytics.</div>}
+      {error && <div className="error" style={{ marginBottom: 16 }}>{errorMessage(error, 'Failed to load analytics.')}</div>}
 
       <div className="stat-grid">
-        <Stat label="Total scans" value={data?.total_scans ?? 0} loading={isLoading} />
-        <Stat label="Blocked" value={data?.total_blocks ?? 0} loading={isLoading} accent />
-        <Stat label="Warnings" value={data?.total_warnings ?? 0} loading={isLoading} />
-        <Stat label="Quarantined" value={data?.total_quarantines ?? 0} loading={isLoading} />
-        <Stat label="Escalated" value={data?.total_escalations ?? 0} loading={isLoading} />
-        <Stat label="Allowed" value={data?.total_allows ?? 0} loading={isLoading} />
-        <Stat label="Unique senders" value={data?.unique_users ?? 0} loading={isLoading} />
+        <Stat label="Messages scanned" value={data?.total_scans ?? 0} loading={isLoading} />
         <Stat
-          label="Avg risk score"
-          value={data?.avg_risk_score ? data.avg_risk_score.toFixed(1) : '—'}
+          label="Stopped"
+          value={data ? data.total_blocks + data.total_quarantines + data.total_escalations : 0}
+          sub={data ? `${data.total_blocks} blocked · ${data.total_quarantines} held · ${data.total_escalations} escalated` : undefined}
+          loading={isLoading}
+          accent
+        />
+        <Stat label="Warned" value={data?.total_warnings ?? 0} loading={isLoading} />
+        <Stat label="Allowed" value={data?.total_allows ?? 0} loading={isLoading} />
+        <Stat
+          label="Intervention rate"
+          value={rate === null ? '—' : `${rate.toFixed(1)}%`}
+          sub="Share of scans Auro interrupted"
           loading={isLoading}
         />
+        <Stat
+          label="Avg risk"
+          value={formatRisk(data?.avg_risk_score)}
+          sub={data ? `out of 100 · ${severityLabel(avgSeverity)}` : 'out of 100'}
+          loading={isLoading}
+        />
+        <Stat label="Senders seen" value={data?.unique_users ?? 0} loading={isLoading} />
       </div>
 
       <div className="card" style={{ marginBottom: 24 }}>
-        <h2 className="h2" style={{ marginBottom: 12 }}>Daily activity</h2>
-        <div style={{ width: '100%', height: 260 }}>
-          {data && data.daily_trend.length > 0 ? (
-            <ResponsiveContainer>
-              <AreaChart data={mergeTrend(data.daily_trend)}>
-                <defs>
-                  <linearGradient id="g-total" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#fafafa" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#fafafa" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="g-block" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#dc2626" stopOpacity={0.5} />
-                    <stop offset="95%" stopColor="#dc2626" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke="#262626" strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="day" stroke="#737373" fontSize={11} tickLine={false} axisLine={false} />
-                <YAxis stroke="#737373" fontSize={11} tickLine={false} axisLine={false} />
-                <Tooltip
-                  contentStyle={{
-                    background: '#171717',
-                    border: '1px solid #262626',
-                    borderRadius: 6,
-                    fontSize: 12,
-                  }}
-                />
-                <Area type="monotone" dataKey="total" stroke="#fafafa" fill="url(#g-total)" strokeWidth={1.5} />
-                <Area type="monotone" dataKey="blocks" stroke="#dc2626" fill="url(#g-block)" strokeWidth={1.5} />
-              </AreaChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="center" style={{ height: '100%' }}>
-              <span className="subtle">{isLoading ? 'Loading…' : 'No scan activity yet.'}</span>
-            </div>
-          )}
-        </div>
+        <h2 className="h2" style={{ marginBottom: 4 }}>Daily outcomes</h2>
+        <p className="hint" style={{ marginBottom: 12 }}>
+          Every scanned message, stacked by what Auro did with it.
+        </p>
+        {isLoading ? <div className="skeleton" style={{ height: 260 }} /> : <TrendChart data={trend} />}
       </div>
 
-      <div className="row gap-4" style={{ marginBottom: 24, flexWrap: 'wrap' }}>
-        <div className="card grow" style={{ minWidth: 280 }}>
-          <h2 className="h2" style={{ marginBottom: 12 }}>Top PHI types</h2>
-          {data && data.top_entity_types.length > 0 ? (
-            <div className="col gap-2">
-              {data.top_entity_types.slice(0, 6).map((e) => (
-                <div key={e.type} className="row between" style={{ alignItems: 'center' }}>
-                  <span className="mono" style={{ fontSize: 13 }}>{e.type}</span>
-                  <span className="subtle">{e.count}</span>
-                </div>
-              ))}
-            </div>
+      <div className="row gap-4" style={{ marginBottom: 24, flexWrap: 'wrap', alignItems: 'stretch' }}>
+        <div className="card grow" style={{ minWidth: 320 }}>
+          <h2 className="h2" style={{ marginBottom: 4 }}>What Auro is finding</h2>
+          <p className="hint" style={{ marginBottom: 12 }}>Detections by type across all scans.</p>
+          {isLoading ? (
+            <div className="skeleton skeleton-text" />
           ) : (
-            <span className="subtle">No detections yet.</span>
+            <HBarList
+              color={SERIES.allowed}
+              emptyText="No detections yet."
+              items={(data?.top_entity_types ?? []).map((e) => ({
+                key: e.type,
+                label: entityLabel(e.type),
+                value: e.count,
+              }))}
+            />
           )}
         </div>
-        <div className="card grow" style={{ minWidth: 280 }}>
-          <h2 className="h2" style={{ marginBottom: 12 }}>Top blocked senders</h2>
-          {data && data.top_users.length > 0 ? (
-            <div className="col gap-2">
-              {data.top_users.slice(0, 6).map((u) => (
-                <div key={u.email} className="row between" style={{ alignItems: 'center' }}>
-                  <span className="truncate" style={{ fontSize: 13, maxWidth: 220 }}>{u.email}</span>
-                  <span className="subtle">{u.blocks}</span>
-                </div>
-              ))}
-            </div>
+        <div className="card grow" style={{ minWidth: 320 }}>
+          <h2 className="h2" style={{ marginBottom: 4 }}>Senders with the most blocks</h2>
+          <p className="hint" style={{ marginBottom: 12 }}>
+            Repeat offenders are usually a workflow problem, not a person problem.
+          </p>
+          {isLoading ? (
+            <div className="skeleton skeleton-text" />
           ) : (
-            <span className="subtle">No blocks yet.</span>
+            <HBarList
+              color={SERIES.stopped}
+              emptyText="No blocks yet."
+              items={(data?.top_users ?? []).map((u, i) => ({
+                key: senderKey(u.email, i),
+                label: senderLabel(u.email),
+                value: u.blocks,
+                ...(isUnattributed(u.email) ? { note: 'no sender recorded' } : {}),
+              }))}
+            />
           )}
         </div>
       </div>
 
       <div className="card">
         <h2 className="h2" style={{ marginBottom: 12 }}>Recent events</h2>
+        {isLoading && <div className="skeleton skeleton-text" />}
         {data && data.recent_events.length > 0 ? (
           <RecentTable events={data.recent_events} />
         ) : (
-          <span className="subtle">No events recorded yet. Install the extension to start scanning.</span>
+          !isLoading && (
+            <div className="empty">
+              <strong>No events recorded yet.</strong>
+              <span>Enrol a device on the Devices page to start scanning.</span>
+            </div>
+          )
         )}
       </div>
     </div>
   );
 }
 
-function Stat({ label, value, loading, accent }: { label: string; value: number | string; loading: boolean; accent?: boolean }) {
+function Stat({
+  label,
+  value,
+  sub,
+  loading,
+  accent,
+}: {
+  label: string;
+  value: number | string;
+  sub?: string | undefined;
+  loading: boolean;
+  accent?: boolean;
+}) {
   return (
     <div className="stat-card">
       <div className="stat-label">{label}</div>
@@ -129,77 +186,57 @@ function Stat({ label, value, loading, accent }: { label: string; value: number 
         <div className="skeleton skeleton-stat" />
       ) : (
         <div className="stat-value" style={{ color: accent ? 'var(--accent)' : 'var(--text)' }}>
-          {value}
+          {typeof value === 'number' ? value.toLocaleString() : value}
         </div>
       )}
+      {sub && <div className="stat-sub">{sub}</div>}
     </div>
   );
 }
 
 function RecentTable({ events }: { events: RecentEvent[] }) {
   return (
-    <table className="table">
-      <thead>
-        <tr>
-          <th>When</th>
-          <th>Sender</th>
-          <th>Action</th>
-          <th>Risk</th>
-          <th>Detected</th>
-          <th>Recipients</th>
-        </tr>
-      </thead>
-      <tbody>
-        {events.slice(0, 25).map((e, i) => (
-          <tr key={`${e.timestamp}-${i}`}>
-            <td className="subtle">{formatTime(e.timestamp)}</td>
-            <td className="truncate" style={{ maxWidth: 180 }}>{e.user_email}</td>
-            <td>
-              <span className={`action-pill ${isRestrictiveAction(e.action) ? 'action-pill-block' : 'action-pill-allow'}`}>
-                {e.action}
-              </span>
-            </td>
-            <td>{e.risk_score?.toFixed(1) ?? '—'}</td>
-            <td className="subtle" style={{ fontSize: 12 }}>
-              {e.entities.length > 0 ? e.entities.map((x) => x.type).join(', ') : '—'}
-            </td>
-            <td className="truncate subtle" style={{ maxWidth: 200, fontSize: 12 }}>
-              {e.recipients.join(', ') || '—'}
-            </td>
+    <div className="table-scroll">
+      <table className="table">
+        <thead>
+          <tr>
+            <th>When</th>
+            <th>Sender</th>
+            <th>Action</th>
+            <th>Severity</th>
+            <th>Risk</th>
+            <th>Detected</th>
+            <th>Recipients</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {events.slice(0, 25).map((e, i) => (
+            <tr key={`${e.timestamp}-${i}`}>
+              <td className="subtle">{formatTime(e.timestamp)}</td>
+              <td className="truncate" style={{ maxWidth: 190 }}>
+                {isUnattributed(e.user_email) ? (
+                  <span className="subtle" title="Auro could not attribute this send to a mailbox">
+                    {senderLabel(e.user_email)}
+                  </span>
+                ) : (
+                  senderLabel(e.user_email)
+                )}
+              </td>
+              <td><ActionPill action={e.action} /></td>
+              <td><SeverityPill severity={e.severity} /></td>
+              <td><RiskMeter score={e.risk_score} /></td>
+              <td className="subtle" style={{ fontSize: 12, maxWidth: 220 }}>
+                {e.entities.length > 0
+                  ? e.entities.map((x) => entityLabel(x.type)).join(', ')
+                  : 'Nothing detected'}
+              </td>
+              <td className="truncate subtle" style={{ maxWidth: 200, fontSize: 12 }}>
+                {e.recipients.join(', ') || '—'}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
-}
-
-interface TrendPoint { day: string; total: number; blocks: number }
-
-function mergeTrend(rows: { day: string; action: string; count: number }[]): TrendPoint[] {
-  const byDay = new Map<string, TrendPoint>();
-  for (const r of rows) {
-    const day = r.day.slice(5);
-    const cur = byDay.get(day) ?? { day, total: 0, blocks: 0 };
-    cur.total += r.count;
-    if (r.action === 'block') cur.blocks += r.count;
-    byDay.set(day, cur);
-  }
-  return Array.from(byDay.values()).sort((a, b) => a.day.localeCompare(b.day));
-}
-
-function formatTime(ts: string): string {
-  try {
-    return new Date(ts).toLocaleString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch {
-    return ts;
-  }
-}
-
-function isRestrictiveAction(action: string): boolean {
-  return action === 'block' || action === 'quarantine' || action === 'escalate' || action === 'warn';
 }

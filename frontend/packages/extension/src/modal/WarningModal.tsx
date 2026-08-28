@@ -1,13 +1,19 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Verdict, EntityHit } from '@aurodlpv2/shared';
 
 interface WarningModalProps {
   verdict: Verdict;
   onClose: () => void;
+  onSend: () => void;
+  pollQuarantine?: (() => Promise<{ status: 'pending' | 'approved' | 'rejected' }>) | undefined;
 }
 
-export default function WarningModal({ verdict, onClose }: WarningModalProps) {
+export default function WarningModal({ verdict, onClose, onSend, pollQuarantine }: WarningModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
+  const [quarantineStatus, setQuarantineStatus] = useState<'pending' | 'approved' | 'rejected'>(
+    verdict.action === 'quarantine' ? 'pending' : 'pending',
+  );
+  const [pollError, setPollError] = useState(false);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -23,6 +29,29 @@ export default function WarningModal({ verdict, onClose }: WarningModalProps) {
   useEffect(() => {
     modalRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    if (verdict.action !== 'quarantine' || !pollQuarantine) return;
+    let active = true;
+    const poll = async () => {
+      try {
+        const result = await pollQuarantine();
+        if (!active) return;
+        setQuarantineStatus(result.status);
+        setPollError(false);
+      } catch {
+        if (active) setPollError(true);
+      }
+    };
+    void poll();
+    const interval = setInterval(() => void poll(), 3000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [pollQuarantine, verdict.action]);
+
+  const copy = useMemo(() => modalCopy(verdict.action, quarantineStatus), [verdict.action, quarantineStatus]);
 
   if (verdict.action === 'allow') {
     return null;
@@ -48,12 +77,18 @@ export default function WarningModal({ verdict, onClose }: WarningModalProps) {
             </svg>
           </div>
           <div>
-            <h2 id="auro-title" className="auro-title">Email Blocked</h2>
-            <p className="auro-subtitle">Protected Health Information detected</p>
+            <h2 id="auro-title" className="auro-title">{copy.title}</h2>
+            <p className="auro-subtitle">{copy.subtitle}</p>
           </div>
         </div>
 
         <p id="auro-desc" className="auro-message">{verdict.user_message}</p>
+        {verdict.degraded ? (
+          <p className="auro-degraded">Backend reporting is degraded. This decision was made locally.</p>
+        ) : null}
+        {verdict.action === 'quarantine' && pollError ? (
+          <p className="auro-degraded">Approval status is temporarily unavailable.</p>
+        ) : null}
 
         {verdict.entities.length > 0 && (
           <div className="auro-entities">
@@ -69,14 +104,75 @@ export default function WarningModal({ verdict, onClose }: WarningModalProps) {
         )}
 
         <div className="auro-footer">
-          <p className="auro-footer-hint">Remove the sensitive data and try again.</p>
-          <button onClick={onClose} className="auro-btn" autoFocus>
-            Go Back to Edit
-          </button>
+          <p className="auro-footer-hint">{copy.hint}</p>
+          <div className="auro-footer-actions">
+            {verdict.action === 'warn' ? (
+              <>
+                <button onClick={onClose} className="auro-btn auro-btn-secondary">
+                  Edit
+                </button>
+                <button onClick={onSend} className="auro-btn" autoFocus>
+                  Send anyway
+                </button>
+              </>
+            ) : null}
+            {verdict.action === 'quarantine' ? (
+              quarantineStatus === 'approved' ? (
+                <button onClick={onSend} className="auro-btn" autoFocus>
+                  Send now
+                </button>
+              ) : (
+                <button onClick={onClose} className="auro-btn" autoFocus>
+                  Go Back
+                </button>
+              )
+            ) : null}
+            {verdict.action !== 'warn' && verdict.action !== 'quarantine' ? (
+              <button onClick={onClose} className="auro-btn" autoFocus>
+                Go Back to Edit
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>
   );
+}
+
+function modalCopy(action: Verdict['action'], status: 'pending' | 'approved' | 'rejected') {
+  if (action === 'warn') {
+    return {
+      title: 'Review Before Sending',
+      subtitle: 'Sensitive data may leave the approved list',
+      hint: 'You can edit the message or send after review.',
+    };
+  }
+  if (action === 'quarantine') {
+    if (status === 'approved') {
+      return {
+        title: 'Approved for Sending',
+        subtitle: 'Analyst review is complete',
+        hint: 'Send now without re-scanning.',
+      };
+    }
+    if (status === 'rejected') {
+      return {
+        title: 'Quarantine Rejected',
+        subtitle: 'Analyst review is complete',
+        hint: 'Edit the message before trying again.',
+      };
+    }
+    return {
+      title: 'Message Quarantined',
+      subtitle: 'Waiting for analyst review',
+      hint: 'Sending is disabled until this item is approved.',
+    };
+  }
+  return {
+    title: 'Email Blocked',
+    subtitle: 'Protected Health Information detected',
+    hint: 'Remove the sensitive data and try again.',
+  };
 }
 
 function EntityChip({ entity }: { entity: EntityHit }) {

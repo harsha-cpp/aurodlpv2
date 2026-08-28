@@ -1,0 +1,63 @@
+# Build context = repo root for every image in infra/docker/ (the backend has a
+# path dependency on ../detection, so a backend-only context cannot resolve it).
+# Docker only honours the .dockerignore at the context root, so this file is the
+# authoritative one for all three images.
+
+# VCS / CI
+.git
+.gitignore
+.github
+.omo
+.sisyphus
+.kiro
+
+# Secrets — never bake an .env into a layer. .env.example is kept on purpose.
+**/.env
+**/.env.*
+!**/.env.example
+*.pem
+*.key
+*.crt
+
+# Python build/venv/caches
+**/.venv
+**/venv
+**/__pycache__
+**/*.py[cod]
+**/*.egg-info
+**/.pytest_cache
+**/.ruff_cache
+**/.mypy_cache
+**/.coverage
+**/htmlcov
+**/cyclonedx.json
+
+# Node
+**/node_modules
+**/.pnpm-store
+**/dist
+**/.vite
+**/*.tsbuildinfo
+**/.turbo
+frontend/packages/extension/.crx
+
+# Test suites and fixtures: not shipped in runtime images, and the detection
+# corpus is large enough to slow every build if it stays in the context.
+backend/tests
+detection/tests
+frontend/packages/*/tests
+playwright-report
+test-results
+.playwright
+
+# Local dev state (bind-mounted postgres/minio data from infra/docker-compose.yml)
+infra/data
+
+# Editor / OS
+**/.DS_Store
+.idea
+.vscode
+**/*.swp
+
+# Stray local artefact from a misconfigured $PGROOT; see docs/deployment.md.
+backend/$PGROOT

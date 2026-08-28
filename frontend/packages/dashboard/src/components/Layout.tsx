@@ -1,15 +1,22 @@
-import { useEffect, useRef, useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { authApi, type OrgListItem } from '../api/auth';
+import { navFor } from '../lib/roles';
+import { errorMessage } from '../lib/errors';
+import ErrorBoundary from './ErrorBoundary';
 
 export default function Layout() {
-  const { member, organization, logout } = useAuth();
-  const navigate = useNavigate();
+  const { member, organization, logout, switchOrg } = useAuth();
+  const location = useLocation();
   const [signingOut, setSigningOut] = useState(false);
   const [open, setOpen] = useState(false);
   const [orgs, setOrgs] = useState<OrgListItem[]>([]);
+  const [switchError, setSwitchError] = useState<string | null>(null);
+  const [switching, setSwitching] = useState<string | null>(null);
   const switcherRef = useRef<HTMLDivElement>(null);
+
+  const nav = useMemo(() => navFor(member?.role), [member?.role]);
 
   async function onLogout() {
     setSigningOut(true);
@@ -19,7 +26,7 @@ export default function Layout() {
   useEffect(() => {
     if (!open || orgs.length > 0 || !member?.email) return;
     authApi
-      .myOrgs(member.email)
+      .myOrgs()
       .then(setOrgs)
       .catch(() => setOrgs([]));
   }, [open, orgs.length, member?.email]);
@@ -33,23 +40,40 @@ export default function Layout() {
     return () => document.removeEventListener('mousedown', onClick);
   }, [open]);
 
-  function switchTo(slug: string) {
+  async function switchTo(org: OrgListItem) {
     setOpen(false);
-    if (slug === organization?.slug) return;
-    navigate('/login', { state: { email: member?.email, switchSlug: slug } });
+    if (org.id === organization?.id) return;
+    setSwitchError(null);
+    setSwitching(org.id);
+    try {
+      // The session endpoint re-mints the token for the other org, so there is
+      // no reason to make an already-authenticated user retype their password.
+      await switchOrg(org.id);
+      setOrgs([]);
+    } catch (err) {
+      setSwitchError(errorMessage(err, 'Could not switch organization'));
+    } finally {
+      setSwitching(null);
+    }
   }
 
-  const others = orgs.filter((o) => o.slug !== organization?.slug);
+  const others = orgs.filter((o) => o.id !== organization?.id);
 
   return (
     <div className="app-shell">
       <aside className="sidebar">
         <div className="sidebar-brand">AURO</div>
         <nav className="sidebar-nav">
-          <NavItem to="/" end>Overview</NavItem>
-          <NavItem to="/domains">Approved domains</NavItem>
-          <NavItem to="/members">Members</NavItem>
-          <NavItem to="/settings">Settings</NavItem>
+          {nav.map((entry) => (
+            <NavLink
+              key={entry.to}
+              to={entry.to}
+              end={entry.end ?? false}
+              className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}
+            >
+              {entry.label}
+            </NavLink>
+          ))}
         </nav>
         <div className="sidebar-user">
           <div className="org-switcher" ref={switcherRef}>
@@ -62,12 +86,13 @@ export default function Layout() {
                 <div className="org-switcher-item active">{organization?.name}</div>
                 {others.map((o) => (
                   <button
-                    key={o.slug}
+                    key={o.id}
                     type="button"
                     className="org-switcher-item"
-                    onClick={() => switchTo(o.slug)}
+                    onClick={() => void switchTo(o)}
+                    disabled={switching !== null}
                   >
-                    {o.name}
+                    {o.name} <span className="subtle">· {o.role}</span>
                   </button>
                 ))}
                 {others.length === 0 ? (
@@ -76,7 +101,9 @@ export default function Layout() {
               </div>
             ) : null}
           </div>
+          {switchError && <div className="error" style={{ marginBottom: 8 }}>{switchError}</div>}
           <div className="sidebar-user-email">{member?.email}</div>
+          <div className="sidebar-user-org">{member?.role}</div>
           <button
             type="button"
             className="btn btn-ghost btn-sm"
@@ -89,16 +116,11 @@ export default function Layout() {
         </div>
       </aside>
       <main className="main">
-        <Outlet />
+        {/* Keyed on the path so navigating away from a broken page clears it. */}
+        <ErrorBoundary resetKey={location.pathname}>
+          <Outlet />
+        </ErrorBoundary>
       </main>
     </div>
-  );
-}
-
-function NavItem({ to, end, children }: { to: string; end?: boolean; children: React.ReactNode }) {
-  return (
-    <NavLink to={to} end={end ?? false} className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>
-      {children}
-    </NavLink>
   );
 }

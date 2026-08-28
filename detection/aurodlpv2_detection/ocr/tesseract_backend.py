@@ -1,4 +1,11 @@
-"""Tesseract 5 backend via pytesseract."""
+"""Tesseract 5 backend via pytesseract.
+
+An unavailable OCR engine is not the same as a page with no text. If the binary
+or the bindings are missing, a scanned discharge summary yields "" and passes
+the DLP scan clean — a false negative on PHI. Failures are raised as
+``OcrUnavailableError`` so the caller records an extraction error instead of an
+empty result.
+"""
 
 from __future__ import annotations
 
@@ -11,6 +18,10 @@ from PIL import Image
 from aurodlpv2_detection.config import DetectionConfig
 
 logger = structlog.get_logger(__name__)
+
+
+class OcrUnavailableError(RuntimeError):
+    """The OCR engine could not run, as opposed to finding no text."""
 
 
 class _Output(Protocol):
@@ -39,12 +50,16 @@ def run(image: Image.Image, config: DetectionConfig) -> tuple[str, float]:
             output_type=pytesseract.Output.DICT,
             timeout=config.ocr.page_timeout_seconds,
         )
-    except ImportError:
-        logger.warning("pytesseract is not installed")
-        return "", 0.0
-    except RuntimeError:
-        logger.warning("tesseract OCR timed out or failed")
-        return "", 0.0
+    except ImportError as exc:
+        raise OcrUnavailableError(
+            "pytesseract is not installed; scanned documents cannot be read"
+        ) from exc
+    except RuntimeError as exc:
+        message = str(exc).lower()
+        if "timeout" in message or "timed out" in message:
+            logger.warning("tesseract OCR timed out")
+            return "", 0.0
+        raise OcrUnavailableError(f"tesseract failed: {exc}") from exc
 
     texts = [str(value).strip() for value in data.get("text", []) if str(value).strip()]
     confidences = [_parse_confidence(value) for value in data.get("conf", [])]

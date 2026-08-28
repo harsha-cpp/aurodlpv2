@@ -1,0 +1,41 @@
+# pyright: reportPrivateUsage=false
+
+from __future__ import annotations
+
+from uuid import uuid4
+
+import pytest
+
+from aurodlpv2_backend.auth.session import serialize_org
+from aurodlpv2_backend.db.models import MemberRole, Organization
+from aurodlpv2_backend.orgs.api import _serialize as serialize_org_out
+
+
+def _org() -> Organization:
+    return Organization(
+        id=uuid4(),
+        name="City Hospital",
+        slug="city-hospital",
+        org_code="AUR-SECRET",
+        plan="free",
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("role", ["owner", "admin"])
+def test_admins_can_read_the_org_code(role: MemberRole) -> None:
+    assert serialize_org_out(_org(), role).org_code == "AUR-SECRET"
+    assert serialize_org(_org(), viewer_role=role).org_code == "AUR-SECRET"
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("role", ["analyst", "viewer"])
+def test_lower_roles_never_see_the_org_code(role: MemberRole) -> None:
+    """The org_code authenticates every extension install, so it is a secret."""
+    assert serialize_org_out(_org(), role).org_code is None
+    assert serialize_org(_org(), viewer_role=role).org_code is None
+
+
+@pytest.mark.unit
+def test_org_code_is_withheld_when_no_role_is_supplied() -> None:
+    assert serialize_org(_org()).org_code is None

@@ -7,19 +7,21 @@ import secrets
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from argon2 import PasswordHasher
-from argon2.low_level import Type
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from aurodlpv2_backend.db.models import MemberRole, Organization, OrgMember
+from aurodlpv2_backend.audit.service import write_audit_event
+from aurodlpv2_backend.auth.passwords import PasswordPolicyError, hash_password, validate_password
+from aurodlpv2_backend.db.models import MemberMfa, MemberRole, Organization, OrgMember
 from aurodlpv2_backend.deps import CurrentMember, DbSession, OwnerOrAdmin, Principal
+from aurodlpv2_backend.email import get_mailer, send_quietly
+from aurodlpv2_backend.email.templates import invite_email
+from aurodlpv2_backend.settings import get_settings
 
 router = APIRouter()
-_PASSWORD_HASHER = PasswordHasher(type=Type.ID)
 
 INVITE_TTL_DAYS = 7
 
@@ -32,6 +34,8 @@ class MemberOut(BaseModel):
     status: str
     last_login_at: str | None
     created_at: str
+    email_verified: bool
+    mfa_enabled: bool
 
 
 class InviteRequest(BaseModel):
@@ -42,7 +46,10 @@ class InviteRequest(BaseModel):
 
 class InviteResponse(BaseModel):
     member: MemberOut
-    invite_token: str
+    #: The invite link is mailed to the invitee, never returned here. Handing
+    #: the raw token to the inviter turned every onboarding into an admin
+    #: pasting a credential into a chat window.
+    email_sent: bool
 
 
 class AcceptInviteResponse(BaseModel):
@@ -52,7 +59,7 @@ class AcceptInviteResponse(BaseModel):
 
 class AcceptInvite(BaseModel):
     invite_token: str = Field(min_length=16, max_length=256)
-    password: str = Field(min_length=8, max_length=128)
+    password: str = Field(min_length=12, max_length=128)
     name: str | None = Field(default=None, max_length=120)
 
 
@@ -60,7 +67,7 @@ class RoleUpdate(BaseModel):
     role: MemberRole
 
 
-def _serialize(member: OrgMember) -> MemberOut:
+def _serialize(member: OrgMember, *, mfa_enabled: bool = False) -> MemberOut:
     return MemberOut(
         id=str(member.id),
         email=member.email,
@@ -69,6 +76,8 @@ def _serialize(member: OrgMember) -> MemberOut:
         status=member.status,
         last_login_at=member.last_login_at.isoformat() if member.last_login_at else None,
         created_at=member.created_at.isoformat(),
+        email_verified=member.email_verified_at is not None,
+        mfa_enabled=mfa_enabled,
     )
 
 
@@ -110,7 +119,19 @@ async def list_members(member: CurrentMember, session: DbSession) -> list[Member
             .order_by(OrgMember.created_at.asc())
         )
     ).all()
-    return [_serialize(row) for row in rows]
+    # One query for the whole roster rather than one per member: an admin
+    # chasing 2FA coverage should not cost N round trips.
+    enrolled = set(
+        (
+            await session.scalars(
+                select(MemberMfa.member_id).where(
+                    MemberMfa.member_id.in_([row.id for row in rows]),
+                    MemberMfa.confirmed_at.is_not(None),
+                )
+            )
+        ).all()
+    )
+    return [_serialize(row, mfa_enabled=row.id in enrolled) for row in rows]
 
 
 @router.post("/invite", response_model=InviteResponse, status_code=status.HTTP_201_CREATED)
@@ -141,13 +162,32 @@ async def invite_member(
         invite_expires_at=datetime.now(UTC) + timedelta(days=INVITE_TTL_DAYS),
     )
     session.add(new_member)
+    await write_audit_event(
+        session,
+        org_id=member.org_id,
+        actor=f"member:{member.email}",
+        category="members",
+        action="member_invited",
+        metadata={"email": email, "role": payload.role},
+    )
     try:
         await session.commit()
     except IntegrityError as exc:
         await session.rollback()
         raise HTTPException(status.HTTP_409_CONFLICT, detail="member already exists") from exc
     await session.refresh(new_member)
-    return InviteResponse(member=_serialize(new_member), invite_token=invite_token)
+
+    org = await session.get(Organization, member.org_id)
+    subject, body = invite_email(
+        base_url=get_settings().app_base_url,
+        org_name=org.name if org else "your organization",
+        inviter_email=member.email,
+        token=invite_token,
+    )
+    # The member row is already committed, so a bounced SMTP hop must not undo
+    # the invite — the admin re-sends instead of re-creating.
+    email_sent = await send_quietly(get_mailer(), to=email, subject=subject, body=body)
+    return InviteResponse(member=_serialize(new_member), email_sent=email_sent)
 
 
 @router.post("/accept-invite", response_model=AcceptInviteResponse)
@@ -163,14 +203,20 @@ async def accept_invite(payload: AcceptInvite, session: DbSession) -> AcceptInvi
     if org is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="organization missing")
 
-    member.password_hash = await asyncio.to_thread(
-        lambda: _PASSWORD_HASHER.hash(payload.password).encode("utf-8")
-    )
+    try:
+        validate_password(payload.password, email=member.email)
+    except PasswordPolicyError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)) from exc
+
+    member.password_hash = await asyncio.to_thread(hash_password, payload.password)
     if payload.name:
         member.name = payload.name
     member.status = "active"
     member.invite_token = None
     member.invite_expires_at = None
+    # Redeeming a link that only arrived by mail is itself proof of control of
+    # the address, so there is nothing left to verify separately.
+    member.email_verified_at = datetime.now(UTC)
     try:
         await session.commit()
     except IntegrityError as exc:

@@ -1,0 +1,230 @@
+[
+  {
+    "id": "neg-roster-001",
+    "category": "roster",
+    "subject": "Nursing duty roster - week of 8 June",
+    "body": [
+      "Morning shift: Anitha, Rekha, Joseph",
+      "Evening shift: Fatima, Ganesh, Priyanka",
+      "Night shift: Sudha, Mohan",
+      "",
+      "Swaps need my approval by Friday. Leave requests go through the portal, not email."
+    ],
+    "expect_phi": false,
+    "ignore_types": ["PERSON"],
+    "notes": "Staff names in a roster are not patient data."
+  },
+  {
+    "id": "neg-meeting-001",
+    "category": "meeting",
+    "subject": "Mortality and morbidity meeting - Thursday 1600",
+    "body": [
+      "The M&M meeting is moved to Thursday at 1600 in the third floor seminar room.",
+      "Please bring your department's aggregate numbers only - no patient identifiers",
+      "on the slides. IT will set up the projector by 1545."
+    ],
+    "expect_phi": false
+  },
+  {
+    "id": "neg-procurement-001",
+    "category": "procurement",
+    "subject": "Quotation required - infusion pumps",
+    "body": [
+      "We need quotations for 12 volumetric infusion pumps for the new ICU wing.",
+      "Please include AMC terms for three years and delivery timelines.",
+      "Send quotes to the purchase department before the 20th."
+    ],
+    "expect_phi": false
+  },
+  {
+    "id": "neg-it-001",
+    "category": "it_notice",
+    "subject": "Scheduled downtime - HIS",
+    "body": [
+      "The hospital information system will be down on Sunday from 0200 to 0500 for a",
+      "database upgrade. Use the paper fallback forms during that window and enter the",
+      "data once the system is back. Casualty will have a standby terminal."
+    ],
+    "expect_phi": false
+  },
+  {
+    "id": "neg-training-001",
+    "category": "training",
+    "subject": "BLS recertification - slots open",
+    "body": [
+      "Basic life support recertification runs on the 12th and the 19th.",
+      "Twenty slots per session, first come first served. Certificates are valid for",
+      "two years. Register with the education cell."
+    ],
+    "expect_phi": false
+  },
+  {
+    "id": "neg-facilities-001",
+    "category": "facilities",
+    "subject": "Water supply interruption - B block",
+    "body": [
+      "Maintenance will interrupt the water supply to B block on Wednesday between",
+      "1000 and 1300 to replace a valve. Wards on that riser have been informed and",
+      "storage tanks are full. Theatres are unaffected."
+    ],
+    "expect_phi": false
+  },
+  {
+    "id": "neg-pharmacy-001",
+    "category": "pharmacy",
+    "subject": "Stock shortage - injectable iron",
+    "body": [
+      "We are down to eleven vials of injectable iron sucrose. The supplier has quoted",
+      "a two week lead time. Please restrict to inpatients until the stock arrives and",
+      "use the oral formulation in OPD where clinically acceptable."
+    ],
+    "expect_phi": false
+  },
+  {
+    "id": "neg-quality-001",
+    "category": "quality",
+    "subject": "NABH audit prep - aggregate indicators",
+    "body": [
+      "Indicator summary for the quarter:",
+      "  Hand hygiene compliance 84 percent",
+      "  Surgical site infection rate 1.2 percent",
+      "  Average length of stay 4.1 days",
+      "  Readmission within 30 days 6.8 percent",
+      "No case level detail in this mail - the auditors will sample from the system."
+    ],
+    "expect_phi": false,
+    "notes": "Aggregate clinical statistics are not PHI. This one must stay clean."
+  },
+  {
+    "id": "neg-hr-001",
+    "category": "hr",
+    "subject": "Holiday list 2027",
+    "body": [
+      "The declared holiday list for next year is attached. Twelve gazetted holidays",
+      "plus two restricted holidays of your choice. Departments running 24x7 should",
+      "plan cover as usual and submit rosters a month in advance."
+    ],
+    "expect_phi": false
+  },
+  {
+    "id": "neg-cafeteria-001",
+    "category": "facilities",
+    "subject": "Cafeteria timings during renovation",
+    "body": [
+      "The main cafeteria closes at 2000 during the renovation. The night canteen near",
+      "casualty stays open. Vending machines on floors 2 and 4 have been restocked."
+    ],
+    "expect_phi": false
+  },
+  {
+    "id": "neg-biomedical-001",
+    "category": "facilities",
+    "subject": "Ventilator preventive maintenance due",
+    "body": [
+      "Preventive maintenance is due on six ventilators this month. The vendor engineer",
+      "will be on site Tuesday and Wednesday. Please release units in pairs so ICU",
+      "capacity is not affected. Service reports go to biomedical."
+    ],
+    "expect_phi": false
+  },
+  {
+    "id": "neg-policy-001",
+    "category": "policy",
+    "subject": "Revised consent policy - effective 1 July",
+    "body": [
+      "The consent policy has been revised to require a witness signature for all",
+      "high risk procedures. Updated forms are in the shared drive. Departments should",
+      "destroy the old stock of printed forms after the changeover date."
+    ],
+    "expect_phi": false
+  },
+  {
+    "id": "neg-cme-001",
+    "category": "training",
+    "subject": "CME - antimicrobial stewardship",
+    "body": [
+      "Guest lecture on antimicrobial stewardship this Saturday at 1100 in the",
+      "auditorium. Two credit hours. The speaker will cover carbapenem sparing",
+      "strategies and the local antibiogram. Open to all clinical staff."
+    ],
+    "expect_phi": false,
+    "notes": "Heavy clinical vocabulary with no patient anywhere - the hardest negative for a keyword-driven model."
+  },
+  {
+    "id": "neg-vendor-001",
+    "category": "procurement",
+    "subject": "Payment terms clarification",
+    "body": [
+      "Our standard payment terms are 45 days from invoice receipt, not 30 as stated",
+      "in your draft agreement. Please revise clause 7 and resend for signature.",
+      "Accounts will confirm the vendor onboarding separately."
+    ],
+    "expect_phi": false
+  },
+  {
+    "id": "neg-security-001",
+    "category": "it_notice",
+    "subject": "Phishing attempt - do not click",
+    "body": [
+      "Several staff have received a mail claiming to be from the payroll department",
+      "asking them to re-enter bank details. It is not from us. Do not click the link.",
+      "Forward it to IT security and delete it."
+    ],
+    "expect_phi": false
+  },
+  {
+    "id": "neg-research-001",
+    "category": "research",
+    "subject": "Ethics committee agenda",
+    "body": [
+      "Four protocols are up for review at the next ethics committee meeting.",
+      "Two are observational, one is a device trial and one is a retrospective chart",
+      "review. Members will get the anonymised protocol packs three days in advance."
+    ],
+    "expect_phi": false
+  },
+  {
+    "id": "neg-blood-bank-001",
+    "category": "operations",
+    "subject": "Blood donation camp - volunteers needed",
+    "body": [
+      "The voluntary donation camp is on the 26th in the OPD forecourt.",
+      "We need six volunteers for registration and refreshments. Target is 80 units.",
+      "Sign up on the sheet outside the blood bank."
+    ],
+    "expect_phi": false
+  },
+  {
+    "id": "neg-parking-001",
+    "category": "facilities",
+    "subject": "Staff parking passes - renewal",
+    "body": [
+      "Parking passes expire at the end of the month. Renewal is through the admin",
+      "office with your employee card. The visitor bays near the entrance are not to",
+      "be used by staff at any time."
+    ],
+    "expect_phi": false
+  },
+  {
+    "id": "neg-fire-drill-001",
+    "category": "operations",
+    "subject": "Fire drill Thursday 1500",
+    "body": [
+      "A fire drill is scheduled for Thursday at 1500. Wards should demonstrate the",
+      "horizontal evacuation route without moving actual patients. Marshals will be",
+      "in yellow vests. The alarm will sound for two minutes."
+    ],
+    "expect_phi": false
+  },
+  {
+    "id": "neg-signage-001",
+    "category": "facilities",
+    "subject": "New signage installed",
+    "body": [
+      "New wayfinding signage is up across the ground floor. The radiology arrow near",
+      "the lifts is wrong and will be corrected on Monday. Report any other errors to",
+      "the facilities helpdesk."
+    ],
+    "expect_phi": false
+  }
+]

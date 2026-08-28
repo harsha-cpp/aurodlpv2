@@ -21,7 +21,10 @@ htmlcov/
 
 # uv
 .uv/
-uv.lock
+# uv.lock IS committed: these are applications, not libraries, and an
+# unlocked CI checkout re-resolves dependencies, so builds would not be
+# reproducible and a transitive bump could ship unreviewed.
+# uv.lock
 
 # Node / pnpm
 node_modules/
@@ -48,8 +51,16 @@ test-results/
 
 # Env / secrets
 .env
+# docs/deployment.md tells operators to create this from backend/.env.example
+# and fill it with real secrets, so it must never be committable.
+infra/*.env
 .env.*
+# ...but every *.example template must ship: docs/deployment.md tells the
+# operator to copy them, and `.env.*` above was silently swallowing
+# infra/.env.prod.example, so a fresh clone had nothing to copy.
 !.env.example
+!*.env.example
+!.env.*.example
 *.pem
 *.key
 *.crt

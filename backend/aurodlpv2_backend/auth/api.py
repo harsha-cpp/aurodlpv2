@@ -1,21 +1,20 @@
-"""Auth API (orgs + members) — email/password signup, login, refresh, logout, me."""
+"""Auth API — signup, login, MFA challenge, refresh rotation, sessions, recovery."""
 
 from __future__ import annotations
 
 import asyncio
 import re
 import secrets
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from uuid import UUID
 
-from argon2 import PasswordHasher
-from argon2.exceptions import VerificationError, VerifyMismatchError
-from argon2.low_level import Type
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from aurodlpv2_backend.audit.service import write_audit_event
 from aurodlpv2_backend.auth.jwt import (
     TokenError,
     issue_access_token,
@@ -23,26 +22,57 @@ from aurodlpv2_backend.auth.jwt import (
     parse_refresh_token,
     verify_refresh_secret,
 )
-from aurodlpv2_backend.db.models import Organization, OrgMember, RefreshToken
+from aurodlpv2_backend.auth.mfa import CHALLENGE_TTL_SECONDS, issue_challenge_token
+from aurodlpv2_backend.auth.passwords import (
+    PasswordPolicyError,
+    hash_password,
+    validate_password,
+    verify_password,
+)
+from aurodlpv2_backend.auth.rate_limit import login_rate_limiter
+from aurodlpv2_backend.auth.session import (
+    AuthResponse,
+    MemberView,
+    MfaChallengeResponse,
+    OrganizationView,
+    clear_refresh_cookie,
+    issue_session,
+    read_refresh_cookie,
+    request_ip,
+    request_user_agent,
+    serialize_member,
+    serialize_org,
+    set_refresh_cookie,
+)
+from aurodlpv2_backend.auth.tokens import (
+    EMAIL_VERIFY_PREFIX,
+    PASSWORD_RESET_PREFIX,
+    TokenFormatError,
+    issue_token,
+    parse_token,
+    verify_token_secret,
+)
+from aurodlpv2_backend.db.models import (
+    EmailVerificationToken,
+    MemberMfa,
+    Organization,
+    OrgMember,
+    PasswordResetToken,
+    RefreshToken,
+)
 from aurodlpv2_backend.deps import CurrentMember, DbSession
-from aurodlpv2_backend.settings import Settings, get_settings
+from aurodlpv2_backend.email import get_mailer, send_quietly
+from aurodlpv2_backend.email.templates import email_verification_email, password_reset_email
+from aurodlpv2_backend.settings import get_settings
 
 router = APIRouter()
 
-_PASSWORD_HASHER = PasswordHasher(type=Type.ID)
-_ORG_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+_ORG_CODE_BYTES = 18
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
 
-
-def _hash_password(plain: str) -> bytes:
-    return _PASSWORD_HASHER.hash(plain).encode("utf-8")
-
-
-def _verify_password(plain: str, hashed: bytes) -> bool:
-    try:
-        return _PASSWORD_HASHER.verify(hashed.decode("utf-8"), plain)
-    except (UnicodeDecodeError, VerificationError, VerifyMismatchError):
-        return False
+# Re-exported for callers that imported the response shapes from this module
+# before they moved into auth.session.
+__all__ = ["AuthResponse", "MemberView", "OrganizationView", "router"]
 
 
 def _slugify(name: str) -> str:
@@ -51,7 +81,8 @@ def _slugify(name: str) -> str:
 
 
 def _generate_org_code() -> str:
-    return "AUR-" + "".join(secrets.choice(_ORG_CODE_ALPHABET) for _ in range(6))
+    suffix = secrets.token_urlsafe(_ORG_CODE_BYTES).replace("-", "").replace("_", "")
+    return "AUR-" + suffix.upper()
 
 
 async def _unique_slug(session: AsyncSession, base: str) -> str:
@@ -76,150 +107,79 @@ async def _unique_org_code(session: AsyncSession) -> str:
     raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, detail="unable to allocate org code")
 
 
-def _serialize_member(member: OrgMember) -> MemberView:
-    return MemberView(
-        id=str(member.id),
-        email=member.email,
-        name=member.name,
-        role=member.role,
+async def _mfa_enabled(session: AsyncSession, member_id: UUID) -> bool:
+    confirmed = await session.scalar(
+        select(MemberMfa.confirmed_at).where(MemberMfa.member_id == member_id)
     )
+    return confirmed is not None
 
 
-def _serialize_org(org: Organization) -> OrganizationView:
-    return OrganizationView(
-        id=str(org.id),
-        name=org.name,
-        slug=org.slug,
-        org_code=org.org_code,
-        plan=org.plan,
-    )
+def _enforce_password_policy(password: str, email: str) -> None:
+    try:
+        validate_password(password, email=email)
+    except PasswordPolicyError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)) from exc
 
 
 class SignupRequest(BaseModel):
     org_name: str = Field(min_length=2, max_length=120)
     email: EmailStr
-    password: str = Field(min_length=8, max_length=128)
+    password: str = Field(min_length=12, max_length=128)
     name: str | None = Field(default=None, max_length=120)
 
 
 class LoginRequest(BaseModel):
     email: EmailStr
+    # Not the policy minimum: old accounts predate the 12-character rule and
+    # must still be able to sign in (and then reset).
     password: str = Field(min_length=8, max_length=128)
     org_slug: str | None = Field(default=None, min_length=2, max_length=120)
 
 
-class MemberView(BaseModel):
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(min_length=16, max_length=512)
+    password: str = Field(min_length=12, max_length=128)
+
+
+class VerifyEmailRequest(BaseModel):
+    token: str = Field(min_length=16, max_length=512)
+
+
+class SwitchOrgRequest(BaseModel):
+    org_id: UUID
+
+
+class SessionOut(BaseModel):
     id: str
-    email: str
-    name: str | None
-    role: str
-
-
-class OrganizationView(BaseModel):
-    id: str
-    name: str
-    slug: str
-    org_code: str
-    plan: str
-
-
-class AuthResponse(BaseModel):
-    access_token: str
-    expires_in: int
-    member: MemberView
-    organization: OrganizationView
-
-
-def _set_refresh_cookie(
-    response: Response, token: str, settings: Settings, expires: datetime
-) -> None:
-    response.set_cookie(
-        key=settings.refresh_cookie_name,
-        value=token,
-        httponly=True,
-        secure=settings.refresh_cookie_secure,
-        samesite=settings.refresh_cookie_samesite,
-        expires=expires,
-        path="/api/v1/auth",
-    )
-
-
-def _clear_refresh_cookie(response: Response, settings: Settings) -> None:
-    response.delete_cookie(
-        key=settings.refresh_cookie_name,
-        path="/api/v1/auth",
-    )
-
-
-def _refresh_cookie(request: Request, settings: Settings) -> str | None:
-    return request.cookies.get(settings.refresh_cookie_name)
-
-
-async def _issue_session(
-    session: AsyncSession,
-    response: Response,
-    member: OrgMember,
-    org: Organization,
-) -> AuthResponse:
-    settings = get_settings()
-    access_token = issue_access_token(str(member.id), str(org.id), member.role)
-    issued = await asyncio.to_thread(issue_refresh_token, ttl_days=settings.jwt_refresh_ttl_days)
-    session.add(
-        RefreshToken(
-            id=issued.id,
-            member_id=member.id,
-            token_hash=issued.token_hash,
-            expires_at=issued.expires_at,
-        )
-    )
-    member.last_login_at = datetime.now(UTC)
-    await session.commit()
-    _set_refresh_cookie(response, issued.raw_token, settings, issued.expires_at)
-    return AuthResponse(
-        access_token=access_token,
-        expires_in=settings.jwt_access_ttl_seconds,
-        member=_serialize_member(member),
-        organization=_serialize_org(org),
-    )
-
-
-async def _login_member(
-    session: AsyncSession, email: str, org_slug: str | None
-) -> OrgMember | None:
-    if org_slug:
-        org_id = await session.scalar(
-            select(Organization.id).where(Organization.slug == _slugify(org_slug))
-        )
-        if org_id is None:
-            return None
-        return await session.scalar(
-            select(OrgMember).where(
-                OrgMember.org_id == org_id,
-                OrgMember.email == email,
-                OrgMember.status == "active",
-            )
-        )
-
-    rows = (
-        await session.scalars(
-            select(OrgMember).where(OrgMember.email == email, OrgMember.status == "active").limit(2)
-        )
-    ).all()
-    members = list(rows)
-    if len(members) > 1:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT,
-            detail="email belongs to multiple organizations; include org_slug",
-        )
-    return members[0] if members else None
+    created_at: str
+    last_used_at: str | None
+    user_agent: str | None
+    ip_address: str | None
+    current: bool
 
 
 @router.post("/signup", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
-async def signup(payload: SignupRequest, response: Response, session: DbSession) -> AuthResponse:
+async def signup(
+    payload: SignupRequest,
+    response: Response,
+    request: Request,
+    session: DbSession,
+) -> AuthResponse:
+    settings = get_settings()
+    if not settings.allow_open_signup:
+        # Hospitals buy seats; self-serve tenant creation on a production
+        # deployment lets anyone stand up an org against the same database.
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="open signup is disabled")
+
     email = str(payload.email).lower().strip()
+    _enforce_password_policy(payload.password, email)
     slug = await _unique_slug(session, _slugify(payload.org_name))
     org_code = await _unique_org_code(session)
-    password_hash = await asyncio.to_thread(_hash_password, payload.password)
+    password_hash = await asyncio.to_thread(hash_password, payload.password)
 
     try:
         org = Organization(name=payload.org_name.strip(), slug=slug, org_code=org_code)
@@ -236,7 +196,8 @@ async def signup(payload: SignupRequest, response: Response, session: DbSession)
         )
         session.add(member)
         await session.flush()
-        return await _issue_session(session, response, member, org)
+        await _send_verification_email(session, member)
+        return await issue_session(session, response, member, org, request=request)
     except IntegrityError as exc:
         await session.rollback()
         raise HTTPException(
@@ -244,30 +205,88 @@ async def signup(payload: SignupRequest, response: Response, session: DbSession)
         ) from exc
 
 
-@router.post("/login", response_model=AuthResponse)
-async def login(payload: LoginRequest, response: Response, session: DbSession) -> AuthResponse:
+# `response_model=None` produced an untyped `{}` in the schema, so a generated
+# client could not see that login may answer with an MFA challenge instead of
+# a session. The explicit union documents both branches.
+@router.post(
+    "/login",
+    response_model=AuthResponse | MfaChallengeResponse,
+    response_model_exclude_none=True,
+)
+async def login(
+    payload: LoginRequest,
+    response: Response,
+    request: Request,
+    session: DbSession,
+) -> AuthResponse | MfaChallengeResponse:
     email = str(payload.email).lower().strip()
-    member = await _login_member(session, email, payload.org_slug)
-    if member is None or member.password_hash is None:
+    limit = await login_rate_limiter.check(request, email)
+    if not limit.allowed:
+        await _audit_login_lockout(
+            session,
+            email=email,
+            org_slug=payload.org_slug,
+            retry_after_seconds=limit.retry_after_seconds,
+        )
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="too many login attempts",
+            headers={"Retry-After": str(limit.retry_after_seconds)},
+        )
+    members = await _login_members(session, email, payload.org_slug)
+    if not members:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="invalid credentials")
 
-    password_ok = await asyncio.to_thread(_verify_password, payload.password, member.password_hash)
-    if not password_ok:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="invalid credentials")
+    verified_members: list[OrgMember] = []
+    for candidate in members:
+        if candidate.password_hash is None:
+            continue
+        password_ok = await asyncio.to_thread(
+            verify_password,
+            payload.password,
+            candidate.password_hash,
+        )
+        if password_ok:
+            verified_members.append(candidate)
 
+    if not verified_members:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="invalid credentials")
+    if payload.org_slug is None and len(verified_members) > 1:
+        choices = await _org_choices(session, verified_members)
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail={
+                "code": "org_selection_required",
+                "organizations": [choice.model_dump() for choice in choices],
+            },
+        )
+
+    member = verified_members[0]
     org = await session.get(Organization, member.org_id)
     if org is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="organization missing")
-    return await _issue_session(session, response, member, org)
+
+    if await _mfa_enabled(session, member.id):
+        # Hand back proof of the password step only. No session exists until
+        # the code is checked, so a stolen password alone gets nothing.
+        return MfaChallengeResponse(
+            challenge_token=issue_challenge_token(member.id, org.id),
+            expires_in=CHALLENGE_TTL_SECONDS,
+        )
+    return await issue_session(session, response, member, org, request=request)
 
 
 @router.post("/refresh", response_model=AuthResponse)
 async def refresh(response: Response, request: Request, session: DbSession) -> AuthResponse:
-    """Validate refresh cookie → issue new access token. Does NOT rotate the
-    refresh token — the same cookie stays valid until expiry or explicit logout.
-    This eliminates race conditions from concurrent/double refresh calls."""
+    """Rotate the refresh token and mint a new access token.
+
+    The old token stays usable for ``refresh_rotation_grace_seconds`` so two
+    dashboard tabs refreshing at once do not sign each other out. Presented
+    after that window it can only have been copied, so the whole family — every
+    descendant of that login — is revoked.
+    """
     settings = get_settings()
-    refresh_cookie = _refresh_cookie(request, settings)
+    refresh_cookie = read_refresh_cookie(request, settings)
     if not refresh_cookie:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="missing refresh token")
     try:
@@ -295,32 +314,325 @@ async def refresh(response: Response, request: Request, session: DbSession) -> A
     if org is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="organization missing")
 
-    # Issue new access token only — refresh token stays as-is.
+    replayed = record.rotated_at is not None and now - record.rotated_at > timedelta(
+        seconds=settings.refresh_rotation_grace_seconds
+    )
+    if replayed:
+        await _revoke_family(session, record, now)
+        await write_audit_event(
+            session,
+            org_id=org.id,
+            actor=f"member:{member.email}",
+            category="auth",
+            action="refresh_token_reuse_detected",
+            metadata={"family_id": str(record.family_id), "token_id": str(record.id)},
+        )
+        await session.commit()
+        clear_refresh_cookie(response, settings)
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="refresh token reuse detected")
+
+    mfa_enabled = await _mfa_enabled(session, member.id)
     access_token = issue_access_token(str(member.id), str(org.id), member.role)
+    record.last_used_at = now
+
+    if record.rotated_at is None:
+        issued = await asyncio.to_thread(
+            issue_refresh_token, ttl_days=settings.jwt_refresh_ttl_days
+        )
+        record.rotated_at = now
+        session.add(
+            RefreshToken(
+                id=issued.id,
+                member_id=member.id,
+                family_id=record.family_id,
+                token_hash=issued.token_hash,
+                expires_at=issued.expires_at,
+                last_used_at=now,
+                user_agent=request_user_agent(request),
+                ip_address=request_ip(request),
+            )
+        )
+        await session.commit()
+        set_refresh_cookie(response, issued.raw_token, settings, issued.expires_at)
+    else:
+        # Inside the grace window: the sibling request already rotated and set
+        # the successor cookie. Rotating again would invalidate it.
+        await session.commit()
+
     return AuthResponse(
         access_token=access_token,
         expires_in=settings.jwt_access_ttl_seconds,
-        member=_serialize_member(member),
-        organization=_serialize_org(org),
+        member=serialize_member(member, mfa_enabled=mfa_enabled),
+        organization=serialize_org(org, viewer_role=member.role),
     )
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(response: Response, request: Request, session: DbSession) -> Response:
     settings = get_settings()
-    refresh_cookie = _refresh_cookie(request, settings)
+    refresh_cookie = read_refresh_cookie(request, settings)
     if refresh_cookie:
         try:
             token_id, _ = parse_refresh_token(refresh_cookie)
             record = await session.get(RefreshToken, token_id)
-            if record is not None and record.revoked_at is None:
-                record.revoked_at = datetime.now(UTC)
+            if record is not None:
+                # Kill the family, not just the presented link: a rotated
+                # predecessor left alive inside the grace window would let the
+                # session be resurrected right after logout.
+                await _revoke_family(session, record, datetime.now(UTC))
                 await session.commit()
         except TokenError:
             pass
-    _clear_refresh_cookie(response, settings)
+    clear_refresh_cookie(response, settings)
     response.status_code = status.HTTP_204_NO_CONTENT
     return response
+
+
+@router.get("/sessions", response_model=list[SessionOut])
+async def list_sessions(
+    member: CurrentMember, request: Request, session: DbSession
+) -> list[SessionOut]:
+    """Active refresh tokens for the caller, newest first."""
+    settings = get_settings()
+    current_id: UUID | None = None
+    cookie = read_refresh_cookie(request, settings)
+    if cookie:
+        try:
+            current_id, _ = parse_refresh_token(cookie)
+        except TokenError:
+            current_id = None
+
+    now = datetime.now(UTC)
+    rows = (
+        await session.scalars(
+            select(RefreshToken)
+            .where(
+                RefreshToken.member_id == member.member_id,
+                RefreshToken.revoked_at.is_(None),
+                RefreshToken.rotated_at.is_(None),
+                RefreshToken.expires_at > now,
+            )
+            .order_by(RefreshToken.created_at.desc())
+        )
+    ).all()
+    return [
+        SessionOut(
+            id=str(row.id),
+            created_at=row.created_at.isoformat(),
+            last_used_at=row.last_used_at.isoformat() if row.last_used_at else None,
+            user_agent=row.user_agent,
+            ip_address=row.ip_address,
+            current=row.id == current_id,
+        )
+        for row in rows
+    ]
+
+
+@router.post("/sessions/revoke-all", status_code=status.HTTP_204_NO_CONTENT)
+async def revoke_all_sessions(
+    member: CurrentMember, response: Response, session: DbSession
+) -> Response:
+    """Sign the member out everywhere.
+
+    Logging out only killed the device you were holding, which is useless when
+    the reason you are logging out is that a different device was stolen.
+    """
+    await session.execute(
+        update(RefreshToken)
+        .where(RefreshToken.member_id == member.member_id, RefreshToken.revoked_at.is_(None))
+        .values(revoked_at=datetime.now(UTC))
+    )
+    await write_audit_event(
+        session,
+        org_id=member.org_id,
+        actor=f"member:{member.email}",
+        category="auth",
+        action="sessions_revoked_all",
+        metadata={},
+    )
+    await session.commit()
+    clear_refresh_cookie(response, get_settings())
+    response.status_code = status.HTTP_204_NO_CONTENT
+    return response
+
+
+@router.post("/switch-org", response_model=AuthResponse)
+async def switch_org(
+    payload: SwitchOrgRequest,
+    member: CurrentMember,
+    response: Response,
+    request: Request,
+    session: DbSession,
+) -> AuthResponse:
+    """Move the session to another org the same email belongs to.
+
+    Switching used to mean logging in again, so staff who cover two hospitals
+    re-typed their password all day and learned to pick a weak one.
+    """
+    target = await session.scalar(
+        select(OrgMember).where(
+            OrgMember.org_id == payload.org_id,
+            OrgMember.email == member.email,
+            OrgMember.status == "active",
+        )
+    )
+    if target is None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="no active membership in that org")
+    org = await session.get(Organization, target.org_id)
+    if org is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="organization missing")
+
+    mfa_enabled = await _mfa_enabled(session, target.id)
+    await write_audit_event(
+        session,
+        org_id=org.id,
+        actor=f"member:{member.email}",
+        category="auth",
+        action="org_switched",
+        metadata={"from_org_id": str(member.org_id)},
+    )
+    return await issue_session(
+        session, response, target, org, request=request, mfa_enabled=mfa_enabled
+    )
+
+
+@router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT)
+async def forgot_password(
+    payload: ForgotPasswordRequest,
+    request: Request,
+    session: DbSession,
+) -> Response:
+    """Mail a single-use reset link.
+
+    Always 204, whatever the address. Any difference in status, body or timing
+    between a known and an unknown address turns this into a directory of who
+    works at the hospital.
+    """
+    email = str(payload.email).lower().strip()
+    limit = await login_rate_limiter.check(request, f"forgot:{email}")
+    if limit.allowed:
+        member = await session.scalar(
+            select(OrgMember)
+            .where(OrgMember.email == email, OrgMember.status == "active")
+            .order_by(OrgMember.created_at.asc())
+            .limit(1)
+        )
+        if member is not None:
+            await _send_password_reset_email(session, member)
+            await session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT)
+async def reset_password(payload: ResetPasswordRequest, session: DbSession) -> Response:
+    now = datetime.now(UTC)
+    try:
+        token_id, secret = parse_token(PASSWORD_RESET_PREFIX, payload.token.strip())
+    except TokenFormatError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="invalid reset token") from exc
+
+    record = await session.get(PasswordResetToken, token_id)
+    if record is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="invalid reset token")
+    secret_ok = await asyncio.to_thread(verify_token_secret, secret, record.token_hash)
+    if not secret_ok:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="invalid reset token")
+    if record.used_at is not None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="reset token already used")
+    if record.expires_at <= now:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="reset token expired")
+
+    member = await session.get(OrgMember, record.member_id)
+    if member is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="invalid reset token")
+    _enforce_password_policy(payload.password, member.email)
+
+    password_hash = await asyncio.to_thread(hash_password, payload.password)
+    record.used_at = now
+    # One address is one identity across orgs — /switch-org already treats it
+    # that way — so a reset must not leave a stale password on a second org.
+    siblings = (
+        await session.scalars(select(OrgMember).where(OrgMember.email == member.email))
+    ).all()
+    for sibling in siblings:
+        sibling.password_hash = password_hash
+        if sibling.status == "invited":
+            sibling.status = "active"
+            sibling.invite_token = None
+            sibling.invite_expires_at = None
+    # A reset is what you do after a compromise; leaving old sessions alive
+    # would hand the attacker the account anyway.
+    await session.execute(
+        update(RefreshToken)
+        .where(
+            RefreshToken.member_id.in_([sibling.id for sibling in siblings]),
+            RefreshToken.revoked_at.is_(None),
+        )
+        .values(revoked_at=now)
+    )
+    await write_audit_event(
+        session,
+        org_id=member.org_id,
+        actor=f"member:{member.email}",
+        category="auth",
+        action="password_reset",
+        metadata={"member_id": str(member.id)},
+    )
+    await session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/verify-email", status_code=status.HTTP_204_NO_CONTENT)
+async def verify_email(payload: VerifyEmailRequest, session: DbSession) -> Response:
+    now = datetime.now(UTC)
+    try:
+        token_id, secret = parse_token(EMAIL_VERIFY_PREFIX, payload.token.strip())
+    except TokenFormatError as exc:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, detail="invalid verification token"
+        ) from exc
+
+    record = await session.get(EmailVerificationToken, token_id)
+    if record is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="invalid verification token")
+    secret_ok = await asyncio.to_thread(verify_token_secret, secret, record.token_hash)
+    if not secret_ok:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="invalid verification token")
+    if record.used_at is not None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="verification token already used")
+    if record.expires_at <= now:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="verification token expired")
+
+    member = await session.get(OrgMember, record.member_id)
+    if member is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="invalid verification token")
+
+    record.used_at = now
+    # Proof of control is proof for the address, not for one membership row.
+    siblings = (
+        await session.scalars(select(OrgMember).where(OrgMember.email == member.email))
+    ).all()
+    for sibling in siblings:
+        if sibling.email_verified_at is None:
+            sibling.email_verified_at = now
+    await session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/resend-verification", status_code=status.HTTP_204_NO_CONTENT)
+async def resend_verification(member: CurrentMember, session: DbSession) -> Response:
+    """Re-send the verification mail for the caller's own address.
+
+    Authenticated rather than taking an email in the body: an open endpoint
+    would both enumerate accounts and let anyone mail-bomb a staff address.
+    """
+    db_member = await session.get(OrgMember, member.member_id)
+    if db_member is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="member missing")
+    if db_member.email_verified_at is None:
+        await _send_verification_email(session, db_member)
+        await session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/me", response_model=AuthResponse)
@@ -334,8 +646,10 @@ async def me(member: CurrentMember, session: DbSession) -> AuthResponse:
     return AuthResponse(
         access_token="",
         expires_in=0,
-        member=_serialize_member(db_member),
-        organization=_serialize_org(org),
+        member=serialize_member(
+            db_member, mfa_enabled=await _mfa_enabled(session, db_member.id)
+        ),
+        organization=serialize_org(org, viewer_role=db_member.role),
     )
 
 
@@ -343,22 +657,24 @@ class OrgListItem(BaseModel):
     id: str
     name: str
     slug: str
-    org_code: str
     role: str
 
 
-@router.get("/my-orgs")
-async def my_orgs(email: str, session: DbSession) -> list[OrgListItem]:
-    """List all organizations an email belongs to (unauthenticated, for org picker)."""
-    normalized = email.lower().strip()
+@router.get("/my-orgs", response_model=list[OrgListItem])
+async def my_orgs(member: CurrentMember, session: DbSession) -> list[OrgListItem]:
+    """List organizations for the authenticated member's email."""
     members = (
         await session.scalars(
             select(OrgMember).where(
-                OrgMember.email == normalized,
+                OrgMember.email == member.email,
                 OrgMember.status == "active",
             )
         )
     ).all()
+    return await _org_choices(session, list(members))
+
+
+async def _org_choices(session: AsyncSession, members: list[OrgMember]) -> list[OrgListItem]:
     results: list[OrgListItem] = []
     for m in members:
         org = await session.get(Organization, m.org_id)
@@ -368,8 +684,112 @@ async def my_orgs(email: str, session: DbSession) -> list[OrgListItem]:
                     id=str(org.id),
                     name=org.name,
                     slug=org.slug,
-                    org_code=org.org_code,
                     role=m.role,
                 )
             )
     return results
+
+
+async def _login_members(
+    session: AsyncSession, email: str, org_slug: str | None
+) -> list[OrgMember]:
+    if org_slug:
+        org_id = await session.scalar(
+            select(Organization.id).where(Organization.slug == _slugify(org_slug))
+        )
+        if org_id is None:
+            return []
+        member = await session.scalar(
+            select(OrgMember).where(
+                OrgMember.org_id == org_id,
+                OrgMember.email == email,
+                OrgMember.status == "active",
+            )
+        )
+        return [member] if member is not None else []
+
+    rows = (
+        await session.scalars(
+            select(OrgMember).where(OrgMember.email == email, OrgMember.status == "active")
+        )
+    ).all()
+    return list(rows)
+
+
+async def _audit_login_lockout(
+    session: AsyncSession,
+    *,
+    email: str,
+    org_slug: str | None,
+    retry_after_seconds: int,
+) -> None:
+    members = await _login_members(session, email, org_slug)
+    seen_orgs: set[object] = set()
+    for member in members:
+        if member.org_id in seen_orgs:
+            continue
+        seen_orgs.add(member.org_id)
+        await write_audit_event(
+            session,
+            org_id=member.org_id,
+            actor=f"login:{email}",
+            category="auth",
+            action="login_rate_limited",
+            metadata={"email": email, "retry_after_seconds": retry_after_seconds},
+        )
+    if seen_orgs:
+        await session.commit()
+
+
+async def _revoke_family(session: AsyncSession, record: RefreshToken, now: datetime) -> None:
+    await session.execute(
+        update(RefreshToken)
+        .where(RefreshToken.family_id == record.family_id, RefreshToken.revoked_at.is_(None))
+        .values(revoked_at=now)
+    )
+
+
+async def _send_password_reset_email(session: AsyncSession, member: OrgMember) -> None:
+    settings = get_settings()
+    issued = await asyncio.to_thread(
+        issue_token,
+        PASSWORD_RESET_PREFIX,
+        ttl=timedelta(seconds=settings.password_reset_ttl_seconds),
+    )
+    session.add(
+        PasswordResetToken(
+            id=issued.id,
+            member_id=member.id,
+            token_hash=issued.token_hash,
+            expires_at=issued.expires_at,
+        )
+    )
+    subject, body = password_reset_email(
+        base_url=settings.app_base_url,
+        token=issued.raw_token,
+        ttl_seconds=settings.password_reset_ttl_seconds,
+    )
+    await send_quietly(get_mailer(), to=member.email, subject=subject, body=body)
+
+
+async def _send_verification_email(session: AsyncSession, member: OrgMember) -> None:
+    settings = get_settings()
+    issued = await asyncio.to_thread(
+        issue_token,
+        EMAIL_VERIFY_PREFIX,
+        ttl=timedelta(hours=settings.email_verification_ttl_hours),
+    )
+    session.add(
+        EmailVerificationToken(
+            id=issued.id,
+            member_id=member.id,
+            token_hash=issued.token_hash,
+            expires_at=issued.expires_at,
+        )
+    )
+    subject, body = email_verification_email(
+        base_url=settings.app_base_url,
+        token=issued.raw_token,
+        ttl_hours=settings.email_verification_ttl_hours,
+    )
+    await send_quietly(get_mailer(), to=member.email, subject=subject, body=body)

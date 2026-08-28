@@ -32,6 +32,7 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
     settings = get_settings()
     configure_logging()
     await asyncio.to_thread(ensure_private_dir, settings.attachment_temp_dir)
+    await asyncio.to_thread(ensure_private_dir, settings.quarantine_storage_dir)
     yield
     await close_engine()
 

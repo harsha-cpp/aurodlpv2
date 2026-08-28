@@ -1,0 +1,220 @@
+[
+  {
+    "id": "adv-room-code-001",
+    "category": "false_positive_trap",
+    "subject": "Clinical meeting moved to room A12",
+    "body": [
+      "The clinical governance meeting has moved to room A12 on the second floor.",
+      "Please update your calendars. The patient safety agenda is unchanged."
+    ],
+    "expect_phi": false,
+    "notes": "A12 is not a valid ICD-10 code and the room number is not a diagnosis."
+  },
+  {
+    "id": "adv-vitamin-001",
+    "category": "false_positive_trap",
+    "subject": "Vitamin B12 stock",
+    "body": [
+      "The pharmacy is low on vitamin B12 injections. Reorder raised with the supplier.",
+      "Oral supplements remain available for the outpatient clinic."
+    ],
+    "expect_phi": false,
+    "notes": "B12 in a medication context reads as an ICD-10 code to a bare regex."
+  },
+  {
+    "id": "adv-ward-code-001",
+    "category": "false_positive_trap",
+    "subject": "Ward C21 deep clean",
+    "body": [
+      "Ward C21 is closed for a deep clean on Saturday. Ward B14 will absorb the",
+      "overflow. Housekeeping has been briefed and the schedule is on the noticeboard."
+    ],
+    "expect_phi": false
+  },
+  {
+    "id": "adv-invoice-14-digit-001",
+    "category": "false_positive_trap",
+    "subject": "Vendor invoice 12345678901234",
+    "body": [
+      "Please process vendor invoice 12345678901234 for the linen contract.",
+      "The purchase order reference is on the second page of the attachment."
+    ],
+    "expect_phi": false,
+    "notes": "Fourteen digits with no health context. The raw ABHA pattern grabs this today."
+  },
+  {
+    "id": "adv-transaction-ref-001",
+    "category": "false_positive_trap",
+    "subject": "Payment confirmation",
+    "body": [
+      "The transfer to the equipment supplier has gone through.",
+      "Transaction reference 45678912345678, value date today. Bank confirmation is",
+      "attached for the accounts file."
+    ],
+    "expect_phi": false
+  },
+  {
+    "id": "adv-order-id-001",
+    "category": "false_positive_trap",
+    "subject": "Stationery order HSP-2026-0012",
+    "body": [
+      "Order HSP-2026-0012 for stationery has been delivered to the store.",
+      "Please acknowledge receipt so accounts can release the payment."
+    ],
+    "expect_phi": false,
+    "notes": "Matches the default MRN pattern exactly. A purchase order is not a patient record."
+  },
+  {
+    "id": "adv-asset-tag-001",
+    "category": "false_positive_trap",
+    "subject": "Asset tag SMH-2026-004999 retired",
+    "body": [
+      "The old ultrasound machine, asset tag SMH-2026-004999, has been decommissioned",
+      "and removed from the register. Disposal certificate is with biomedical."
+    ],
+    "expect_phi": false,
+    "notes": "Same shape as the prefixed patient ID, different meaning entirely."
+  },
+  {
+    "id": "adv-invalid-aadhaar-001",
+    "category": "false_positive_trap",
+    "subject": "Test data in the staging system",
+    "body": [
+      "The staging database has placeholder values like 2345 6789 0123 in the Aadhaar",
+      "column. They fail checksum validation and should be cleared before the demo."
+    ],
+    "expect_phi": false,
+    "notes": "Checksum-invalid Aadhaar. Rejecting it is correct precision behaviour."
+  },
+  {
+    "id": "adv-repeated-digits-001",
+    "category": "false_positive_trap",
+    "subject": "Form defaults",
+    "body": [
+      "Several forms were submitted with 1111 1111 1111 typed into the Aadhaar field",
+      "as a placeholder. The data entry team has been told to leave it blank instead."
+    ],
+    "expect_phi": false
+  },
+  {
+    "id": "adv-pincode-001",
+    "category": "false_positive_trap",
+    "subject": "Courier address correction",
+    "body": [
+      "The courier has the wrong PIN code for the branch. It should be 560103, not",
+      "560013. Please update the address on the dispatch labels."
+    ],
+    "expect_phi": false
+  },
+  {
+    "id": "adv-amounts-001",
+    "category": "false_positive_trap",
+    "subject": "Budget figures for the quarter",
+    "body": [
+      "Capital budget 9845000000 rupees against a revised estimate of 8420000000.",
+      "The variance note is with finance. Board review is on the 30th."
+    ],
+    "expect_phi": false,
+    "notes": "Ten-digit figures starting 9 and 8 look exactly like Indian mobile numbers."
+  },
+  {
+    "id": "adv-version-numbers-001",
+    "category": "false_positive_trap",
+    "subject": "HIS release notes v2.14",
+    "body": [
+      "Release v2.14 goes out this weekend. It includes fixes to the billing module",
+      "and the report scheduler. Known issue K21 in the tracker is deferred to v2.15."
+    ],
+    "expect_phi": false,
+    "notes": "K21 without a decimal is a valid ICD-10 category code, but this is a bug tracker."
+  },
+  {
+    "id": "adv-equipment-model-001",
+    "category": "false_positive_trap",
+    "subject": "Monitor model E11 quotation",
+    "body": [
+      "The vendor has quoted for the E11 series patient monitors, twelve units.",
+      "Comparison with the J18 series from the other supplier is attached."
+    ],
+    "expect_phi": false,
+    "notes": "E11 and J18 are real ICD-10 categories used here as equipment model numbers."
+  },
+  {
+    "id": "adv-date-range-001",
+    "category": "false_positive_trap",
+    "subject": "Audit window",
+    "body": [
+      "The internal audit covers 01/04/2025 to 31/03/2026. Departments should keep",
+      "their registers available for that period. Sampling starts next month."
+    ],
+    "expect_phi": false,
+    "notes": "Dates that are not dates of birth."
+  },
+  {
+    "id": "adv-staff-email-001",
+    "category": "false_positive_trap",
+    "subject": "Contact for the new intranet",
+    "body": [
+      "Queries about the new intranet should go to helpdesk@sunrisehospital.in rather",
+      "than to individual IT staff. The old alias stops working at the end of the month."
+    ],
+    "expect_phi": false,
+    "ignore_types": ["EMAIL_ADDRESS"],
+    "notes": "An internal service address is not patient data; detecting it is harmless, treating it as PHI is not."
+  },
+  {
+    "id": "adv-mixed-clean-001",
+    "category": "false_positive_trap",
+    "subject": "Ward B12 stock of vitamin B12 in room A12",
+    "body": [
+      "Deliberately awkward: ward B12 needs vitamin B12 stock delivered to room A12.",
+      "Housekeeping will move the trolley after the morning round."
+    ],
+    "expect_phi": false,
+    "notes": "Three ICD-shaped tokens in one clean sentence."
+  },
+  {
+    "id": "adv-near-pan-001",
+    "category": "false_positive_trap",
+    "subject": "Serial numbers for warranty",
+    "body": [
+      "Warranty claim needs the serial numbers: SN-4471982-KL and SN-4471983-KL.",
+      "Both units are from the same batch and failed within the warranty period."
+    ],
+    "expect_phi": false
+  },
+  {
+    "id": "adv-twelve-digit-ref-001",
+    "category": "false_positive_trap",
+    "subject": "GST filing reference",
+    "body": [
+      "The GST return acknowledgement reference is 174829105538 for last month.",
+      "Keep it with the filing records for the annual reconciliation."
+    ],
+    "expect_phi": false,
+    "notes": "Twelve digits that are not an Aadhaar - checksum is the only thing separating them."
+  },
+  {
+    "id": "adv-clinical-words-no-patient-001",
+    "category": "false_positive_trap",
+    "subject": "Diagnosis coding training",
+    "body": [
+      "Refresher training on diagnosis coding for the clinical coders.",
+      "We will cover the difference between principal and secondary diagnoses, and",
+      "common errors in coding diabetes and hypertension. No live records will be used."
+    ],
+    "expect_phi": false,
+    "notes": "Maximum clinical vocabulary density with zero patient data."
+  },
+  {
+    "id": "adv-abha-word-only-001",
+    "category": "false_positive_trap",
+    "subject": "ABHA integration status",
+    "body": [
+      "The ABHA integration is now live in registration. Health ID creation takes about",
+      "ninety seconds per patient. Training material is on the intranet."
+    ],
+    "expect_phi": false,
+    "notes": "The trigger words are present with no identifier to attach them to."
+  }
+]

@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
-import { ApiError } from '../lib/api';
+import { errorMessage } from '../lib/errors';
 
 export default function SignupRoute() {
   const { signup } = useAuth();
@@ -22,8 +22,7 @@ export default function SignupRoute() {
       await signup({ org_name: orgName, email, password, name: name || undefined });
       navigate('/onboarding', { replace: true });
     } catch (err) {
-      const detail = err instanceof ApiError ? err.detail : 'Signup failed';
-      setError(typeof detail === 'string' ? detail : 'Could not create account');
+      setError(errorMessage(err, 'Could not create account'));
     } finally {
       setSubmitting(false);
     }
@@ -76,10 +75,10 @@ export default function SignupRoute() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              minLength={8}
+              minLength={12}
               autoComplete="new-password"
             />
-            <span className="hint">Minimum 8 characters.</span>
+            <span className="hint">At least 12 characters. The server rejects common passwords.</span>
           </div>
           {error && <div className="error">{error}</div>}
           <button type="submit" className="btn btn-primary w-full" disabled={submitting}>

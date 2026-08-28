@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { membersApi } from '../api/members';
 import { useAuth } from '../lib/auth';
-import { ApiError } from '../lib/api';
+import { errorMessage } from '../lib/errors';
 
 export default function AcceptInviteRoute() {
   const [params] = useSearchParams();
@@ -32,8 +32,7 @@ export default function AcceptInviteRoute() {
       await login({ email: accepted.member.email, password, org_slug: accepted.org_slug });
       navigate('/', { replace: true });
     } catch (err) {
-      const detail = err instanceof ApiError ? err.detail : 'Could not accept invite';
-      setError(typeof detail === 'string' ? detail : 'Invite invalid or expired');
+      setError(errorMessage(err, 'Invite invalid or expired'));
     } finally {
       setSubmitting(false);
     }
@@ -64,10 +63,10 @@ export default function AcceptInviteRoute() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              minLength={8}
+              minLength={12}
               autoComplete="new-password"
             />
-            <span className="hint">Minimum 8 characters.</span>
+            <span className="hint">At least 12 characters. The server rejects common passwords.</span>
           </div>
           {error && <div className="error">{error}</div>}
           <button type="submit" className="btn btn-primary w-full" disabled={submitting || !token}>

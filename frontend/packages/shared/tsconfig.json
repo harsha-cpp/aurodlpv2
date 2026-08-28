@@ -4,7 +4,11 @@
     "outDir": "dist",
     "rootDir": "src",
     "composite": true,
-    "declaration": true
+    "declaration": true,
+    "resolveJsonModule": true
   },
-  "include": ["src/**/*"]
+  "include": [
+    "src/**/*",
+    "src/**/*.json"
+  ]
 }

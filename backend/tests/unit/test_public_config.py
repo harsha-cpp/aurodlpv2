@@ -7,6 +7,7 @@ import pytest
 
 from aurodlpv2_backend.db.models import ApprovedDomain, Organization
 from aurodlpv2_backend.public.api import get_public_config
+from aurodlpv2_backend.settings import Settings
 
 
 class _ScalarRows:
@@ -56,3 +57,30 @@ async def test_public_config_never_returns_blocked_or_sender_only_domains_as_all
 
     assert [domain.domain for domain in config.domains] == ["allowed.example"]
     assert [domain.domain for domain in config.blocked_domains] == ["blocked.example"]
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("https://a.example,https://b.example", ["https://a.example", "https://b.example"]),
+        ('["https://c.example"]', ["https://c.example"]),
+        ("https://d.example", ["https://d.example"]),
+        ("", []),
+        ("  https://e.example ,  https://f.example  ", ["https://e.example", "https://f.example"]),
+    ],
+)
+def test_list_settings_accept_csv_and_json(
+    monkeypatch: pytest.MonkeyPatch,
+    raw: str,
+    expected: list[str],
+) -> None:
+    """A deployer writing CORS_ORIGINS=a,b must not get a container that
+    refuses to boot.
+
+    pydantic-settings JSON-decodes complex fields inside the source, before any
+    field_validator runs, so the comma-splitting validator that looked like it
+    handled this was dead code.
+    """
+    monkeypatch.setenv("CORS_ORIGINS", raw)
+    assert Settings().cors_origins == expected

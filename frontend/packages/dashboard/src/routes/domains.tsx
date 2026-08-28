@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { domainsApi, type ApprovedDomain, type DomainDirection, type DomainClass } from '../api/domains';
-import { ApiError } from '../lib/api';
+import { errorMessage } from '../lib/errors';
 import { useAuth } from '../lib/auth';
 
 const DIRECTIONS: DomainDirection[] = ['both', 'sender', 'recipient'];
@@ -9,7 +9,9 @@ const CLASSES: DomainClass[] = ['partner', 'internal', 'blocked'];
 
 export default function DomainsRoute() {
   const qc = useQueryClient();
-  const { organization } = useAuth();
+  const { organization, can } = useAuth();
+  const canEdit = can('editDomains');
+  const canDelete = can('deleteDomains');
   const { data, isLoading } = useQuery({ queryKey: ['domains'], queryFn: domainsApi.list });
 
   const create = useMutation({
@@ -45,7 +47,7 @@ export default function DomainsRoute() {
       setDomain('');
       setNotes('');
     } catch (err) {
-      setFormError(err instanceof ApiError ? String(err.detail) : 'Failed to add domain');
+      setFormError(errorMessage(err, 'Failed to add domain'));
     }
   }
 
@@ -56,7 +58,7 @@ export default function DomainsRoute() {
       await create.mutateAsync({ domain: email.trim().toLowerCase(), direction: 'both', classification: 'partner' });
       setEmail('');
     } catch (err) {
-      setEmailError(err instanceof ApiError ? String(err.detail) : 'Failed to add email');
+      setEmailError(errorMessage(err, 'Failed to add email'));
     }
   }
 
@@ -69,11 +71,19 @@ export default function DomainsRoute() {
         </div>
         {organization && (
           <div className="badge" style={{ fontFamily: 'monospace' }}>
-            {organization.name} · {organization.org_code}
+            {organization.name}
           </div>
         )}
       </div>
 
+      {!canEdit && (
+        <div className="callout" style={{ marginBottom: 24 }}>
+          Your role can read this list but not change it. Ask an owner, admin or analyst to add a
+          domain.
+        </div>
+      )}
+
+      {canEdit && (
       <div className="card" style={{ marginBottom: 24 }}>
         <h2 className="h2" style={{ marginBottom: 12 }}>Add domain</h2>
         <form onSubmit={onAdd} className="row gap-3" style={{ flexWrap: 'wrap', alignItems: 'flex-end' }}>
@@ -110,6 +120,7 @@ export default function DomainsRoute() {
         </form>
         {formError && <div className="error" style={{ marginTop: 12 }}>{formError}</div>}
       </div>
+      )}
 
       <div className="card">
         <h2 className="h2" style={{ marginBottom: 12 }}>Configured ({domainRows.length})</h2>
@@ -133,6 +144,8 @@ export default function DomainsRoute() {
                   domain={d}
                   onUpdate={(body) => update.mutate({ id: d.id, body })}
                   onDelete={() => remove.mutate(d.id)}
+                  canEdit={canEdit}
+                  canDelete={canDelete}
                   busy={update.isPending || remove.isPending}
                 />
               ))}
@@ -146,6 +159,7 @@ export default function DomainsRoute() {
         <p className="muted" style={{ marginBottom: 12 }}>
           Allow individual addresses (e.g. Gmail) to receive sensitive emails — even without owning a domain.
         </p>
+        {canEdit && (
         <form onSubmit={onAddEmail} className="row gap-3" style={{ flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 16 }}>
           <div className="field grow" style={{ minWidth: 240 }}>
             <label className="label">Email address</label>
@@ -162,6 +176,7 @@ export default function DomainsRoute() {
             {create.isPending ? 'Adding…' : 'Add email'}
           </button>
         </form>
+        )}
         {emailError && <div className="error" style={{ marginBottom: 12 }}>{emailError}</div>}
 
         {!isLoading && emailRows.length === 0 && <span className="subtle">No whitelisted emails yet.</span>}
@@ -178,14 +193,16 @@ export default function DomainsRoute() {
                 <tr key={d.id}>
                   <td className="mono">{d.domain}</td>
                   <td className="text-right">
-                    <button
-                      type="button"
-                      className="btn btn-danger btn-sm"
-                      onClick={() => remove.mutate(d.id)}
-                      disabled={remove.isPending}
-                    >
-                      Remove
-                    </button>
+                    {canDelete && (
+                      <button
+                        type="button"
+                        className="btn btn-danger btn-sm"
+                        onClick={() => remove.mutate(d.id)}
+                        disabled={remove.isPending}
+                      >
+                        Remove
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -201,11 +218,15 @@ function DomainRow({
   domain,
   onUpdate,
   onDelete,
+  canEdit,
+  canDelete,
   busy,
 }: {
   domain: ApprovedDomain;
   onUpdate: (body: { direction?: DomainDirection; classification?: DomainClass; notes?: string }) => void;
   onDelete: () => void;
+  canEdit: boolean;
+  canDelete: boolean;
   busy: boolean;
 }) {
   return (
@@ -215,8 +236,9 @@ function DomainRow({
         <select
           className="select"
           value={domain.direction}
+          aria-label={`Direction for ${domain.domain}`}
           onChange={(e) => onUpdate({ direction: e.target.value as DomainDirection })}
-          disabled={busy}
+          disabled={busy || !canEdit}
         >
           {DIRECTIONS.map((d) => <option key={d} value={d}>{d}</option>)}
         </select>
@@ -225,17 +247,20 @@ function DomainRow({
         <select
           className="select"
           value={domain.classification}
+          aria-label={`Classification for ${domain.domain}`}
           onChange={(e) => onUpdate({ classification: e.target.value as DomainClass })}
-          disabled={busy}
+          disabled={busy || !canEdit}
         >
           {CLASSES.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
       </td>
       <td className="subtle" style={{ fontSize: 13 }}>{domain.notes || '—'}</td>
       <td className="text-right">
-        <button type="button" className="btn btn-danger btn-sm" onClick={onDelete} disabled={busy}>
-          Remove
-        </button>
+        {canDelete && (
+          <button type="button" className="btn btn-danger btn-sm" onClick={onDelete} disabled={busy}>
+            Remove
+          </button>
+        )}
       </td>
     </tr>
   );

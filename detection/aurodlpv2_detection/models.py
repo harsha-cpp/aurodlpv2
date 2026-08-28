@@ -12,6 +12,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 Severity = Literal["none", "low", "medium", "high", "critical"]
+EntitySource = Literal["body", "subject", "attachment"]
 
 
 class Attachment(BaseModel):
@@ -42,7 +43,7 @@ class Entity(BaseModel):
     type: str
     masked_value: str
     confidence: float = Field(ge=0.0, le=1.0)
-    source: Literal["body", "subject", "attachment"]
+    source: EntitySource
     attachment_id: str | None = None
     start: int | None = None
     end: int | None = None

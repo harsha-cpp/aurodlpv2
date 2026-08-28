@@ -11,7 +11,7 @@ dependencies = [
     # Web
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.32.0",
-    "starlette>=0.41.0",
+    "starlette>=1.0.1",
     "pydantic>=2.9.0",
     "pydantic-settings>=2.6.0",
     "python-multipart>=0.0.17",
@@ -27,13 +27,17 @@ dependencies = [
     "flower>=2.0.1",
     # Auth
     "google-auth>=2.35.0",
-    "pyjwt[crypto]>=2.9.0",
+    "pyjwt[crypto]>=2.13.0",
     "argon2-cffi>=23.1.0",
+    "pyotp>=2.9.0",
+    # Outbound mail (invites, password reset, email verification)
+    "aiosmtplib>=3.0.2",
     # Detection (local package)
     "aurodlpv2-detection",
     # Files / MIME
     "python-magic>=0.4.27",
     "aiofiles>=24.1.0",
+    "boto3>=1.35.0",
     # Observability
     "structlog>=24.4.0",
     "prometheus-client>=0.21.0",

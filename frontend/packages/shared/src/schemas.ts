@@ -5,6 +5,7 @@ export const severitySchema = z.enum(['none', 'low', 'medium', 'high', 'critical
 export const recipientClassSchema = z.enum([
   'internal',
   'approved_partner',
+  'blocked',
   'external',
   'public_email',
   'unknown',
@@ -33,14 +34,15 @@ export const verdictSchema = z.object({
   recipients: z.array(recipientHitSchema),
   user_message: z.string(),
   created_at: z.string(),
+  quarantine_id: z.string().nullable().optional(),
+  degraded: z.boolean().optional(),
 });
 
 export const attachmentUploadResultSchema = z.object({
-  scan_id: z.string(),
-  status: z.enum(['scanned', 'queued']),
-  filename: z.string(),
-  size_bytes: z.number(),
-  mime_type: z.string(),
+  attachment_scan_id: z.string(),
+  status: z.enum(['scanned', 'queued', 'failed']),
+  verdict: verdictSchema.nullable().optional(),
+  error: z.string().nullable().optional(),
 });
 
 export const authTokensSchema = z.object({
@@ -49,11 +51,12 @@ export const authTokensSchema = z.object({
   token_type: z.literal('Bearer'),
 });
 
+export const memberRoleSchema = z.enum(['owner', 'admin', 'analyst', 'viewer']);
+
 export const userProfileSchema = z.object({
   user_id: z.string(),
   email: z.string().email(),
   name: z.string(),
-  workspace_id: z.string(),
-  role: z.enum(['user', 'analyst', 'admin', 'super_admin']),
+  org_id: z.string(),
+  role: memberRoleSchema,
 });
-

@@ -1,0 +1,146 @@
+{
+  "clean_false_alarm_rate": 0.0,
+  "document": {
+    "f1": 0.9934,
+    "precision": 1.0,
+    "recall": 0.9868,
+    "support": 76.0
+  },
+  "documents": 116,
+  "duplicate_inflation": 1.0311,
+  "entity_total": {
+    "f1": 0.9822,
+    "precision": 1.0,
+    "recall": 0.9651,
+    "support": 172.0
+  },
+  "generated_at": "2026-08-28T12:45:12.144653+00:00",
+  "per_type": {
+    "ABHA_ADDRESS": {
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 3.0
+    },
+    "ABHA_NUMBER": {
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 7.0
+    },
+    "BANK_ACCOUNT": {
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 2.0
+    },
+    "DATE_OF_BIRTH": {
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 4.0
+    },
+    "EMAIL_ADDRESS": {
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 3.0
+    },
+    "ICD10": {
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 24.0
+    },
+    "INSURANCE_POLICY": {
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 8.0
+    },
+    "IN_AADHAAR": {
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 12.0
+    },
+    "IN_DRIVING_LICENSE": {
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 2.0
+    },
+    "IN_GSTIN": {
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 1.0
+    },
+    "IN_IFSC": {
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 2.0
+    },
+    "IN_PAN": {
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 4.0
+    },
+    "IN_PASSPORT": {
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 2.0
+    },
+    "IN_PHONE": {
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 10.0
+    },
+    "IN_UPI": {
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 2.0
+    },
+    "IN_VOTER_ID": {
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 1.0
+    },
+    "LAB_ACCESSION": {
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 3.0
+    },
+    "MEDICAL_LICENSE": {
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 3.0
+    },
+    "MRN": {
+      "f1": 0.9383,
+      "precision": 1.0,
+      "recall": 0.8837,
+      "support": 43.0
+    },
+    "PATIENT_VISIT_ID": {
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "support": 6.0
+    },
+    "PERSON": {
+      "f1": 0.9831,
+      "precision": 1.0,
+      "recall": 0.9667,
+      "support": 30.0
+    }
+  }
+}

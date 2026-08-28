@@ -9,23 +9,31 @@ authors = [{ name = "Auro Healthcare DLP" }]
 
 dependencies = [
     "pydantic>=2.9.0",
-    "presidio-analyzer>=2.2.355",
-    "presidio-anonymizer>=2.2.355",
     "spacy>=3.7.6",
     "python-stdnum>=1.20",
     "simple-icd-10-cm>=1.5.0,<2.0.0",
     "pymupdf>=1.24.10",
     "python-docx>=1.1.2",
     "openpyxl>=3.1.5",
+    "xlrd>=2.0.1",
+    "python-pptx>=1.0.2",
+    "striprtf>=0.0.28",
+    "chardet>=5.2.0",
     "Pillow>=11.0.0",
     "python-magic>=0.4.27",
     "regex>=2024.9.11",
     "structlog>=24.4.0",
+    # Kept out of the optional `ocr` extra deliberately: without it, OCR
+    # returns "" and scanned documents pass clean.
+    "pytesseract>=0.3.13",
+    # The spaCy model is a hard dependency, not a runtime download. Without it
+    # the engine silently degrades to a blank tokenizer and stops detecting
+    # names entirely, which is exactly how the previous build shipped.
+    "en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl",
 ]
 
 [project.optional-dependencies]
 ocr = [
-    "pytesseract>=0.3.13",
     "paddlepaddle>=2.6.2",
     "paddleocr>=2.8.1",
     "opencv-python-headless>=4.10.0",
@@ -46,6 +54,10 @@ dev = [
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+# The spaCy model ships as a wheel URL rather than from PyPI.
+allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["aurodlpv2_detection"]

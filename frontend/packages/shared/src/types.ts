@@ -3,6 +3,7 @@ export type Severity = 'none' | 'low' | 'medium' | 'high' | 'critical';
 export type RecipientClass =
   | 'internal'
   | 'approved_partner'
+  | 'blocked'
   | 'external'
   | 'public_email'
   | 'unknown';
@@ -30,24 +31,33 @@ export interface Verdict {
   recipients: RecipientHit[];
   user_message: string;
   created_at: string;
+  quarantine_id?: string | null | undefined;
+  degraded?: boolean | undefined;
 }
 
 export interface ScanEmailPayload {
+  org_code: string;
+  client_scan_id: string;
   subject: string;
   body: string;
   recipients: string[];
+  user_email?: string | undefined;
 }
 
 export interface AttachmentUploadResult {
-  scan_id: string;
-  status: 'scanned' | 'queued';
-  filename: string;
-  size_bytes: number;
-  mime_type: string;
+  attachment_scan_id: string;
+  status: 'scanned' | 'queued' | 'failed';
+  verdict?: Verdict | null | undefined;
+  error?: string | null | undefined;
 }
 
 export interface ScanFinalizePayload {
-  scan_id: string;
+  org_code: string;
+  client_scan_id: string;
+  subject: string;
+  body: string;
+  recipients: string[];
+  user_email?: string | undefined;
   attachment_scan_ids: string[];
 }
 
@@ -57,10 +67,12 @@ export interface AuthTokens {
   token_type: 'Bearer';
 }
 
+export type MemberRole = 'owner' | 'admin' | 'analyst' | 'viewer';
+
 export interface UserProfile {
   user_id: string;
   email: string;
   name: string;
-  workspace_id: string;
-  role: 'user' | 'analyst' | 'admin' | 'super_admin';
+  org_id: string;
+  role: MemberRole;
 }

@@ -28,7 +28,10 @@ class RecognizerConfig(BaseModel):
 
 
 class NlpConfig(BaseModel):
-    spacy_model: str = "en_core_web_lg"
+    # en_core_web_sm ships as a declared dependency. en_core_web_lg is a drop-in
+    # upgrade for tenants who install it and want better name recall.
+    spacy_model: str = "en_core_web_sm"
+    use_ner: bool = True
     medical_ner_context_boost: bool = False
     context_boost_multiplier: float = 1.15
 

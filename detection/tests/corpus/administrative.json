@@ -1,0 +1,487 @@
+[
+  {
+    "id": "admin-preauth-001",
+    "category": "insurance_preauth",
+    "subject": "Pre-auth request - policy P/181234/12/2026/004567",
+    "body": [
+      "To the TPA desk,",
+      "",
+      "Raising pre-authorisation for Mrs Lakshmi Devi, UHID 0024518.",
+      "Policy number: P/181234/12/2026/004567",
+      "Planned procedure: coronary angiography",
+      "Provisional diagnosis: essential hypertension (I10) with unstable angina",
+      "Estimated cost: INR 85,000",
+      "",
+      "Aadhaar and PAN copies attached as required by the insurer."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "PERSON",
+        "value": "Lakshmi Devi"
+      },
+      {
+        "type": "MRN",
+        "value": "0024518"
+      },
+      {
+        "type": "INSURANCE_POLICY",
+        "value": "P/181234/12/2026/004567"
+      },
+      {
+        "type": "ICD10",
+        "value": "I10"
+      }
+    ]
+  },
+  {
+    "id": "admin-claim-001",
+    "category": "insurance_claim",
+    "subject": "Claim rejection - need documents",
+    "body": [
+      "The insurer has queried claim CLM-2026-778120 for patient Ramesh Kumar Iyer.",
+      "They want the discharge summary and the PAN copy. PAN on record is HKPPS5875Q.",
+      "Policy: GHS/2026/0091823.",
+      "Please resubmit before Friday or the claim lapses."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "PERSON",
+        "value": "Ramesh Kumar Iyer"
+      },
+      {
+        "type": "IN_PAN",
+        "value": "HKPPS5875Q"
+      },
+      {
+        "type": "INSURANCE_POLICY",
+        "value": "GHS/2026/0091823"
+      },
+      {
+        "type": "INSURANCE_POLICY",
+        "value": "CLM-2026-778120"
+      }
+    ]
+  },
+  {
+    "id": "admin-registration-001",
+    "category": "patient_registration",
+    "subject": "New registration - documents verified",
+    "body": [
+      "Registered Sunita Bhatt today, UHID 0031902.",
+      "Aadhaar 8534 4210 7545 verified against the physical card.",
+      "Mobile 9845567788, email sunita.bhatt91@gmail.com.",
+      "ABHA 73-3007-0131-6094 linked at registration."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "PERSON",
+        "value": "Sunita Bhatt"
+      },
+      {
+        "type": "MRN",
+        "value": "0031902"
+      },
+      {
+        "type": "IN_AADHAAR",
+        "value": "8534 4210 7545"
+      },
+      {
+        "type": "IN_PHONE",
+        "value": "9845567788"
+      },
+      {
+        "type": "EMAIL_ADDRESS",
+        "value": "sunita.bhatt91@gmail.com"
+      },
+      {
+        "type": "ABHA_NUMBER",
+        "value": "73-3007-0131-6094"
+      }
+    ],
+    "notes": "Registration desk mail - the highest-density PHI message in a hospital."
+  },
+  {
+    "id": "admin-registration-002",
+    "category": "patient_registration",
+    "subject": "Aadhaar without spaces",
+    "body": [
+      "The scanned form has the Aadhaar typed as 2199200018 39 in one place and",
+      "219920001839 in another. Please correct the record to the unspaced form and",
+      "re-verify against the card."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "IN_AADHAAR",
+        "value": "219920001839"
+      }
+    ],
+    "notes": "Unspaced Aadhaar. The mis-typed variant is deliberately not labelled."
+  },
+  {
+    "id": "admin-refund-001",
+    "category": "billing",
+    "subject": "Refund - bank details",
+    "body": [
+      "Approved refund of INR 12,400 for UHID 0027741.",
+      "Account holder: Anand Prakash Joshi",
+      "Account number: 50100234567891",
+      "IFSC: NBEF0A9M3FI",
+      "Please process in this week's batch."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "MRN",
+        "value": "0027741"
+      },
+      {
+        "type": "PERSON",
+        "value": "Anand Prakash Joshi"
+      },
+      {
+        "type": "BANK_ACCOUNT",
+        "value": "50100234567891"
+      },
+      {
+        "type": "IN_IFSC",
+        "value": "NBEF0A9M3FI"
+      }
+    ],
+    "notes": "The 14-digit account number is exactly the shape the raw ABHA pattern grabs."
+  },
+  {
+    "id": "admin-refund-002",
+    "category": "billing",
+    "subject": "UPI refund instead",
+    "body": [
+      "Patient has asked for the refund by UPI rather than bank transfer.",
+      "UPI ID given at the counter: meera.sundaram@okhdfcbank",
+      "Amount INR 3,200 against UHID 0019488. Confirm once sent."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "IN_UPI",
+        "value": "meera.sundaram@okhdfcbank"
+      },
+      {
+        "type": "MRN",
+        "value": "0019488"
+      }
+    ]
+  },
+  {
+    "id": "admin-corporate-001",
+    "category": "billing",
+    "subject": "Corporate billing - GST details",
+    "body": [
+      "For the corporate health check billing, the employer's GSTIN is 29ILVPC5151I1ZI.",
+      "Employee UHID list is 0038001 through 0038014. Package rate applies.",
+      "Invoice to be raised against the corporate account, not the individuals."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "IN_GSTIN",
+        "value": "29ILVPC5151I1ZI"
+      },
+      {
+        "type": "MRN",
+        "value": "0038001"
+      },
+      {
+        "type": "MRN",
+        "value": "0038014"
+      }
+    ],
+    "ignore_types": [
+      "IN_PAN"
+    ],
+    "notes": "A GSTIN embeds a PAN, so detecting IN_PAN inside it is defensible either way - don't-care."
+  },
+  {
+    "id": "admin-records-request-001",
+    "category": "records_request",
+    "subject": "Medical records request - overseas patient",
+    "body": [
+      "A former patient has requested a copy of his records for a visa medical.",
+      "Passport number M8234567, treated here in 2024 under UHID 0021155.",
+      "Identity verified in person. Please release the summary and the imaging CD."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "IN_PASSPORT",
+        "value": "M8234567"
+      },
+      {
+        "type": "MRN",
+        "value": "0021155"
+      }
+    ]
+  },
+  {
+    "id": "admin-mlc-001",
+    "category": "records_request",
+    "subject": "MLC records for the court",
+    "body": [
+      "Court has summoned the medico-legal case file for IP No: 2026/04588.",
+      "Driving licence recorded at admission: MH1220110012345.",
+      "Records department to prepare a certified copy for the hearing on the 14th."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "PATIENT_VISIT_ID",
+        "value": "2026/04588"
+      },
+      {
+        "type": "IN_DRIVING_LICENSE",
+        "value": "MH1220110012345"
+      }
+    ]
+  },
+  {
+    "id": "admin-scheme-001",
+    "category": "government_scheme",
+    "subject": "Ayushman claim - beneficiary details",
+    "body": [
+      "Beneficiary Harish Chandra Sethi, ABHA 96-9015-1720-1488.",
+      "Aadhaar 9552 4877 0811 seeded and verified on the scheme portal.",
+      "Package code and the discharge summary are uploaded. Awaiting approval."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "PERSON",
+        "value": "Harish Chandra Sethi"
+      },
+      {
+        "type": "ABHA_NUMBER",
+        "value": "96-9015-1720-1488"
+      },
+      {
+        "type": "IN_AADHAAR",
+        "value": "9552 4877 0811"
+      }
+    ]
+  },
+  {
+    "id": "admin-voter-001",
+    "category": "patient_registration",
+    "subject": "ID proof alternative",
+    "body": [
+      "The patient does not have an Aadhaar card with him today. He has produced a",
+      "voter ID, number ABC1234567, which the registration policy accepts as an",
+      "alternative. Record updated accordingly for UHID 0028830."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "IN_VOTER_ID",
+        "value": "ABC1234567"
+      },
+      {
+        "type": "MRN",
+        "value": "0028830"
+      }
+    ]
+  },
+  {
+    "id": "admin-payroll-001",
+    "category": "hr",
+    "subject": "Form 16 correction - Dr Menon",
+    "body": [
+      "Dr S Menon's PAN was entered incorrectly in the payroll system.",
+      "Correct PAN is GTQPJ1081D. Please reissue Form 16 for the last quarter and",
+      "confirm to finance once done."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "IN_PAN",
+        "value": "GTQPJ1081D"
+      }
+    ],
+    "ignore_types": [
+      "PERSON"
+    ],
+    "notes": "Staff PII, not patient PHI. The name is a staff name so PERSON is don't-care; the PAN still must not leave the approved domain."
+  },
+  {
+    "id": "admin-nurse-credential-001",
+    "category": "hr",
+    "subject": "Nursing council registration check",
+    "body": [
+      "Verifying the nursing council registration for the new ICU hire.",
+      "Registration number 45123 was quoted on the application form.",
+      "Please confirm with the council before the joining date."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "MEDICAL_LICENSE",
+        "value": "45123"
+      }
+    ],
+    "ignore_types": [
+      "PERSON"
+    ]
+  },
+  {
+    "id": "admin-appointment-001",
+    "category": "appointments",
+    "subject": "Tomorrow's OPD list",
+    "body": [
+      "Dr Iyer's OPD tomorrow, 22 patients booked.",
+      "First four: UHID 0024518, 0031902, 0027741, 0019488.",
+      "Two are new registrations and will need extra time at the desk.",
+      "Clinic starts at 0900 as usual."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "MRN",
+        "value": "0024518"
+      },
+      {
+        "type": "MRN",
+        "value": "0031902"
+      },
+      {
+        "type": "MRN",
+        "value": "0027741"
+      },
+      {
+        "type": "MRN",
+        "value": "0019488"
+      }
+    ],
+    "ignore_types": [
+      "PERSON"
+    ]
+  },
+  {
+    "id": "admin-consent-001",
+    "category": "records_request",
+    "subject": "Consent for research use",
+    "body": [
+      "Patient Zoya Ahmed, UHID 0037215, has signed the consent for her anonymised data",
+      "to be used in the diabetes registry. Contact 9701199887 if the ethics committee",
+      "needs to reach her. Original consent is filed in the records room."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "PERSON",
+        "value": "Zoya Ahmed"
+      },
+      {
+        "type": "MRN",
+        "value": "0037215"
+      },
+      {
+        "type": "IN_PHONE",
+        "value": "9701199887"
+      }
+    ]
+  },
+  {
+    "id": "admin-tpa-followup-001",
+    "category": "insurance_claim",
+    "subject": "TPA followup batch",
+    "body": [
+      "Pending with the TPA:",
+      "  P/181234/12/2026/004567 - query raised, documents sent 03/06",
+      "  GHS/2026/0091823 - rejected, appeal filed",
+      "  MED/2026/114520 - approved, payment awaited",
+      "Please chase all three at the Monday call."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "INSURANCE_POLICY",
+        "value": "P/181234/12/2026/004567"
+      },
+      {
+        "type": "INSURANCE_POLICY",
+        "value": "GHS/2026/0091823"
+      },
+      {
+        "type": "INSURANCE_POLICY",
+        "value": "MED/2026/114520"
+      }
+    ]
+  },
+  {
+    "id": "admin-death-cert-001",
+    "category": "records_request",
+    "subject": "Death certificate issuance",
+    "body": [
+      "Death certificate to be issued for the patient under UHID 0028830.",
+      "Aadhaar of the deceased: 9364 0224 4047.",
+      "Informant is the son; his mobile is 9812234455. Cause of death as certified by",
+      "the treating consultant. Please prepare the municipal form."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "MRN",
+        "value": "0028830"
+      },
+      {
+        "type": "IN_AADHAAR",
+        "value": "9364 0224 4047"
+      },
+      {
+        "type": "IN_PHONE",
+        "value": "9812234455"
+      }
+    ]
+  },
+  {
+    "id": "admin-bulk-export-001",
+    "category": "data_export",
+    "subject": "Diabetes registry extract",
+    "body": [
+      "Attaching the quarterly extract for the diabetes registry: 412 rows with UHID,",
+      "name, age, HbA1c and last visit date. Sample rows below for the format check.",
+      "  0024518, Lakshmi Devi, 61, 7.8, 04/06/2026",
+      "  0031902, Sunita Bhatt, 55, 8.1, 02/06/2026",
+      "  0027741, Anand Prakash Joshi, 48, 9.0, 30/05/2026",
+      "Confirm the format before I send the full file."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "MRN",
+        "value": "0024518"
+      },
+      {
+        "type": "PERSON",
+        "value": "Lakshmi Devi"
+      },
+      {
+        "type": "MRN",
+        "value": "0031902"
+      },
+      {
+        "type": "PERSON",
+        "value": "Sunita Bhatt"
+      },
+      {
+        "type": "MRN",
+        "value": "0027741"
+      },
+      {
+        "type": "PERSON",
+        "value": "Anand Prakash Joshi"
+      }
+    ],
+    "notes": "Bulk export - the highest-severity case in the product and the one the risk scale must be able to reach."
+  }
+]

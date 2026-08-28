@@ -1,3 +1,14 @@
+# LOCAL DEVELOPMENT ONLY — backing services for `make dev-up`. The application
+# itself runs on the host (`make backend-dev`, `make dashboard-dev`).
+#
+# The deployable stack is infra/docker-compose.prod.yml: different images,
+# different credentials, named volumes instead of bind mounts, and it actually
+# runs the API, worker and dashboard. Do not combine the two files with `-f`.
+#
+# Image tags are floating here on purpose (dev churn is cheap); the production
+# file pins tag + digest. Data lives in ./data, which is gitignored and safe to
+# delete when a container refuses to start after an image bump.
+
 name: aurodlpv2-dev
 
 services:
@@ -37,7 +48,14 @@ services:
       - "9001:9001"
     volumes:
       - ./data/minio:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
 
+  # Traces from OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318. UI on :16686.
   jaeger:
     image: jaegertracing/all-in-one:latest
     environment:
@@ -47,6 +65,8 @@ services:
       - "4317:4317"    # OTLP gRPC
       - "4318:4318"    # OTLP HTTP
 
+  # Catches every mail the backend sends with MAILER_BACKEND=smtp, SMTP_HOST=localhost,
+  # SMTP_PORT=1025, SMTP_TLS=false. Web UI on :8025.
   mailhog:
     image: mailhog/mailhog:latest
     ports:

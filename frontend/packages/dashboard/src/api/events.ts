@@ -6,7 +6,8 @@ export interface EntityTypeCount {
 }
 
 export interface UserBlockCount {
-  email: string;
+  /** Null when the send could not be attributed to a mailbox. */
+  email: string | null;
   blocks: number;
 }
 
@@ -17,12 +18,14 @@ export interface DailyTrendPoint {
 }
 
 export interface RecentEventEntity {
-  type: string;
+  type?: string;
+  masked_value?: string;
   confidence?: number;
 }
 
 export interface RecentEvent {
-  user_email: string;
+  /** Null when the send could not be attributed to a mailbox. */
+  user_email: string | null;
   action: string;
   severity: string;
   risk_score: number;
@@ -39,6 +42,7 @@ export interface Analytics {
   total_quarantines: number;
   total_escalations: number;
   unique_users: number;
+  /** 0-100, same scale as every other risk number in the product. */
   avg_risk_score: number;
   top_entity_types: EntityTypeCount[];
   top_users: UserBlockCount[];
@@ -47,6 +51,5 @@ export interface Analytics {
 }
 
 export const eventsApi = {
-  analytics: (days = 30) =>
-    request<Analytics>('/api/v1/events/analytics', { query: { days } }),
+  analytics: (days = 30) => request<Analytics>('/api/v1/events/analytics', { query: { days } }),
 };

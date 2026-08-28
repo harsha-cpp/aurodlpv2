@@ -1,0 +1,684 @@
+[
+  {
+    "id": "clinical-discharge-001",
+    "category": "discharge_summary",
+    "subject": "Discharge summary - Mrs Lakshmi Devi - UHID 0024518",
+    "body": [
+      "Dear Dr Rao,",
+      "",
+      "Please find the discharge summary for Mrs Lakshmi Devi, admitted 12/03/2026 and",
+      "discharged today. UHID 0024518.",
+      "",
+      "Diagnosis: Type 2 diabetes mellitus with hyperglycaemia (E11.65) with essential",
+      "hypertension (I10). HbA1c 9.2 on admission, 7.8 at discharge.",
+      "",
+      "Aadhaar on file: 7534 7930 7460",
+      "Attendant contact: 9845012345",
+      "",
+      "Regards,",
+      "Dr S Menon"
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "PERSON",
+        "value": "Lakshmi Devi"
+      },
+      {
+        "type": "MRN",
+        "value": "0024518"
+      },
+      {
+        "type": "ICD10",
+        "value": "E11.65"
+      },
+      {
+        "type": "ICD10",
+        "value": "I10"
+      },
+      {
+        "type": "IN_AADHAAR",
+        "value": "7534 7930 7460"
+      },
+      {
+        "type": "IN_PHONE",
+        "value": "9845012345"
+      },
+      {
+        "type": "PERSON",
+        "value": "Rao"
+      },
+      {
+        "type": "PERSON",
+        "value": "S Menon"
+      }
+    ],
+    "notes": "The everyday case. UHID appears twice - subject and body."
+  },
+  {
+    "id": "clinical-discharge-002",
+    "category": "discharge_summary",
+    "subject": "Discharge - bed 412",
+    "body": [
+      "Summary attached for Ramesh Kumar Iyer, DOB 14/08/1971, MRN: 445123.",
+      "Admitted with community acquired pneumonia (J18.9), treated with IV antibiotics",
+      "for six days. Chest X-ray at discharge shows resolving consolidation.",
+      "Follow up in OPD after 10 days."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "PERSON",
+        "value": "Ramesh Kumar Iyer"
+      },
+      {
+        "type": "DATE_OF_BIRTH",
+        "value": "14/08/1971"
+      },
+      {
+        "type": "MRN",
+        "value": "445123"
+      },
+      {
+        "type": "ICD10",
+        "value": "J18.9"
+      }
+    ],
+    "notes": "MRN in colon form, no dashes - the shape the current recognizer misses."
+  },
+  {
+    "id": "clinical-lab-001",
+    "category": "lab_report",
+    "subject": "Biochemistry results - urgent review",
+    "body": [
+      "Dr Nair,",
+      "",
+      "Results for patient Sunita Bhatt (UHID 0031902):",
+      "  Creatinine 2.4 mg/dL (was 1.6 last month)",
+      "  eGFR 28",
+      "  Potassium 5.9",
+      "  Haemoglobin 8.2",
+      "",
+      "Consistent with chronic kidney disease stage 3 (N18.3). Nephrology referral raised.",
+      "Please review today."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "PERSON",
+        "value": "Sunita Bhatt"
+      },
+      {
+        "type": "MRN",
+        "value": "0031902"
+      },
+      {
+        "type": "ICD10",
+        "value": "N18.3"
+      },
+      {
+        "type": "PERSON",
+        "value": "Nair"
+      }
+    ],
+    "notes": "Clinical values plus identifier. Lab values alone are covered by clinical-narrative-001."
+  },
+  {
+    "id": "clinical-narrative-001",
+    "category": "clinical_narrative",
+    "subject": "Bed 7 overnight",
+    "body": [
+      "Overnight the patient in bed 7 became oliguric, creatinine climbed to 3.1 and",
+      "potassium to 6.2 with peaked T waves on the monitor. Started on calcium gluconate",
+      "and insulin-dextrose, dialysis line inserted at 0400. Family counselled about",
+      "the poor prognosis. Please review on the morning round."
+    ],
+    "expect_phi": true,
+    "entities": [],
+    "notes": "Pure clinical narrative, no crisp identifier. Document-level PHI only - this is the case span-level detection cannot reach and the risk model must."
+  },
+  {
+    "id": "clinical-radiology-001",
+    "category": "radiology",
+    "subject": "CT report - Anand Prakash Joshi",
+    "body": [
+      "CT abdomen for Anand Prakash Joshi, UHID 0027741, dated 04/06/2026.",
+      "",
+      "Findings: 3.2 cm hypodense lesion in segment VI of the liver with peripheral",
+      "enhancement. Differential includes metastatic deposit. Correlate clinically.",
+      "",
+      "Reported by Dr K Subramanian, Reg No. 45123."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "PERSON",
+        "value": "Anand Prakash Joshi"
+      },
+      {
+        "type": "MRN",
+        "value": "0027741"
+      },
+      {
+        "type": "MEDICAL_LICENSE",
+        "value": "45123"
+      },
+      {
+        "type": "PERSON",
+        "value": "K Subramanian"
+      }
+    ],
+    "notes": "Doctor registration number is a regulated identifier in its own right."
+  },
+  {
+    "id": "clinical-prescription-001",
+    "category": "prescription",
+    "subject": "Rx for review",
+    "body": [
+      "Patient: Meera Sundaram, 62F, UHID 0019488",
+      "Diagnosis: unspecified asthma (J45.909)",
+      "",
+      "Rx:",
+      "  Budesonide/Formoterol 160/4.5 - 1 puff BD",
+      "  Montelukast 10mg - 1 OD at night",
+      "  Salbutamol MDI - PRN",
+      "",
+      "Review in 4 weeks with spirometry."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "PERSON",
+        "value": "Meera Sundaram"
+      },
+      {
+        "type": "MRN",
+        "value": "0019488"
+      },
+      {
+        "type": "ICD10",
+        "value": "J45.909"
+      }
+    ]
+  },
+  {
+    "id": "clinical-referral-001",
+    "category": "referral",
+    "subject": "Cardiology referral",
+    "body": [
+      "Dear cardiology team,",
+      "",
+      "Referring Mr Vikram Deshpande, ABHA 14-7236-8829-2226, for evaluation of chest",
+      "pain (R07.9). ECG shows T inversions in the lateral leads. Troponin negative x2.",
+      "Known hyperlipidaemia (E78.5).",
+      "",
+      "He can be reached on +91 98450 12345.",
+      "",
+      "Dr A Fernandes"
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "PERSON",
+        "value": "Vikram Deshpande"
+      },
+      {
+        "type": "ABHA_NUMBER",
+        "value": "14-7236-8829-2226"
+      },
+      {
+        "type": "ICD10",
+        "value": "R07.9"
+      },
+      {
+        "type": "ICD10",
+        "value": "E78.5"
+      },
+      {
+        "type": "IN_PHONE",
+        "value": "+91 98450 12345"
+      },
+      {
+        "type": "PERSON",
+        "value": "A Fernandes"
+      }
+    ]
+  },
+  {
+    "id": "clinical-referral-002",
+    "category": "referral",
+    "subject": "Ortho opinion please - IP No: 2026/04512",
+    "body": [
+      "Admitted last night after a fall. IP No: 2026/04512.",
+      "Closed fracture of the neck of the right femur (S72.001A) on plain film.",
+      "Pre-op workup underway, awaiting anaesthesia clearance.",
+      "Patient is 78 and lives alone; social work has been informed."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "PATIENT_VISIT_ID",
+        "value": "2026/04512"
+      },
+      {
+        "type": "ICD10",
+        "value": "S72.001A"
+      }
+    ],
+    "notes": "Inpatient episode number - a distinct identifier from UHID and currently unmodelled."
+  },
+  {
+    "id": "clinical-op-note-001",
+    "category": "operative_note",
+    "subject": "OT note - LSCS",
+    "body": [
+      "Patient Priya Raghavan, UHID 0033215, underwent emergency LSCS at 0230 for foetal",
+      "distress. Full-term delivery (O80). Live male infant, 2.8 kg, Apgar 8/9.",
+      "Estimated blood loss 600 mL. Mother and baby stable, shifted to postnatal ward.",
+      "Baby's ABHA to be generated before discharge."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "PERSON",
+        "value": "Priya Raghavan"
+      },
+      {
+        "type": "MRN",
+        "value": "0033215"
+      },
+      {
+        "type": "ICD10",
+        "value": "O80"
+      }
+    ]
+  },
+  {
+    "id": "clinical-icu-001",
+    "category": "icu_update",
+    "subject": "ICU handover - 6 patients",
+    "body": [
+      "Bed 1 - UHID 0024518 - septic shock, on noradrenaline 0.3 mcg/kg/min, lactate 4.1",
+      "Bed 3 - UHID 0031902 - post-op day 2, stable, for step-down today",
+      "Bed 5 - UHID 0027741 - acute kidney injury (N17.9), third dialysis session today",
+      "Bed 8 - awaiting transfer from casualty",
+      "",
+      "Night team please review all vasopressor weans at 0600."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "MRN",
+        "value": "0024518"
+      },
+      {
+        "type": "MRN",
+        "value": "0031902"
+      },
+      {
+        "type": "MRN",
+        "value": "0027741"
+      },
+      {
+        "type": "ICD10",
+        "value": "N17.9"
+      }
+    ],
+    "notes": "Multiple distinct patients in one message - a bulk exposure the risk model should weight above a single record."
+  },
+  {
+    "id": "clinical-pathology-001",
+    "category": "pathology",
+    "subject": "Histopath - accession HP-2026-11842",
+    "body": [
+      "Specimen: right breast lumpectomy",
+      "Accession: HP-2026-11842",
+      "Patient: Fatima Sheikh, UHID 0035120",
+      "",
+      "Microscopy: invasive ductal carcinoma, grade 2, margins clear at 4 mm.",
+      "ER positive, PR positive, HER2 negative. Coded C50.911.",
+      "",
+      "Discussed at the tumour board on Friday."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "LAB_ACCESSION",
+        "value": "HP-2026-11842"
+      },
+      {
+        "type": "PERSON",
+        "value": "Fatima Sheikh"
+      },
+      {
+        "type": "MRN",
+        "value": "0035120"
+      },
+      {
+        "type": "ICD10",
+        "value": "C50.911"
+      }
+    ]
+  },
+  {
+    "id": "clinical-followup-001",
+    "category": "follow_up",
+    "subject": "Follow up reminder",
+    "body": [
+      "Patient Arjun Nambiar, ABHA 82-4451-9858-7260, is due for his three-month diabetic",
+      "review. Last HbA1c 8.4. Please call him on 9880045512 and book a slot with Dr Iyer.",
+      "His registered email is arjun.nambiar@gmail.com."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "PERSON",
+        "value": "Arjun Nambiar"
+      },
+      {
+        "type": "ABHA_NUMBER",
+        "value": "82-4451-9858-7260"
+      },
+      {
+        "type": "IN_PHONE",
+        "value": "9880045512"
+      },
+      {
+        "type": "EMAIL_ADDRESS",
+        "value": "arjun.nambiar@gmail.com"
+      },
+      {
+        "type": "PERSON",
+        "value": "Iyer"
+      }
+    ],
+    "notes": "Patient contact details are PHI when tied to a care relationship."
+  },
+  {
+    "id": "clinical-vaccination-001",
+    "category": "immunisation",
+    "subject": "Immunisation record request",
+    "body": [
+      "Parent has requested the immunisation record for baby Aarav Menon, UHID 0036004,",
+      "DOB 02/01/2026. Record shows BCG, OPV-0 and Hep-B at birth, then the six-week",
+      "schedule completed on time. Please issue the card."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "PERSON",
+        "value": "Aarav Menon"
+      },
+      {
+        "type": "MRN",
+        "value": "0036004"
+      },
+      {
+        "type": "DATE_OF_BIRTH",
+        "value": "02/01/2026"
+      }
+    ]
+  },
+  {
+    "id": "clinical-mental-health-001",
+    "category": "clinical_narrative",
+    "subject": "Psychiatry liaison",
+    "body": [
+      "Requesting psychiatry review for the patient in bed 14 with generalised anxiety",
+      "disorder (F41.9) and poor sleep since admission. No suicidal ideation elicited.",
+      "Currently on sertraline 50mg OD. Family aware and supportive."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "ICD10",
+        "value": "F41.9"
+      }
+    ],
+    "notes": "Mental health context is high-sensitivity even with a single code and no name."
+  },
+  {
+    "id": "clinical-transfer-001",
+    "category": "transfer",
+    "subject": "Inter-hospital transfer - accepting?",
+    "body": [
+      "We have a 54-year-old male, UHID 0028830, with decompensated heart failure (I50.9)",
+      "and known ischaemic heart disease (I25.10), needing a cardiology bed with",
+      "ventilator backup. Ejection fraction 22 percent on the last echo.",
+      "Can you accept? Aadhaar 7919 8193 9197 for the transfer paperwork."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "MRN",
+        "value": "0028830"
+      },
+      {
+        "type": "ICD10",
+        "value": "I50.9"
+      },
+      {
+        "type": "ICD10",
+        "value": "I25.10"
+      },
+      {
+        "type": "IN_AADHAAR",
+        "value": "7919 8193 9197"
+      }
+    ]
+  },
+  {
+    "id": "clinical-paeds-001",
+    "category": "clinical_narrative",
+    "subject": "Paeds ward query",
+    "body": [
+      "The 3-year-old admitted with acute gastroenteritis (A09) is tolerating oral",
+      "rehydration well now, two wet nappies overnight, no further vomiting.",
+      "Weight back to 12.4 kg from 11.8 on admission. Likely discharge tomorrow."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "ICD10",
+        "value": "A09"
+      }
+    ]
+  },
+  {
+    "id": "clinical-derm-001",
+    "category": "clinical_narrative",
+    "subject": "Photo consent - dermatology",
+    "body": [
+      "Patient Zoya Ahmed, UHID 0037215, has consented to clinical photography of the",
+      "atopic dermatitis (L20.9) lesions on both forearms for the teaching archive.",
+      "Consent form is scanned and on file."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "PERSON",
+        "value": "Zoya Ahmed"
+      },
+      {
+        "type": "MRN",
+        "value": "0037215"
+      },
+      {
+        "type": "ICD10",
+        "value": "L20.9"
+      }
+    ]
+  },
+  {
+    "id": "clinical-allergy-001",
+    "category": "clinical_narrative",
+    "subject": "Allergy alert added",
+    "body": [
+      "Anaphylactic reaction to ceftriaxone (T78.40XA) documented for UHID 0024518.",
+      "Alert flag added to the chart and the wristband updated. Please brief the",
+      "incoming team at handover."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "ICD10",
+        "value": "T78.40XA"
+      },
+      {
+        "type": "MRN",
+        "value": "0024518"
+      }
+    ]
+  },
+  {
+    "id": "clinical-ophthal-001",
+    "category": "clinical_narrative",
+    "subject": "Eye camp follow-ups",
+    "body": [
+      "Three patients from Saturday's camp need follow up for unspecified keratitis",
+      "(H10.9). UHIDs 0038001, 0038007 and 0038014. All were given drops and asked to",
+      "return in a week. Please confirm the appointments were made."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "ICD10",
+        "value": "H10.9"
+      },
+      {
+        "type": "MRN",
+        "value": "0038001"
+      },
+      {
+        "type": "MRN",
+        "value": "0038007"
+      },
+      {
+        "type": "MRN",
+        "value": "0038014"
+      }
+    ]
+  },
+  {
+    "id": "clinical-obg-001",
+    "category": "clinical_narrative",
+    "subject": "ANC list for Thursday",
+    "body": [
+      "Antenatal clinic Thursday, 14 booked. Two are high risk:",
+      "  - UHID 0039112, gestational diabetes, needs a growth scan",
+      "  - UHID 0039140, previous LSCS, for consultant review",
+      "Rest are routine. Scan slots are confirmed with radiology."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "MRN",
+        "value": "0039112"
+      },
+      {
+        "type": "MRN",
+        "value": "0039140"
+      }
+    ]
+  },
+  {
+    "id": "clinical-emergency-001",
+    "category": "clinical_narrative",
+    "subject": "RTA - police intimation done",
+    "body": [
+      "Road traffic accident brought in at 2140, IP No: 2026/04588.",
+      "Unidentified male, approximately 30 years, head injury with GCS 9 on arrival.",
+      "Intubated in casualty, CT head shows a small extradural. Neurosurgery informed.",
+      "Police intimation completed. No relatives traced yet."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "PATIENT_VISIT_ID",
+        "value": "2026/04588"
+      }
+    ]
+  },
+  {
+    "id": "clinical-oncology-001",
+    "category": "clinical_narrative",
+    "subject": "Chemo cycle 3 - dose adjustment",
+    "body": [
+      "Patient Harish Chandra Sethi, UHID 0034411, ABHA 21-3528-1949-7011.",
+      "Neutrophils 0.9 before cycle 3, so today's dose is deferred by a week and GCSF",
+      "started. Counselled about neutropenic sepsis warning signs. Contact number on",
+      "file is 9701122334."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "PERSON",
+        "value": "Harish Chandra Sethi"
+      },
+      {
+        "type": "MRN",
+        "value": "0034411"
+      },
+      {
+        "type": "ABHA_NUMBER",
+        "value": "21-3528-1949-7011"
+      },
+      {
+        "type": "IN_PHONE",
+        "value": "9701122334"
+      }
+    ]
+  },
+  {
+    "id": "clinical-abha-address-001",
+    "category": "registration",
+    "subject": "ABHA linking pending",
+    "body": [
+      "The ABHA address lakshmi.devi@abdm is created but not yet linked to the hospital",
+      "record. Please complete the linkage before the discharge summary is uploaded to",
+      "the health locker."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "ABHA_ADDRESS",
+        "value": "lakshmi.devi@abdm"
+      }
+    ],
+    "notes": "ABHA address form. Looks like an email but is a health identifier."
+  },
+  {
+    "id": "clinical-dietetics-001",
+    "category": "clinical_narrative",
+    "subject": "Diet plan - renal",
+    "body": [
+      "Renal diet plan prepared for UHID 0031902. Potassium restricted to 2 g per day,",
+      "fluid allowance 1 litre. Patient and daughter counselled. Handout given in Telugu.",
+      "Reassess at the next dialysis session."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "MRN",
+        "value": "0031902"
+      }
+    ]
+  },
+  {
+    "id": "clinical-physio-001",
+    "category": "clinical_narrative",
+    "subject": "Physio discharge note",
+    "body": [
+      "Post-operative rehab completed for the patient with low back pain (M54.50).",
+      "Independently mobile with a stick, stairs assessed and safe. Home exercise",
+      "programme issued. No further physiotherapy input needed."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "ICD10",
+        "value": "M54.50"
+      }
+    ]
+  }
+]

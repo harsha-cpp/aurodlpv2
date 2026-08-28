@@ -83,9 +83,17 @@ export async function scanAttachments(files: File[]): Promise<EntityHit[]> {
   return results.flatMap((r) => r.entities);
 }
 
-async function fetchAttachmentRef(ref: AttachmentUrlRef): Promise<File | null> {
+async function fetchAttachmentRef(
+  ref: AttachmentUrlRef,
+  timeoutMs: number,
+  signal?: AbortSignal,
+): Promise<File | null> {
+  const controller = new AbortController();
+  const abort = (): void => controller.abort();
+  signal?.addEventListener('abort', abort);
+  const timer = setTimeout(abort, timeoutMs);
   try {
-    const res = await fetch(ref.url, { credentials: 'include' });
+    const res = await fetch(ref.url, { credentials: 'include', signal: controller.signal });
     if (!res.ok) return null;
     const blob = await res.blob();
     const name = ref.name?.trim() || `attachment-${Date.now()}`;
@@ -93,14 +101,33 @@ async function fetchAttachmentRef(ref: AttachmentUrlRef): Promise<File | null> {
     return new File([blob], name, { type });
   } catch {
     return null;
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener('abort', abort);
   }
 }
 
-export async function scanAttachmentRefs(refs: AttachmentUrlRef[]): Promise<EntityHit[]> {
-  if (refs.length === 0) return [];
-  const fetched = await Promise.all(refs.map(fetchAttachmentRef));
+export interface FetchedRefs {
+  files: File[];
+  /** Refs Gmail exposed that we could not read; the caller must not treat them as clean. */
+  failed: number;
+}
+
+/**
+ * Materialise attachments that Gmail has already uploaded for a draft.
+ *
+ * Needed because the file the user picked is not always captured from an input
+ * event; anything reachable this way gets scanned instead of being assumed safe.
+ */
+export async function fetchAttachmentRefs(
+  refs: AttachmentUrlRef[],
+  timeoutMs: number,
+  signal?: AbortSignal,
+): Promise<FetchedRefs> {
+  if (refs.length === 0) return { files: [], failed: 0 };
+  const fetched = await Promise.all(refs.map((ref) => fetchAttachmentRef(ref, timeoutMs, signal)));
   const files = fetched.filter((f): f is File => Boolean(f));
-  return scanAttachments(files);
+  return { files, failed: fetched.length - files.length };
 }
 
 const MAX_BYTES = 25 * 1024 * 1024;

@@ -1,4 +1,9 @@
-"""PDF extraction via PyMuPDF. Falls back to OCR per page when text density is low."""
+"""PDF extraction via PyMuPDF, with OCR fallback for pages that carry no text.
+
+Pages are rendered at ~300 DPI for OCR. The default ``get_pixmap()`` renders at
+72 DPI, which is well below what Tesseract needs and produced empty output on
+every scanned prescription the engine was pointed at.
+"""
 
 from __future__ import annotations
 
@@ -6,13 +11,19 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from importlib import import_module
 from io import BytesIO
-from typing import Protocol, cast
+from typing import Any, Protocol, cast
 
 import structlog
 from PIL import Image
 
 logger = structlog.get_logger(__name__)
+
+#: Below this many characters a page is treated as needing OCR.
 LOW_TEXT_CHARS = 50
+MAX_PDF_PAGES = 50
+#: PyMuPDF's base resolution. 300/72 gives the zoom factor OCR wants.
+PDF_BASE_DPI = 72
+OCR_TARGET_DPI = 300
 
 
 class _Pixmap(Protocol):
@@ -24,7 +35,7 @@ class _PdfPage(Protocol):
 
     def get_images(self, full: bool = False) -> list[object]: ...
 
-    def get_pixmap(self) -> _Pixmap: ...
+    def get_pixmap(self, **kwargs: object) -> _Pixmap: ...
 
 
 class _PdfDocument(Protocol):
@@ -32,12 +43,11 @@ class _PdfDocument(Protocol):
 
     def close(self) -> None: ...
 
+    @property
+    def needs_pass(self) -> bool: ...
 
-class _FitzModule(Protocol):
-    def open(self, *, stream: bytes, filetype: str) -> _PdfDocument: ...
 
-
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class PdfPageText:
     text: str
     ocr_image: Image.Image | None = None
@@ -45,20 +55,25 @@ class PdfPageText:
 
 def extract_pages(data: bytes) -> list[PdfPageText]:
     try:
-        fitz = cast(_FitzModule, import_module("fitz"))
-        document = fitz.open(stream=data, filetype="pdf")
+        fitz = cast(Any, import_module("fitz"))
+        document = cast(_PdfDocument, fitz.open(stream=data, filetype="pdf"))
     except Exception:
         logger.warning("pdf attachment open failed")
         return []
 
     pages: list[PdfPageText] = []
     try:
-        for page in document:
+        if getattr(document, "needs_pass", False):
+            logger.warning("pdf attachment is password protected")
+            return []
+        for page_index, page in enumerate(document, start=1):
+            if page_index > MAX_PDF_PAGES:
+                logger.warning("pdf attachment page limit reached", max_pages=MAX_PDF_PAGES)
+                break
             text = page.get_text("text").strip()
-            image_count = len(page.get_images(full=True))
-            ocr_image = (
-                _render_page(page) if image_count > 0 and len(text) < LOW_TEXT_CHARS else None
-            )
+            # A page with little text is a scan whether or not PyMuPDF reports
+            # embedded image objects, so OCR on text density alone.
+            ocr_image = _render_for_ocr(page) if len(text) < LOW_TEXT_CHARS else None
             pages.append(PdfPageText(text=text, ocr_image=ocr_image))
     except Exception:
         logger.warning("pdf attachment extraction failed")
@@ -72,10 +87,12 @@ def extract_text_pages(data: bytes) -> list[str]:
     return [page.text for page in extract_pages(data)]
 
 
-def _render_page(page: _PdfPage) -> Image.Image | None:
+def _render_for_ocr(page: _PdfPage) -> Image.Image | None:
     try:
-        png_bytes = page.get_pixmap().tobytes("png")
-        image = Image.open(BytesIO(png_bytes))
+        fitz = cast(Any, import_module("fitz"))
+        zoom = OCR_TARGET_DPI / PDF_BASE_DPI
+        pixmap = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom))
+        image = Image.open(BytesIO(pixmap.tobytes("png")))
         image.load()
         return image.convert("RGB")
     except Exception:

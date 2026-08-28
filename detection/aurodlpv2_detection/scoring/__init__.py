@@ -1,53 +1,84 @@
-"""Risk scoring.
+"""Risk scoring on a real 0-100 scale.
 
-Weights and aggregation formula live in ``weights.py``. See
-``docs/plans/detection-engine.md`` §10.
+    weight = sum over distinct values of (sensitivity * confidence * repeat_factor)
+    risk   = 100 * (1 - exp(-weight / K))
+    severity = bucket(risk)
 
-    entity_score = SENSITIVITY_WEIGHTS[type] * confidence * checksum_boost
-    doc_score    = log1p(sum(entity_score)) * context_multiplier
-    severity     = bucket(doc_score)
+Scoring works from *distinct* values so that repetition of one identifier does
+not read as exposure of many, and combinations count: a record number beside a
+diagnosis and a name is a bigger exposure than any of them alone.
 """
 
 from __future__ import annotations
 
-from math import log1p
-
 from aurodlpv2_detection.config import DetectionConfig
 from aurodlpv2_detection.models import Entity, Severity
 from aurodlpv2_detection.scoring.weights import (
-    CHECKSUM_VALIDATED_BOOST,
     SENSITIVITY_WEIGHTS,
     bucket,
+    repeat_factor,
+    risk_from_weight,
+    weight_for,
 )
 
-MEDICAL_CONTEXT_TYPES = {"MEDICAL_DISEASE_DISORDER", "MEDICAL_MEDICATION"}
-MEDICAL_CONTEXT_BOOST_TARGETS = {"PERSON", "MRN", "ABHA", "IN_ABHA", "IN_AADHAAR"}
+#: Identifiers that make a person directly re-identifiable on their own.
+DIRECT_IDENTIFIERS = frozenset(
+    {
+        "IN_AADHAAR",
+        "IN_PAN",
+        "IN_PASSPORT",
+        "IN_DRIVING_LICENSE",
+        "IN_VOTER_ID",
+        "ABHA_NUMBER",
+        "ABHA_ADDRESS",
+        "MRN",
+        "PATIENT_VISIT_ID",
+        "BANK_ACCOUNT",
+    }
+)
+
+#: Clinical context that turns a bare identifier into health information.
+CLINICAL_TYPES = frozenset({"ICD10", "LAB_ACCESSION", "MEDICAL_LICENSE"})
+
+#: Applied when a direct identifier appears alongside clinical content - the
+#: combination is what makes a message PHI rather than merely personal data.
+COMBINATION_MULTIPLIER = 1.2
+
+
+def _normalize(entity: Entity) -> str:
+    compact = entity.masked_value.strip().upper()
+    if entity.type in {"PERSON", "EMAIL_ADDRESS", "ABHA_ADDRESS", "IN_UPI"}:
+        return " ".join(compact.split())
+    return "".join(character for character in compact if character.isalnum())
+
+
+def total_weight(entities: list[Entity]) -> float:
+    """Accumulated sensitivity weight across distinct values."""
+    grouped: dict[tuple[str, str], list[Entity]] = {}
+    for entity in entities:
+        grouped.setdefault((entity.type, _normalize(entity)), []).append(entity)
+
+    weight = 0.0
+    for (entity_type, _value), group in grouped.items():
+        best_confidence = max(item.confidence for item in group)
+        weight += weight_for(entity_type) * best_confidence * repeat_factor(len(group))
+
+    present = {entity.type for entity in entities}
+    if present & DIRECT_IDENTIFIERS and present & CLINICAL_TYPES:
+        weight *= COMBINATION_MULTIPLIER
+    return weight
 
 
 def score(
     entities: list[Entity],
     config: DetectionConfig | None = None,
 ) -> tuple[float, Severity]:
-    resolved_config = config or DetectionConfig()
-    raw_score = log1p(sum(_entity_contribution(entity) for entity in entities))
-    if _has_medical_context(entities) and resolved_config.nlp.medical_ner_context_boost:
-        raw_score *= resolved_config.nlp.context_boost_multiplier
-    rounded_score = round(raw_score, 2)
-    return rounded_score, bucket(rounded_score)
+    """Return ``(risk_score_0_100, severity)``."""
+    del config  # per-tenant weighting is applied by the caller's rule pack
+    if not entities:
+        return 0.0, "none"
+    risk = risk_from_weight(total_weight(entities))
+    return risk, bucket(risk)
 
 
-def _entity_contribution(entity: Entity) -> float:
-    checksum_boost = CHECKSUM_VALIDATED_BOOST if _checksum_validated(entity) else 1.0
-    return SENSITIVITY_WEIGHTS.get(entity.type, 1.0) * entity.confidence * checksum_boost
-
-
-def _checksum_validated(entity: Entity) -> bool:
-    return entity.type == "IN_AADHAAR"
-
-
-def _has_medical_context(entities: list[Entity]) -> bool:
-    entity_types = {entity.type for entity in entities}
-    return bool(
-        entity_types & MEDICAL_CONTEXT_TYPES
-        and entity_types & MEDICAL_CONTEXT_BOOST_TARGETS
-    )
+__all__ = ["SENSITIVITY_WEIGHTS", "bucket", "score", "total_weight"]

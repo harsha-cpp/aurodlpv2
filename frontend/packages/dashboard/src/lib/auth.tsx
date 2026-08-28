@@ -2,8 +2,19 @@ import { createContext, useContext, useEffect, useState, useCallback, useRef } f
 import type { ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Navigate, useLocation } from 'react-router-dom';
-import { authApi, type AuthResponse, type Member, type Organization, type LoginBody, type SignupBody } from '../api/auth';
+import {
+  authApi,
+  isMfaChallenge,
+  type AuthResponse,
+  type LoginResult,
+  type Member,
+  type MfaChallenge,
+  type Organization,
+  type LoginBody,
+  type SignupBody,
+} from '../api/auth';
 import { setAccessToken, setOnAuthLost, refreshSession } from './api';
+import { can, type Capability } from './roles';
 
 interface AuthState {
   status: 'loading' | 'unauthenticated' | 'authenticated';
@@ -12,10 +23,15 @@ interface AuthState {
 }
 
 interface AuthCtx extends AuthState {
-  login: (body: LoginBody) => Promise<void>;
+  /** Resolves to a challenge when the account has MFA; no session exists yet. */
+  login: (body: LoginBody) => Promise<MfaChallenge | null>;
+  completeMfa: (challengeToken: string, code: string) => Promise<void>;
   signup: (body: SignupBody) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
+  switchOrg: (orgId: string) => Promise<void>;
+  /** Client-side mirror of the server's role gates; the server still decides. */
+  can: (capability: Capability) => boolean;
 }
 
 const Ctx = createContext<AuthCtx | null>(null);
@@ -54,18 +70,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void bootstrap();
   }, [bootstrap, queryClient]);
 
-  const login = useCallback(async (body: LoginBody) => {
-    const res = await authApi.login(body);
-    queryClient.clear();
-    const data = applyAuth(res);
-    setState({ status: 'authenticated', ...data });
-  }, [queryClient]);
+  const login = useCallback(
+    async (body: LoginBody): Promise<MfaChallenge | null> => {
+      const res: LoginResult = await authApi.login(body);
+      if (isMfaChallenge(res)) return res;
+      queryClient.clear();
+      setState({ status: 'authenticated', ...applyAuth(res) });
+      return null;
+    },
+    [queryClient],
+  );
+
+  const completeMfa = useCallback(
+    async (challengeToken: string, code: string) => {
+      const res = await authApi.mfaVerify(challengeToken, code);
+      queryClient.clear();
+      setState({ status: 'authenticated', ...applyAuth(res) });
+    },
+    [queryClient],
+  );
 
   const signup = useCallback(async (body: SignupBody) => {
     const res = await authApi.signup(body);
     queryClient.clear();
-    const data = applyAuth(res);
-    setState({ status: 'authenticated', ...data });
+    setState({ status: 'authenticated', ...applyAuth(res) });
   }, [queryClient]);
 
   const logout = useCallback(async () => {
@@ -88,7 +116,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  return <Ctx.Provider value={{ ...state, login, signup, logout, refresh }}>{children}</Ctx.Provider>;
+  const switchOrg = useCallback(
+    async (orgId: string) => {
+      const res = await authApi.switchOrg(orgId);
+      // Every cached query is scoped to the previous org's data.
+      queryClient.clear();
+      setState({ status: 'authenticated', ...applyAuth(res) });
+    },
+    [queryClient],
+  );
+
+  const capable = useCallback((capability: Capability) => can(state.member?.role, capability), [state.member?.role]);
+
+  return (
+    <Ctx.Provider
+      value={{ ...state, login, completeMfa, signup, logout, refresh, switchOrg, can: capable }}
+    >
+      {children}
+    </Ctx.Provider>
+  );
 }
 
 export function useAuth(): AuthCtx {
@@ -97,17 +143,19 @@ export function useAuth(): AuthCtx {
   return ctx;
 }
 
+function FullPageSpinner() {
+  return (
+    <div className="center" style={{ height: '100vh' }}>
+      <div className="spinner" />
+    </div>
+  );
+}
+
 export function RequireAuth({ children }: { children: ReactNode }) {
   const { status } = useAuth();
   const location = useLocation();
 
-  if (status === 'loading') {
-    return (
-      <div className="center" style={{ height: '100vh' }}>
-        <div className="spinner" />
-      </div>
-    );
-  }
+  if (status === 'loading') return <FullPageSpinner />;
   if (status === 'unauthenticated') {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
@@ -116,13 +164,33 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 
 export function RedirectIfAuthed({ children }: { children: ReactNode }) {
   const { status } = useAuth();
-  if (status === 'loading') {
-    return (
-      <div className="center" style={{ height: '100vh' }}>
-        <div className="spinner" />
-      </div>
-    );
-  }
+  if (status === 'loading') return <FullPageSpinner />;
   if (status === 'authenticated') return <Navigate to="/" replace />;
   return <>{children}</>;
+}
+
+/**
+ * Route-level gate matching the nav gate. Renders an explanation rather than
+ * redirecting: silently bouncing someone off a bookmarked URL looks like a bug,
+ * and the honest answer is "your role can't see this".
+ */
+export function RequireCapability({
+  capability,
+  children,
+}: {
+  capability: Capability;
+  children: ReactNode;
+}) {
+  const { status, member, can: capable } = useAuth();
+  if (status === 'loading') return <FullPageSpinner />;
+  if (capable(capability)) return <>{children}</>;
+  return (
+    <div className="card" style={{ maxWidth: 560 }}>
+      <h1 className="h2" style={{ marginBottom: 8 }}>Not available for your role</h1>
+      <p className="muted">
+        This page needs a higher role than <strong>{member?.role ?? 'your account'}</strong>. Ask an
+        owner or admin of your organization if you need access.
+      </p>
+    </div>
+  );
 }

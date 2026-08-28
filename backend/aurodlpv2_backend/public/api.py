@@ -25,6 +25,9 @@ class PublicDomain(BaseModel):
 
 class PublicConfig(BaseModel):
     organization: PublicOrg
+    # The extension fails closed when it has no usable config. An org can opt
+    # back into allow-on-no-config, but it has to be a decision someone made.
+    fail_open: bool = False
     # Recipient allow-list only. Blocked domains are intentionally separated so
     # clients can never accidentally treat them as approved destinations.
     domains: list[PublicDomain]
@@ -53,8 +56,12 @@ async def get_public_config(org_code: str, session: DbSession) -> PublicConfig:
     ]
     blocked = [domain for domain in domains if domain.classification == "blocked"]
 
+    settings_blob = org.settings or {}
+    fail_open = bool(settings_blob.get("fail_open", False))
+
     return PublicConfig(
         organization=PublicOrg(name=org.name, org_code=org.org_code),
+        fail_open=fail_open,
         domains=[_public_domain(domain) for domain in recipient_allow],
         blocked_domains=[_public_domain(domain) for domain in blocked],
     )

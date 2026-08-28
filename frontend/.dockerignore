@@ -1,0 +1,27 @@
+# NOTE: the images in infra/docker/ are built with the REPO ROOT as context, so
+# the file Docker actually reads is /.dockerignore. This file only applies if
+# someone builds with frontend/ itself as the context (e.g. an ad-hoc `docker build frontend`).
+# Keep it in sync with the root .dockerignore.
+.venv
+venv
+**/__pycache__
+**/*.py[cod]
+**/*.egg-info
+.pytest_cache
+.ruff_cache
+.mypy_cache
+.coverage
+htmlcov
+cyclonedx.json
+node_modules
+**/node_modules
+dist
+**/dist
+.vite
+**/.vite
+*.tsbuildinfo
+tests
+.env
+.env.*
+!.env.example
+.DS_Store

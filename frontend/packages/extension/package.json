@@ -1,6 +1,6 @@
 {
   "name": "@aurodlpv2/extension",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Auro Healthcare DLP Chrome MV3 extension. See docs/plans/frontend.md.",
@@ -26,13 +26,13 @@
     "@types/chrome": "^0.0.278",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "@vitejs/plugin-react": "^4.3.2",
+    "@vitejs/plugin-react": "^5.2.0",
     "autoprefixer": "^10.4.20",
-    "happy-dom": "^15.7.4",
+    "happy-dom": "^20.10.1",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.14",
     "typescript": "^5.6.3",
-    "vite": "^5.4.10",
-    "vitest": "^2.1.3"
+    "vite": "^6.4.3",
+    "vitest": "^4.1.8"
   }
 }

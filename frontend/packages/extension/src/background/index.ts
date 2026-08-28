@@ -1,5 +1,6 @@
-// Background service worker — refreshes approved-domain config every 5 min.
-const BACKEND_URL = 'http://localhost:8000';
+// Background service worker - refreshes approved-domain config every 5 min.
+import { BACKEND_URL } from '../config';
+
 const REFRESH_ALARM = 'aurodlp-config-refresh';
 
 interface PublicDomain {
@@ -12,6 +13,11 @@ interface PublicConfig {
   organization: { name: string; org_code: string };
   domains: PublicDomain[];
   blocked_domains?: PublicDomain[];
+  /**
+   * Org opt-in to sending when the extension has no usable config. Absent means
+   * false: the content script fails closed unless the org asked otherwise.
+   */
+  fail_open?: boolean;
 }
 
 interface ConfigCache {
@@ -19,6 +25,7 @@ interface ConfigCache {
   organization_name: string;
   domains: PublicDomain[];
   blocked_domains: PublicDomain[];
+  fail_open: boolean;
   fetched_at: number;
 }
 
@@ -44,6 +51,7 @@ async function fetchConfig(orgCode: string): Promise<ConfigFetchResult> {
         organization_name: data.organization.name,
         domains: data.domains,
         blocked_domains: data.blocked_domains ?? [],
+        fail_open: data.fail_open === true,
         fetched_at: Date.now(),
       },
     };

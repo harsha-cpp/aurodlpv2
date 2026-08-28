@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 from uuid import UUID
 
@@ -12,8 +14,18 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aurodlpv2_backend.auth.jwt import TokenError, decode_access_token
-from aurodlpv2_backend.db.models import MemberRole, OrgMember
+from aurodlpv2_backend.auth.tokens import (
+    DEVICE_TOKEN_PREFIX,
+    TokenFormatError,
+    parse_token,
+    verify_token_secret,
+)
+from aurodlpv2_backend.db.models import DeviceToken, MemberRole, OrgMember
 from aurodlpv2_backend.db.session import get_session
+
+#: last_seen_at is a liveness signal, not an audit trail. Writing it on every
+#: scan would put a row update in front of every keystroke-triggered scan.
+_DEVICE_LAST_SEEN_INTERVAL = timedelta(minutes=5)
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,6 +34,16 @@ class Principal:
     org_id: UUID
     email: str
     role: MemberRole
+
+
+@dataclass(frozen=True, slots=True)
+class DevicePrincipal:
+    """An enrolled extension install, not a logged-in human."""
+
+    device_id: UUID
+    org_id: UUID
+    member_id: UUID | None
+    email: str | None
 
 
 async def db_session() -> AsyncIterator[AsyncSession]:
@@ -72,6 +94,51 @@ async def current_member(
 CurrentMember = Annotated[Principal, Depends(current_member)]
 
 
+async def current_device(
+    session: DbSession,
+    x_auro_device_token: Annotated[str | None, Header()] = None,
+) -> DevicePrincipal:
+    """Resolve an ``X-Auro-Device-Token`` header to the enrolled install.
+
+    Replaces the shared org_code as the scan credential: one lost laptop can
+    now be revoked on its own instead of forcing every install in the hospital
+    to be re-keyed.
+    """
+    if not x_auro_device_token:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="missing device token")
+    try:
+        device_id, secret = parse_token(DEVICE_TOKEN_PREFIX, x_auro_device_token.strip())
+    except TokenFormatError as exc:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="invalid device token") from exc
+
+    device = await session.get(DeviceToken, device_id)
+    if device is None:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="invalid device token")
+    secret_ok = await asyncio.to_thread(verify_token_secret, secret, device.token_hash)
+    if not secret_ok:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="invalid device token")
+
+    now = datetime.now(UTC)
+    if device.revoked_at is not None:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="device token revoked")
+    if device.expires_at <= now:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="device token expired")
+
+    if device.last_seen_at is None or now - device.last_seen_at > _DEVICE_LAST_SEEN_INTERVAL:
+        device.last_seen_at = now
+        await session.commit()
+
+    return DevicePrincipal(
+        device_id=device.id,
+        org_id=device.org_id,
+        member_id=device.member_id,
+        email=device.member_email,
+    )
+
+
+CurrentDevice = Annotated[DevicePrincipal, Depends(current_device)]
+
+
 def require_role(*allowed: MemberRole) -> Callable[[Principal], Awaitable[Principal]]:
     async def _gate(member: CurrentMember) -> Principal:
         if member.role not in allowed:
@@ -84,3 +151,4 @@ def require_role(*allowed: MemberRole) -> Callable[[Principal], Awaitable[Princi
 OwnerOnly = Annotated[Principal, Depends(require_role("owner"))]
 OwnerOrAdmin = Annotated[Principal, Depends(require_role("owner", "admin"))]
 DomainEditor = Annotated[Principal, Depends(require_role("owner", "admin", "analyst"))]
+QuarantineReviewer = Annotated[Principal, Depends(require_role("owner", "admin", "analyst"))]
