@@ -2,17 +2,12 @@ import { defineManifest } from '@crxjs/vite-plugin';
 import type { BackendTarget } from './src/backend-url';
 import pkg from './package.json' with { type: 'json' };
 
-// The manifest is generated rather than static so host_permissions comes from
-// the same resolved backend target as the runtime BACKEND_URL. Chrome blocks
-// requests to origins the manifest does not list, so a hardcoded localhost
-// permission in a packaged build silently disables every backend call and
-// leaves the extension on its weaker offline fallback.
 export function buildManifest(backend: BackendTarget) {
   return defineManifest({
     manifest_version: 3,
-    name: 'AURO',
+    name: 'Auro Healthcare DLP',
     version: pkg.version,
-    description: 'Block accidental PHI/PII leaks from Gmail before send.',
+    description: 'Checks outgoing Gmail for patient data before it leaves the hospital.',
     minimum_chrome_version: '120',
     icons: {
       '16': 'icons/icon-16.png',
@@ -34,6 +29,14 @@ export function buildManifest(backend: BackendTarget) {
         js: ['src/content/index.ts'],
         run_at: 'document_idle',
         all_frames: false,
+      },
+      {
+        matches: ['http://*/*', 'https://*/*'],
+        exclude_matches: ['https://mail.google.com/*'],
+        js: ['src/content/input-protection-entry.ts'],
+        run_at: 'document_start',
+        all_frames: true,
+        match_about_blank: true,
       },
     ],
     permissions: ['storage', 'alarms'],

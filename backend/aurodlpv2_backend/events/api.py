@@ -1,22 +1,25 @@
-"""Scan event ingestion (org-code keyed) and authenticated analytics."""
-
 from __future__ import annotations
 
 import time
 from datetime import UTC, datetime, timedelta
-from typing import Annotated
+from typing import Annotated, Self
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, status
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from fastapi import APIRouter, Header, HTTPException, Query, status
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 from sqlalchemy import DateTime, bindparam, func, select, text
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from aurodlpv2_backend.db.models import EventAction, EventSeverity, Organization, ScanEvent
+from aurodlpv2_backend.audit.service import write_audit_event
+from aurodlpv2_backend.db.models import (
+    EventAction,
+    EventChannel,
+    EventSeverity,
+    ScanEvent,
+)
 from aurodlpv2_backend.deps import CurrentMember, DbSession
-from aurodlpv2_backend.scan.credentials import ScanPrincipal
+from aurodlpv2_backend.scan.credentials import ScanPrincipal, principal_for_request
 from aurodlpv2_backend.scan.limits import enforce_scan_limit
 
 router = APIRouter()
@@ -25,6 +28,7 @@ _MAX_CLOCK_SKEW = timedelta(minutes=5)
 _MAX_EVENT_AGE = timedelta(days=366)
 _MAX_ENTITIES_PER_EVENT = 500
 _MAX_RECIPIENTS_PER_EVENT = 200
+_MAX_SITE_HOST_LENGTH = 253
 _ANALYTICS_CACHE_TTL_SECONDS = 10.0
 _ANALYTICS_CACHE: dict[tuple[UUID, int], tuple[float, StatsResponse]] = {}
 
@@ -32,6 +36,7 @@ _ANALYTICS_CACHE: dict[tuple[UUID, int], tuple[float, StatsResponse]] = {}
 class EntityReport(BaseModel):
     type: str = Field(min_length=1, max_length=80)
     confidence: float = Field(ge=0, le=1)
+    masked_value: str | None = Field(default=None, max_length=200)
 
 
 def _empty_entities() -> list[EntityReport]:
@@ -43,22 +48,22 @@ def _empty_recipients() -> list[EmailStr]:
 
 
 class EventPayload(BaseModel):
-    org_code: str = Field(min_length=3, max_length=64)
+    org_code: str | None = Field(default=None, min_length=3, max_length=64)
     client_event_id: str = Field(min_length=8, max_length=128)
-    # Optional: the extension omits it when it cannot read the sender,
-    # rather than sending a placeholder that would 422 the event away.
     user_email: EmailStr | None = None
     action: EventAction
     severity: EventSeverity
     risk_score: float = Field(ge=0, le=100)
     entities: list[EntityReport] = Field(default_factory=_empty_entities)
     recipients: list[EmailStr] = Field(default_factory=_empty_recipients)
+    channel: EventChannel = "email"
+    site_host: str | None = Field(default=None, max_length=_MAX_SITE_HOST_LENGTH)
     timestamp: datetime | None = None
 
     @field_validator("org_code")
     @classmethod
-    def normalize_code(cls, value: str) -> str:
-        return value.strip().upper()
+    def normalize_code(cls, value: str | None) -> str | None:
+        return value.strip().upper() if value else None
 
     @field_validator("client_event_id")
     @classmethod
@@ -79,6 +84,18 @@ class EventPayload(BaseModel):
             raise ValueError("too many recipients")
         return value
 
+    @field_validator("site_host")
+    @classmethod
+    def normalize_site_host(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        host = value.strip().lower()
+        if not host:
+            return None
+        if "/" in host or "@" in host or any(char.isspace() for char in host):
+            raise ValueError("site_host must be a bare hostname")
+        return host
+
     @field_validator("timestamp")
     @classmethod
     def normalize_timestamp(cls, value: datetime | None) -> datetime | None:
@@ -87,6 +104,14 @@ class EventPayload(BaseModel):
         if value.tzinfo is None:
             value = value.replace(tzinfo=UTC)
         return value.astimezone(UTC)
+
+    @model_validator(mode="after")
+    def check_site_host_matches_channel(self) -> Self:
+        if self.channel == "web" and self.site_host is None:
+            raise ValueError("site_host is required for web events")
+        if self.channel == "email" and self.site_host is not None:
+            raise ValueError("site_host is only valid for web events")
+        return self
 
 
 class EntityTypeCount(BaseModel):
@@ -105,11 +130,18 @@ class DailyTrendPoint(BaseModel):
     count: int
 
 
+class SiteCount(BaseModel):
+    site_host: str
+    count: int
+
+
 class RecentEvent(BaseModel):
     user_email: str | None
     action: str
     severity: str
     risk_score: float
+    channel: str
+    site_host: str | None
     entities: list[dict[str, object]]
     recipients: list[str]
     timestamp: str
@@ -124,6 +156,8 @@ class StatsResponse(BaseModel):
     total_escalations: int
     unique_users: int
     avg_risk_score: float
+    by_channel: dict[str, int]
+    top_sites: list[SiteCount]
     top_entity_types: list[EntityTypeCount]
     top_users: list[UserBlockCount]
     daily_trend: list[DailyTrendPoint]
@@ -142,20 +176,23 @@ def _event_time(payload: EventPayload) -> datetime:
     return event_time
 
 
-async def _resolve_org_id(session: AsyncSession, org_code: str) -> UUID:
-    org_id = await session.scalar(select(Organization.id).where(Organization.org_code == org_code))
-    if org_id is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="unknown org code")
-    return org_id
+def _event_sender(principal: ScanPrincipal, claimed: EmailStr | None) -> str | None:
+    if principal.email:
+        return principal.email.lower()
+    if claimed:
+        return str(claimed).lower()
+    return None
 
 
 @router.post("", status_code=status.HTTP_202_ACCEPTED)
-async def ingest_event(payload: EventPayload, session: DbSession) -> dict[str, str]:
-    org_id = await _resolve_org_id(session, payload.org_code)
-    # This endpoint is org-code authenticated and exempt from the IP-keyed
-    # global limiter, so it carries its own budget. Without one, anyone holding
-    # an org code could flood an organisation's analytics.
-    enforce_scan_limit(ScanPrincipal(org_id=org_id, kind="org_code"))
+async def ingest_event(
+    payload: EventPayload,
+    session: DbSession,
+    x_auro_device_token: Annotated[str | None, Header()] = None,
+) -> dict[str, str]:
+    principal = await principal_for_request(session, payload.org_code, x_auro_device_token)
+    enforce_scan_limit(principal)
+    org_id = principal.org_id
     existing = await session.scalar(
         select(ScanEvent.id).where(
             ScanEvent.org_id == org_id,
@@ -168,15 +205,33 @@ async def ingest_event(payload: EventPayload, session: DbSession) -> dict[str, s
     event = ScanEvent(
         client_event_id=payload.client_event_id,
         org_id=org_id,
-        user_email=str(payload.user_email).lower() if payload.user_email else None,
+        user_email=_event_sender(principal, payload.user_email),
         action=payload.action,
         severity=payload.severity,
+        channel=payload.channel,
+        site_host=payload.site_host,
         risk_score=payload.risk_score,
         entities=[entity.model_dump() for entity in payload.entities],
         recipients=[str(recipient).lower() for recipient in payload.recipients],
         event_time=_event_time(payload),
     )
     session.add(event)
+    await write_audit_event(
+        session,
+        org_id=org_id,
+        actor=principal.actor(payload.user_email),
+        category="scan",
+        action=payload.action,
+        metadata={
+            "channel": payload.channel,
+            "site_host": payload.site_host,
+            "client_event_id": payload.client_event_id,
+            "entity_count": len(payload.entities),
+            "entity_types": sorted({entity.type for entity in payload.entities}),
+            "risk_score": payload.risk_score,
+            "severity": payload.severity,
+        },
+    )
     try:
         await session.commit()
     except IntegrityError:
@@ -209,6 +264,8 @@ async def get_analytics(
                 func.count(ScanEvent.id).filter(ScanEvent.action == "warn"),
                 func.count(ScanEvent.id).filter(ScanEvent.action == "quarantine"),
                 func.count(ScanEvent.id).filter(ScanEvent.action == "escalate"),
+                func.count(ScanEvent.id).filter(ScanEvent.channel == "email"),
+                func.count(ScanEvent.id).filter(ScanEvent.channel == "web"),
                 func.count(func.distinct(ScanEvent.user_email)),
                 func.coalesce(func.avg(ScanEvent.risk_score), 0),
             ).where(*base_filter)
@@ -221,6 +278,8 @@ async def get_analytics(
         total_warnings,
         total_quarantines,
         total_escalations,
+        email_events,
+        web_events,
         unique_users,
         avg_risk,
     ) = aggregate_row
@@ -235,6 +294,19 @@ async def get_analytics(
         )
     ).all()
     top_users = [UserBlockCount(email=email, blocks=int(count)) for email, count in top_users_rows]
+
+    top_sites_rows = (
+        await session.execute(
+            select(ScanEvent.site_host, func.count(ScanEvent.id))
+            .where(*base_filter, ScanEvent.channel == "web", ScanEvent.site_host.is_not(None))
+            .group_by(ScanEvent.site_host)
+            .order_by(func.count(ScanEvent.id).desc())
+            .limit(10)
+        )
+    ).all()
+    top_sites = [
+        SiteCount(site_host=str(site_host), count=int(count)) for site_host, count in top_sites_rows
+    ]
 
     day_expr = func.date_trunc("day", ScanEvent.event_time)
     trend_rows = (
@@ -287,6 +359,8 @@ async def get_analytics(
             action=event.action,
             severity=event.severity,
             risk_score=float(event.risk_score),
+            channel=event.channel,
+            site_host=event.site_host,
             entities=list(event.entities or []),
             recipients=list(event.recipients or []),
             timestamp=event.event_time.isoformat(),
@@ -303,6 +377,8 @@ async def get_analytics(
         total_escalations=int(total_escalations or 0),
         unique_users=int(unique_users or 0),
         avg_risk_score=round(float(avg_risk or 0), 1),
+        by_channel={"email": int(email_events or 0), "web": int(web_events or 0)},
+        top_sites=top_sites,
         top_entity_types=top_entity_types,
         top_users=top_users,
         daily_trend=daily_trend,

@@ -1,16 +1,3 @@
-"""Database models for Auro Healthcare DLP.
-
-Schema:
-- organizations: tenant root, owns an org_code (extension auth key)
-- org_members: humans inside an org (email + argon2 password), role-based
-- refresh_tokens: hashed refresh-token rotation per member
-- device_tokens: per-install extension credentials (replacing the shared org_code)
-- password_reset_tokens / email_verification_tokens: single-use hashed links
-- member_mfa: TOTP enrolment, secret encrypted at rest
-- approved_domains: per-org allow-list (sender/recipient/both)
-- scan_events: PHI scan events fired by extension (resolved by org_code)
-"""
-
 from __future__ import annotations
 
 from datetime import datetime
@@ -43,9 +30,9 @@ DomainDirection = Literal["sender", "recipient", "both"]
 DomainClass = Literal["internal", "partner", "blocked"]
 EventAction = Literal["allow", "warn", "block", "quarantine", "escalate"]
 EventSeverity = Literal["none", "low", "medium", "high", "critical"]
+EventChannel = Literal["email", "web"]
 AttachmentScanStatus = Literal["scanned", "queued", "failed"]
 QuarantineStatus = Literal["pending", "approved", "rejected"]
-# Back-compat alias so legacy imports (auth/jwt.py) still resolve.
 UserRole = MemberRole
 
 
@@ -129,14 +116,10 @@ class RefreshToken(Base):
         nullable=False,
         index=True,
     )
-    #: Every descendant of one login shares this id, so a replayed token can
-    #: take down the whole lineage rather than just the stolen link.
     family_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), nullable=False)
     token_hash: Mapped[bytes] = mapped_column(BYTEA, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    #: Set when this token was exchanged for a successor. Still usable for the
-    #: rotation grace window; after that a presentation means the token leaked.
     rotated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -147,12 +130,6 @@ class RefreshToken(Base):
 
 
 class DeviceToken(Base):
-    """Per-install credential for the browser extension.
-
-    The shared org_code authenticates every install at once, so rotating it
-    after one laptop is lost breaks every other install in the hospital.
-    """
-
     __tablename__ = "device_tokens"
     __table_args__ = (Index("ix_device_tokens_org_created", "org_id", "created_at"),)
 
@@ -168,8 +145,6 @@ class DeviceToken(Base):
         ForeignKey("org_members.id", ondelete="SET NULL"),
         nullable=True,
     )
-    #: Denormalised so a revoked member's device still reports who it scanned
-    #: as; scan events are evidence and must survive the FK going NULL.
     member_email: Mapped[str | None] = mapped_column(Text, nullable=True)
     label: Mapped[str] = mapped_column(Text, nullable=False)
     token_hash: Mapped[bytes] = mapped_column(BYTEA, nullable=False)
@@ -193,7 +168,6 @@ class PasswordResetToken(Base):
     )
     token_hash: Mapped[bytes] = mapped_column(BYTEA, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    #: Single use: a reset link sitting in a mailbox must not work twice.
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
@@ -228,11 +202,7 @@ class MemberMfa(Base):
         ForeignKey("org_members.id", ondelete="CASCADE"),
         nullable=False,
     )
-    #: AES-GCM ciphertext, never the raw base32 seed — a DB dump would
-    #: otherwise let the reader mint valid codes for every enrolled member.
     secret_encrypted: Mapped[bytes] = mapped_column(BYTEA, nullable=False)
-    #: NULL until the member proves they can generate a code, so a half-finished
-    #: enrolment cannot lock anyone out.
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     backup_codes: Mapped[list[str]] = mapped_column(
         ARRAY(Text), nullable=False, default=list, server_default=text("'{}'::text[]")
@@ -298,10 +268,15 @@ class ScanEvent(Base):
             "severity IN ('none','low','medium','high','critical')",
             name="ck_scan_events_severity",
         ),
+        CheckConstraint(
+            "channel IN ('email','web')",
+            name="ck_scan_events_channel",
+        ),
         CheckConstraint("risk_score >= 0 AND risk_score <= 100", name="ck_scan_events_risk_score"),
         UniqueConstraint("org_id", "client_event_id", name="uq_scan_events_org_client_event"),
         Index("ix_scan_events_org_time", "org_id", "event_time"),
         Index("ix_scan_events_org_action_time", "org_id", "action", "event_time"),
+        Index("ix_scan_events_org_channel_time", "org_id", "channel", "event_time"),
     )
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid7)
@@ -312,11 +287,13 @@ class ScanEvent(Base):
         nullable=False,
         index=True,
     )
-    # Null when the sender could not be attributed. The extension used to
-    # send the literal 'unknown', which became a user in the analytics.
     user_email: Mapped[str | None] = mapped_column(Text, nullable=True)
     action: Mapped[EventAction] = mapped_column(Text, nullable=False)
     severity: Mapped[EventSeverity] = mapped_column(Text, nullable=False)
+    channel: Mapped[EventChannel] = mapped_column(
+        Text, nullable=False, server_default=text("'email'")
+    )
+    site_host: Mapped[str | None] = mapped_column(Text, nullable=True)
     risk_score: Mapped[Decimal] = mapped_column(
         Numeric(5, 2), nullable=False, server_default=text("0")
     )

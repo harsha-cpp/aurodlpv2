@@ -1,4 +1,5 @@
-import { request } from '../lib/api';
+import { request } from "../lib/api";
+import type { Channel } from "../lib/channel";
 
 export interface EntityTypeCount {
   type: string;
@@ -6,9 +7,18 @@ export interface EntityTypeCount {
 }
 
 export interface UserBlockCount {
-  /** Null when the send could not be attributed to a mailbox. */
   email: string | null;
   blocks: number;
+}
+
+export interface SiteBlockCount {
+  site_host: string;
+  count: number;
+}
+
+export interface ChannelCountsResponse {
+  email: number;
+  web: number;
 }
 
 export interface DailyTrendPoint {
@@ -24,9 +34,10 @@ export interface RecentEventEntity {
 }
 
 export interface RecentEvent {
-  /** Null when the send could not be attributed to a mailbox. */
   user_email: string | null;
   action: string;
+  channel: Channel;
+  site_host: string | null;
   severity: string;
   risk_score: number;
   entities: RecentEventEntity[];
@@ -42,14 +53,16 @@ export interface Analytics {
   total_quarantines: number;
   total_escalations: number;
   unique_users: number;
-  /** 0-100, same scale as every other risk number in the product. */
   avg_risk_score: number;
+  by_channel: ChannelCountsResponse;
   top_entity_types: EntityTypeCount[];
+  top_sites: SiteBlockCount[];
   top_users: UserBlockCount[];
   daily_trend: DailyTrendPoint[];
   recent_events: RecentEvent[];
 }
 
 export const eventsApi = {
-  analytics: (days = 30) => request<Analytics>('/api/v1/events/analytics', { query: { days } }),
+  analytics: (days = 30) =>
+    request<Analytics>("/api/v1/events/analytics", { query: { days } }),
 };
