@@ -5,92 +5,198 @@
 }
 
 .auro-overlay {
+  --surface: #ffffff;
+  --surface-2: #e9ecea;
+  --rule: #d4dad7;
+  --rule-strong: #b7c0bc;
+  --ink: #121a1f;
+  --ink-2: #3b4850;
+  --ink-3: #69777f;
+  --accent: #0e5e6d;
+  --accent-ink: #ffffff;
+  --accent-soft: #e0eef0;
+  --allow: #237a4a;
+  --allow-soft: #e2f1e7;
+  --allow-rule: #a9d4b8;
+  --warn: #8f5b00;
+  --warn-soft: #f8ecd2;
+  --warn-rule: #e4c98e;
+  --stop: #b03a22;
+  --stop-soft: #f8e2dd;
+  --stop-rule: #e6ada0;
+  --stop-ink: #ffffff;
+  --scrim: rgba(18, 26, 31, 0.42);
+  --shadow:
+    0 24px 64px -16px rgba(18, 26, 31, 0.35), 0 2px 6px rgba(18, 26, 31, 0.1);
+  --font-ui:
+    "Schibsted Grotesk", "Segoe UI Variable Text", "Segoe UI", system-ui,
+    -apple-system, sans-serif;
+  --font-display:
+    "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system,
+    sans-serif;
+  --font-mono: "DM Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
   position: fixed;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
-  animation: auro-fade-in 0.2s ease-out;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--scrim);
+  animation: auro-fade-in 160ms ease-out;
+  font-family: var(--font-ui);
   font-size: 14px;
   line-height: 1.5;
-  color: #fafafa;
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-color-scheme: dark) {
+  .auro-overlay {
+    --surface: #151b1e;
+    --surface-2: #1c2427;
+    --rule: #2b353a;
+    --rule-strong: #3d4a50;
+    --ink: #e8edeb;
+    --ink-2: #b6c1bd;
+    --ink-3: #86948f;
+    --accent: #4fb3c1;
+    --accent-ink: #0a1a1d;
+    --accent-soft: #143238;
+    --allow: #5ab97f;
+    --allow-soft: #17311f;
+    --allow-rule: #2c5a3c;
+    --warn: #d9a441;
+    --warn-soft: #3a2b0c;
+    --warn-rule: #6a5020;
+    --stop: #e6785f;
+    --stop-soft: #3f1f17;
+    --stop-rule: #72392b;
+    --stop-ink: #1a0d09;
+    --scrim: rgba(0, 0, 0, 0.6);
+    --shadow:
+      0 24px 64px -16px rgba(0, 0, 0, 0.8), 0 2px 6px rgba(0, 0, 0, 0.5);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auro-overlay,
+  .auro-modal {
+    animation: none;
+  }
 }
 
 .auro-modal {
-  width: 440px;
+  width: 468px;
   max-width: calc(100vw - 40px);
-  background: #0a0a0a;
-  border: 1px solid #262626;
-  border-radius: 12px;
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-top: 3px solid var(--accent);
+  border-radius: 6px;
+  box-shadow: var(--shadow);
   overflow: hidden;
   outline: none;
-  animation: auro-slide-up 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: auro-rise 220ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.auro-modal.is-stop {
+  border-top-color: var(--stop);
+}
+.auro-modal.is-warn {
+  border-top-color: var(--warn);
+}
+.auro-modal.is-allow {
+  border-top-color: var(--allow);
 }
 
 .auro-header {
+  padding: 20px 22px 0;
   display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 22px 22px 0;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.auro-icon-block {
-  flex-shrink: 0;
-  width: 42px;
-  height: 42px;
-  display: flex;
+.auro-verdict {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  background: rgba(220, 38, 38, 0.12);
-  border-radius: 10px;
-  border: 1px solid rgba(220, 38, 38, 0.4);
+  gap: 6px;
+  align-self: flex-start;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 3px;
+  border: 1px solid var(--rule);
+  background: var(--surface-2);
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+}
+.auro-verdict::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.auro-verdict.is-stop {
+  border-color: var(--stop-rule);
+  background: var(--stop-soft);
+  color: var(--stop);
+}
+.auro-verdict.is-warn {
+  border-color: var(--warn-rule);
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.auro-verdict.is-allow {
+  border-color: var(--allow-rule);
+  background: var(--allow-soft);
+  color: var(--allow);
 }
 
 .auro-title {
-  font-size: 17px;
+  font-family: var(--font-display);
   font-weight: 600;
-  color: #fafafa;
-  letter-spacing: -0.01em;
+  font-size: 22px;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+  text-wrap: balance;
 }
 
 .auro-subtitle {
-  font-size: 12px;
-  color: #a3a3a3;
-  margin-top: 2px;
-  font-weight: 500;
+  font-size: 13px;
+  color: var(--ink-3);
 }
 
 .auro-message {
-  padding: 16px 22px;
-  font-size: 13px;
-  color: #d4d4d4;
-  line-height: 1.6;
+  padding: 14px 22px 4px;
+  font-size: 13.5px;
+  color: var(--ink-2);
+  line-height: 1.55;
 }
 
-.auro-degraded {
-  margin: -6px 22px 14px;
-  padding: 8px 10px;
-  border: 1px solid #404040;
-  border-radius: 6px;
-  background: #171717;
-  color: #a3a3a3;
+.auro-notice {
+  margin: 10px 22px 0;
+  padding: 8px 11px;
+  border: 1px solid var(--warn-rule);
+  border-left: 3px solid var(--warn);
+  border-radius: 4px;
+  background: var(--warn-soft);
+  color: var(--warn);
   font-size: 12px;
+  line-height: 1.45;
 }
 
 .auro-entities {
-  padding: 0 22px 16px;
+  padding: 16px 22px 18px;
 }
 
 .auro-entities-label {
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #737373;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  color: var(--ink-3);
   margin-bottom: 8px;
 }
 
@@ -98,32 +204,31 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  max-height: 160px;
+  max-height: 168px;
   overflow-y: auto;
 }
 
 .auro-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 10px;
-  background: #171717;
-  border: 1px solid #262626;
-  border-radius: 6px;
+  gap: 8px;
+  height: 26px;
+  padding: 0 9px;
+  background: var(--surface-2);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
 }
 
 .auro-chip-type {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #dc2626;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--ink-2);
 }
 
 .auro-chip-value {
-  font-size: 12px;
-  font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
-  color: #a3a3a3;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--ink-3);
 }
 
 .auro-footer {
@@ -131,14 +236,15 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px 22px;
-  background: #0f0f0f;
-  border-top: 1px solid #262626;
+  padding: 14px 22px;
+  background: var(--surface-2);
+  border-top: 1px solid var(--rule);
 }
 
 .auro-footer-hint {
   font-size: 12px;
-  color: #737373;
+  color: var(--ink-3);
+  line-height: 1.4;
 }
 
 .auro-footer-actions {
@@ -150,42 +256,83 @@
 
 .auro-btn {
   flex-shrink: 0;
-  padding: 9px 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  font-family: var(--font-ui);
   font-size: 13px;
-  font-weight: 600;
-  color: #0a0a0a;
-  background: #fafafa;
-  border: none;
-  border-radius: 7px;
+  font-weight: 500;
+  color: var(--accent-ink);
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
   cursor: pointer;
-  transition: background 0.15s;
+  transition:
+    filter 120ms ease,
+    background 120ms ease;
 }
-
 .auro-btn:hover {
-  background: #e5e5e5;
+  filter: brightness(0.94);
 }
-
-.auro-btn-secondary {
-  color: #fafafa;
-  background: #171717;
-  border: 1px solid #262626;
+.auro-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
-
-.auro-btn-secondary:hover {
-  background: #262626;
-}
-
 .auro-btn:focus-visible {
-  outline: 2px solid #dc2626;
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
-@keyframes auro-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+.auro-btn-secondary {
+  color: var(--ink);
+  background: var(--surface);
+  border-color: var(--rule-strong);
+}
+.auro-btn-secondary:hover {
+  filter: none;
+  background: var(--surface-2);
 }
 
-@keyframes auro-slide-up {
-  from { opacity: 0; transform: translateY(10px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+.auro-btn-stop {
+  color: var(--stop-ink);
+  background: var(--stop);
+  border-color: var(--stop);
+}
+
+.auro-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--rule);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: auro-spin 640ms linear infinite;
+}
+
+@keyframes auro-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes auro-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes auro-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }

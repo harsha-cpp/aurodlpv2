@@ -1,10 +1,3 @@
-"""Declarative detection rules.
-
-One rule pack drives the Python engine and, serialized, the extension's offline
-fallback. Two hand-maintained detectors that disagree is how the same message
-came to produce different verdicts depending on whether the backend answered.
-"""
-
 from __future__ import annotations
 
 from pydantic import BaseModel, Field
@@ -15,15 +8,6 @@ def _empty_strings() -> list[str]:
 
 
 class Rule(BaseModel):
-    """One detection rule.
-
-    Confidence starts at ``base_confidence`` and is adjusted by context: terms
-    from ``context_terms`` inside ``context_window`` characters raise it,
-    ``negative_terms`` lower it. ``requires_context`` makes the rule inert
-    without a positive term, which is what keeps a bare fourteen-digit invoice
-    number from reading as a health ID.
-    """
-
     entity_type: str
     name: str
     pattern: str
@@ -35,17 +19,9 @@ class Rule(BaseModel):
     context_window: int = 72
     context_boost: float = 0.2
     negative_penalty: float = 0.45
-    #: Higher wins when two matches overlap. Composite identifiers outrank the
-    #: fragments they contain.
     priority: int = 0
-    #: Regex group holding the value, when the pattern needs a label prefix to
-    #: match but should not report it.
     value_group: int = 0
     case_sensitive: bool = False
-    #: Applied repeatedly at the end of a match to pick up comma-separated
-    #: continuations: "UHID 0038001, 0038007 and 0038014" is three patients, and
-    #: a bulk list is exactly the case the risk model must not under-read.
-    #: Group 1 holds the value.
     continuation: str | None = None
 
 

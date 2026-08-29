@@ -1,9 +1,3 @@
-"""Per-org policy: editing rules actually changes enforcement.
-
-A policy editor that does not affect scanning is worse than no editor, so these
-go through the real endpoints and then scan a real message.
-"""
-
 from __future__ import annotations
 
 import uuid
@@ -67,9 +61,7 @@ async def _scan(client: AsyncClient, org_code: str, recipient: str) -> dict[str,
 
 async def test_new_org_uses_the_builtin_rules(api_client: AsyncClient) -> None:
     token, _org_code = await _signup(api_client)
-    response = await api_client.get(
-        "/api/v1/policy", headers={"Authorization": f"Bearer {token}"}
-    )
+    response = await api_client.get("/api/v1/policy", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 200, response.text
     body: dict[str, Any] = response.json()
     assert body["is_custom"] is False
@@ -123,13 +115,10 @@ async def test_duplicate_rule_ids_are_rejected(api_client: AsyncClient) -> None:
 
 
 async def test_a_policy_with_no_enabled_rule_is_rejected(api_client: AsyncClient) -> None:
-    """Saving an all-disabled set would silently switch enforcement off."""
     token, _org_code = await _signup(api_client)
     payload: dict[str, Any] = {
         "version": "off",
-        "rules": [
-            {"id": "off", "enabled": False, "order": 1, "conditions": {}, "action": "allow"}
-        ],
+        "rules": [{"id": "off", "enabled": False, "order": 1, "conditions": {}, "action": "allow"}],
     }
     response = await api_client.put(
         "/api/v1/policy", headers={"Authorization": f"Bearer {token}"}, json=payload
@@ -166,9 +155,6 @@ async def test_simulation_previews_a_candidate_without_saving_it(
     assert response.status_code == 200, response.text
     assert response.json()["action"] == "block"
 
-    # The saved policy is untouched: a real scan still runs the builtin rules,
-    # not the candidate. (It also blocks here, because an org with no approved
-    # sender domain configured yet treats every sender as external.)
     saved = await api_client.get("/api/v1/policy", headers=headers)
     assert saved.json()["is_custom"] is False
     live = await _scan(api_client, org_code, "patient@gmail.com")
@@ -178,7 +164,6 @@ async def test_simulation_previews_a_candidate_without_saving_it(
 async def test_invite_no_longer_leaks_the_token_in_the_response(
     api_client: AsyncClient,
 ) -> None:
-    """The backend mails the link; returning it made it copy-pasteable."""
     token, _org_code = await _signup(api_client)
     suffix = uuid.uuid4().hex[:8]
     invited = await api_client.post(

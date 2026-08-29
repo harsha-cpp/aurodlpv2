@@ -1,15 +1,12 @@
-// Attachment scanning — TXT via FileReader, PDF via pdf.js. Runs before Gmail upload.
-import { detectPhi } from './phi';
-import type { EntityHit } from '@aurodlpv2/shared';
-import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import { detectPhi } from "./phi";
+import type { EntityHit } from "@aurodlpv2/shared";
+import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
-// pdf.js is dynamically imported so the main content bundle stays small.
-let pdfLib: typeof import('pdfjs-dist') | null = null;
+let pdfLib: typeof import("pdfjs-dist") | null = null;
 
-async function getPdfLib(): Promise<typeof import('pdfjs-dist')> {
+async function getPdfLib(): Promise<typeof import("pdfjs-dist")> {
   if (pdfLib) return pdfLib;
-  pdfLib = await import('pdfjs-dist');
-  // Point worker to the bundled file via chrome extension URL.
+  pdfLib = await import("pdfjs-dist");
   pdfLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
   return pdfLib;
 }
@@ -31,13 +28,13 @@ async function extractPdf(file: File): Promise<string> {
     const page = await doc.getPage(i);
     const text = await page.getTextContent();
     const pageText = text.items
-      .map((item) => ('str' in item ? item.str : ''))
+      .map((item) => ("str" in item ? item.str : ""))
       .filter(Boolean)
-      .join(' ');
+      .join(" ");
     parts.push(pageText);
   }
   await doc.destroy();
-  return parts.join('\n');
+  return parts.join("\n");
 }
 
 export interface AttachmentScanResult {
@@ -54,22 +51,28 @@ export interface AttachmentUrlRef {
 
 async function extractText(file: File): Promise<string> {
   const name = file.name.toLowerCase();
-  const type = (file.type || '').toLowerCase();
-  if (type === 'text/plain' || name.endsWith('.txt') || name.endsWith('.csv') || name.endsWith('.log')) {
+  const type = (file.type || "").toLowerCase();
+  if (
+    type === "text/plain" ||
+    name.endsWith(".txt") ||
+    name.endsWith(".csv") ||
+    name.endsWith(".log")
+  ) {
     return extractTxt(file);
   }
-  if (type === 'application/pdf' || name.endsWith('.pdf')) {
+  if (type === "application/pdf" || name.endsWith(".pdf")) {
     return extractPdf(file);
   }
-  // Unsupported type — skip silently
-  return '';
+  return "";
 }
 
-export async function scanAttachment(file: File): Promise<AttachmentScanResult> {
+export async function scanAttachment(
+  file: File,
+): Promise<AttachmentScanResult> {
   try {
     const text = await extractText(file);
     if (!text) return { filename: file.name, entities: [] };
-    const entities = detectPhi(text, 'attachment', file.name);
+    const entities = detectPhi(text, "attachment", file.name);
     return { filename: file.name, entities };
   } catch (err) {
     console.error(`[AURO] Attachment scan FAILED for ${file.name}:`, err);
@@ -90,42 +93,40 @@ async function fetchAttachmentRef(
 ): Promise<File | null> {
   const controller = new AbortController();
   const abort = (): void => controller.abort();
-  signal?.addEventListener('abort', abort);
+  signal?.addEventListener("abort", abort);
   const timer = setTimeout(abort, timeoutMs);
   try {
-    const res = await fetch(ref.url, { credentials: 'include', signal: controller.signal });
+    const res = await fetch(ref.url, {
+      credentials: "include",
+      signal: controller.signal,
+    });
     if (!res.ok) return null;
     const blob = await res.blob();
     const name = ref.name?.trim() || `attachment-${Date.now()}`;
-    const type = ref.mimeType || blob.type || 'application/octet-stream';
+    const type = ref.mimeType || blob.type || "application/octet-stream";
     return new File([blob], name, { type });
   } catch {
     return null;
   } finally {
     clearTimeout(timer);
-    signal?.removeEventListener('abort', abort);
+    signal?.removeEventListener("abort", abort);
   }
 }
 
 export interface FetchedRefs {
   files: File[];
-  /** Refs Gmail exposed that we could not read; the caller must not treat them as clean. */
   failed: number;
 }
 
-/**
- * Materialise attachments that Gmail has already uploaded for a draft.
- *
- * Needed because the file the user picked is not always captured from an input
- * event; anything reachable this way gets scanned instead of being assumed safe.
- */
 export async function fetchAttachmentRefs(
   refs: AttachmentUrlRef[],
   timeoutMs: number,
   signal?: AbortSignal,
 ): Promise<FetchedRefs> {
   if (refs.length === 0) return { files: [], failed: 0 };
-  const fetched = await Promise.all(refs.map((ref) => fetchAttachmentRef(ref, timeoutMs, signal)));
+  const fetched = await Promise.all(
+    refs.map((ref) => fetchAttachmentRef(ref, timeoutMs, signal)),
+  );
   const files = fetched.filter((f): f is File => Boolean(f));
   return { files, failed: fetched.length - files.length };
 }
@@ -135,13 +136,13 @@ const MAX_BYTES = 25 * 1024 * 1024;
 export function isScannable(file: File): boolean {
   if (file.size > MAX_BYTES) return false;
   const name = file.name.toLowerCase();
-  const type = (file.type || '').toLowerCase();
+  const type = (file.type || "").toLowerCase();
   return (
-    type === 'text/plain' ||
-    type === 'application/pdf' ||
-    name.endsWith('.txt') ||
-    name.endsWith('.csv') ||
-    name.endsWith('.log') ||
-    name.endsWith('.pdf')
+    type === "text/plain" ||
+    type === "application/pdf" ||
+    name.endsWith(".txt") ||
+    name.endsWith(".csv") ||
+    name.endsWith(".log") ||
+    name.endsWith(".pdf")
   );
 }

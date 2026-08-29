@@ -32,7 +32,6 @@ def _as_session(session: _FakeSession) -> AsyncSession:
 
 
 def _chain(org_id: UUID, length: int) -> list[AuditEvent]:
-    """Build a correctly linked chain, the way write_audit_event would."""
     events: list[AuditEvent] = []
     previous_hash: str | None = None
     base = datetime(2026, 6, 10, 9, 0, tzinfo=UTC)
@@ -79,7 +78,6 @@ async def test_empty_chain_verifies() -> None:
 
 @pytest.mark.unit
 async def test_edited_row_is_caught_at_its_position() -> None:
-    """A row rewritten in place no longer hashes to its stored event_hash."""
     org_id = uuid4()
     events = _chain(org_id, 5)
     events[2].actor = "member:attacker@hospital.in"
@@ -107,7 +105,6 @@ async def test_deleted_row_breaks_the_link() -> None:
 
 @pytest.mark.unit
 async def test_forked_chain_is_caught() -> None:
-    """Two concurrent writers used to pick the same predecessor; that forks."""
     org_id = uuid4()
     events = _chain(org_id, 3)
     fork = _chain(org_id, 2)[1]

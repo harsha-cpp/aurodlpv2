@@ -3,7 +3,7 @@
 
 Alembic has no locking of its own. Two API containers booting at the same second
 both read the current revision, both decide they must apply 0003, and one of them
-dies on a duplicate object — or worse, on a migration that is not transactional,
+dies on a duplicate object - or worse, on a migration that is not transactional,
 leaves the schema half-applied. Postgres advisory locks are the standard fix:
 session-scoped, released automatically if the process is killed, and free.
 

@@ -36,7 +36,6 @@ async def _noop(_scope: object, _receive: object, _send: object) -> None:
 
 def _middleware(**overrides: object) -> RateLimitMiddleware:
     middleware = RateLimitMiddleware(_noop, **overrides)  # type: ignore[arg-type]
-    # Skip the Redis probe: these tests exercise the in-memory fallback.
     middleware._redis_checked = True
     return middleware
 
@@ -52,14 +51,12 @@ def test_client_ip_falls_back_to_socket_when_no_proxies_are_trusted() -> None:
 def test_client_ip_reads_the_nth_entry_from_the_right() -> None:
     request = _request(headers=[(b"x-forwarded-for", b"198.51.100.7, 10.0.0.1, 10.0.0.2")])
 
-    # One trusted hop: the entry that hop appended is the client it saw.
     assert resolve_client_ip(request, 1) == "10.0.0.2"
     assert resolve_client_ip(request, 2) == "10.0.0.1"
 
 
 @pytest.mark.unit
 def test_spoofed_short_forwarded_header_cannot_pick_the_client_ip() -> None:
-    """A caller sending one bogus entry must not be able to forge its key."""
     request = _request(headers=[(b"x-forwarded-for", b"1.2.3.4")])
 
     assert resolve_client_ip(request, 2) == "203.0.113.10"
@@ -77,7 +74,6 @@ async def test_limit_is_enforced_per_key() -> None:
     allowed = [not await middleware._over_limit("ip:1.2.3.4") for _ in range(4)]
 
     assert allowed == [True, True, True, False]
-    # A different caller keeps its own budget.
     assert await middleware._over_limit("ip:5.6.7.8") is False
 
 
@@ -92,7 +88,6 @@ def test_scan_and_events_are_exempt_by_default() -> None:
 
 @pytest.mark.unit
 async def test_memory_buckets_are_bounded(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A spray of unique keys evicts the oldest instead of growing forever."""
     bounded = Settings(api_rate_limit_max_keys=100)
     monkeypatch.setattr(security_module, "get_settings", lambda: bounded)
     middleware = _middleware(limit=5)

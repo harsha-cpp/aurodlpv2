@@ -3,25 +3,46 @@
     "id": "id-aadhaar-spaced",
     "category": "identifier_format",
     "subject": "",
-    "body": ["Aadhaar number on the consent form reads 2362 1784 3784."],
+    "body": [
+      "Aadhaar number on the consent form reads 2362 1784 3784."
+    ],
     "expect_phi": true,
-    "entities": [{ "type": "IN_AADHAAR", "value": "2362 1784 3784" }]
+    "entities": [
+      {
+        "type": "IN_AADHAAR",
+        "value": "2362 1784 3784"
+      }
+    ]
   },
   {
     "id": "id-aadhaar-hyphenated",
     "category": "identifier_format",
     "subject": "",
-    "body": ["The registration desk typed it as 4027-3215-3292 with hyphens."],
+    "body": [
+      "The registration desk typed it as 4027-3215-3292 with hyphens."
+    ],
     "expect_phi": true,
-    "entities": [{ "type": "IN_AADHAAR", "value": "4027-3215-3292" }]
+    "entities": [
+      {
+        "type": "IN_AADHAAR",
+        "value": "4027-3215-3292"
+      }
+    ]
   },
   {
     "id": "id-aadhaar-unspaced",
     "category": "identifier_format",
     "subject": "",
-    "body": ["UID 842076390472 was captured at the counter."],
+    "body": [
+      "UID 842076390472 was captured at the counter."
+    ],
     "expect_phi": true,
-    "entities": [{ "type": "IN_AADHAAR", "value": "842076390472" }]
+    "entities": [
+      {
+        "type": "IN_AADHAAR",
+        "value": "842076390472"
+      }
+    ]
   },
   {
     "id": "id-aadhaar-in-sentence",
@@ -32,7 +53,12 @@
       "on the card has changed since the last visit."
     ],
     "expect_phi": true,
-    "entities": [{ "type": "IN_AADHAAR", "value": "7083 7293 2719" }]
+    "entities": [
+      {
+        "type": "IN_AADHAAR",
+        "value": "7083 7293 2719"
+      }
+    ]
   },
   {
     "id": "id-aadhaar-two-in-one",
@@ -44,33 +70,60 @@
     ],
     "expect_phi": true,
     "entities": [
-      { "type": "IN_AADHAAR", "value": "2959 6828 4596" },
-      { "type": "IN_AADHAAR", "value": "5913 4195 3818" }
+      {
+        "type": "IN_AADHAAR",
+        "value": "2959 6828 4596"
+      },
+      {
+        "type": "IN_AADHAAR",
+        "value": "5913 4195 3818"
+      }
     ]
   },
   {
     "id": "id-pan-labelled",
     "category": "identifier_format",
     "subject": "",
-    "body": ["PAN KEVPX6506K is required for the insurance claim above two lakhs."],
+    "body": [
+      "PAN KEVPX6506K is required for the insurance claim above two lakhs."
+    ],
     "expect_phi": true,
-    "entities": [{ "type": "IN_PAN", "value": "KEVPX6506K" }]
+    "entities": [
+      {
+        "type": "IN_PAN",
+        "value": "KEVPX6506K"
+      }
+    ]
   },
   {
     "id": "id-pan-unlabelled",
     "category": "identifier_format",
     "subject": "",
-    "body": ["Income tax details for the patient: TWHPX5807Y, filed under the old regime."],
+    "body": [
+      "Income tax details for the patient: TWHPX5807Y, filed under the old regime."
+    ],
     "expect_phi": true,
-    "entities": [{ "type": "IN_PAN", "value": "TWHPX5807Y" }]
+    "entities": [
+      {
+        "type": "IN_PAN",
+        "value": "TWHPX5807Y"
+      }
+    ]
   },
   {
     "id": "id-abha-formatted",
     "category": "identifier_format",
     "subject": "",
-    "body": ["ABHA number 12-9269-8996-7473 has been linked to the hospital record."],
+    "body": [
+      "ABHA number 12-9269-8996-7473 has been linked to the hospital record."
+    ],
     "expect_phi": true,
-    "entities": [{ "type": "ABHA_NUMBER", "value": "12-9269-8996-7473" }]
+    "entities": [
+      {
+        "type": "ABHA_NUMBER",
+        "value": "12-9269-8996-7473"
+      }
+    ]
   },
   {
     "id": "id-abha-raw-with-context",
@@ -81,73 +134,134 @@
       "usual hyphens. Please reformat it in the record."
     ],
     "expect_phi": true,
-    "entities": [{ "type": "ABHA_NUMBER", "value": "45120099887766" }],
+    "entities": [
+      {
+        "type": "ABHA_NUMBER",
+        "value": "45120099887766"
+      }
+    ],
     "notes": "Raw 14-digit ABHA is only safe to flag because 'health ID' is right beside it."
   },
   {
     "id": "id-abha-address-abdm",
     "category": "identifier_format",
     "subject": "",
-    "body": ["Health locker address is ramesh.iyer@abdm for the discharge upload."],
+    "body": [
+      "Health locker address is ramesh.iyer@abdm for the discharge upload."
+    ],
     "expect_phi": true,
-    "entities": [{ "type": "ABHA_ADDRESS", "value": "ramesh.iyer@abdm" }]
+    "entities": [
+      {
+        "type": "ABHA_ADDRESS",
+        "value": "ramesh.iyer@abdm"
+      }
+    ]
   },
   {
     "id": "id-abha-address-sbx",
     "category": "identifier_format",
     "subject": "",
-    "body": ["Sandbox ABHA address for the integration test patient is testuser01@sbx."],
+    "body": [
+      "Sandbox ABHA address for the integration test patient is testuser01@sbx."
+    ],
     "expect_phi": true,
-    "entities": [{ "type": "ABHA_ADDRESS", "value": "testuser01@sbx" }]
+    "entities": [
+      {
+        "type": "ABHA_ADDRESS",
+        "value": "testuser01@sbx"
+      }
+    ]
   },
   {
     "id": "id-mrn-label-colon",
     "category": "identifier_format",
     "subject": "",
-    "body": ["MRN: 0044219 - please pull the old notes from the records room."],
+    "body": [
+      "MRN: 0044219 - please pull the old notes from the records room."
+    ],
     "expect_phi": true,
-    "entities": [{ "type": "MRN", "value": "0044219" }]
+    "entities": [
+      {
+        "type": "MRN",
+        "value": "0044219"
+      }
+    ]
   },
   {
     "id": "id-mrn-uhid-plain",
     "category": "identifier_format",
     "subject": "",
-    "body": ["UHID 445901 has two duplicate entries in the system that need merging."],
+    "body": [
+      "UHID 445901 has two duplicate entries in the system that need merging."
+    ],
     "expect_phi": true,
-    "entities": [{ "type": "MRN", "value": "445901" }]
+    "entities": [
+      {
+        "type": "MRN",
+        "value": "445901"
+      }
+    ]
   },
   {
     "id": "id-mrn-prefixed",
     "category": "identifier_format",
     "subject": "",
-    "body": ["Patient ID SMH-2026-004417 was issued at the new branch."],
+    "body": [
+      "Patient ID SMH-2026-004417 was issued at the new branch."
+    ],
     "expect_phi": true,
-    "entities": [{ "type": "MRN", "value": "SMH-2026-004417" }],
+    "entities": [
+      {
+        "type": "MRN",
+        "value": "SMH-2026-004417"
+      }
+    ],
     "notes": "The one MRN shape the current recognizer does match."
   },
   {
     "id": "id-mrn-hospital-no",
     "category": "identifier_format",
     "subject": "",
-    "body": ["Hospital No. 22/4471 written on the old paper file from 2022."],
+    "body": [
+      "Hospital No. 22/4471 written on the old paper file from 2022."
+    ],
     "expect_phi": true,
-    "entities": [{ "type": "MRN", "value": "22/4471" }]
+    "entities": [
+      {
+        "type": "MRN",
+        "value": "22/4471"
+      }
+    ]
   },
   {
     "id": "id-visit-ip",
     "category": "identifier_format",
     "subject": "",
-    "body": ["IP No 2026/05120 admitted through casualty last night."],
+    "body": [
+      "IP No 2026/05120 admitted through casualty last night."
+    ],
     "expect_phi": true,
-    "entities": [{ "type": "PATIENT_VISIT_ID", "value": "2026/05120" }]
+    "entities": [
+      {
+        "type": "PATIENT_VISIT_ID",
+        "value": "2026/05120"
+      }
+    ]
   },
   {
     "id": "id-visit-op",
     "category": "identifier_format",
     "subject": "",
-    "body": ["OP No: OP-2026-338110 for today's consultation, billing pending."],
+    "body": [
+      "OP No: OP-2026-338110 for today's consultation, billing pending."
+    ],
     "expect_phi": true,
-    "entities": [{ "type": "PATIENT_VISIT_ID", "value": "OP-2026-338110" }]
+    "entities": [
+      {
+        "type": "PATIENT_VISIT_ID",
+        "value": "OP-2026-338110"
+      }
+    ]
   },
   {
     "id": "id-icd-list",
@@ -159,99 +273,187 @@
     ],
     "expect_phi": true,
     "entities": [
-      { "type": "ICD10", "value": "E11.9" },
-      { "type": "ICD10", "value": "I10" },
-      { "type": "ICD10", "value": "D50.9" }
+      {
+        "type": "ICD10",
+        "value": "E11.9"
+      },
+      {
+        "type": "ICD10",
+        "value": "I10"
+      },
+      {
+        "type": "ICD10",
+        "value": "D50.9"
+      }
     ]
   },
   {
     "id": "id-icd-with-text",
     "category": "identifier_format",
     "subject": "",
-    "body": ["Primary diagnosis coded as N39.0, urinary tract infection, site unspecified."],
+    "body": [
+      "Primary diagnosis coded as N39.0, urinary tract infection, site unspecified."
+    ],
     "expect_phi": true,
-    "entities": [{ "type": "ICD10", "value": "N39.0" }]
+    "entities": [
+      {
+        "type": "ICD10",
+        "value": "N39.0"
+      }
+    ]
   },
   {
     "id": "id-phone-plain",
     "category": "identifier_format",
     "subject": "",
-    "body": ["The patient's mobile number is 9845123456, please call before 6pm."],
+    "body": [
+      "The patient's mobile number is 9845123456, please call before 6pm."
+    ],
     "expect_phi": true,
-    "entities": [{ "type": "IN_PHONE", "value": "9845123456" }]
+    "entities": [
+      {
+        "type": "IN_PHONE",
+        "value": "9845123456"
+      }
+    ]
   },
   {
     "id": "id-phone-country-code",
     "category": "identifier_format",
     "subject": "",
-    "body": ["Reachable on +91 88450 33221 during the day for the appointment confirmation."],
+    "body": [
+      "Reachable on +91 88450 33221 during the day for the appointment confirmation."
+    ],
     "expect_phi": true,
-    "entities": [{ "type": "IN_PHONE", "value": "+91 88450 33221" }]
+    "entities": [
+      {
+        "type": "IN_PHONE",
+        "value": "+91 88450 33221"
+      }
+    ]
   },
   {
     "id": "id-phone-hyphenated",
     "category": "identifier_format",
     "subject": "",
-    "body": ["Attendant contact 97011-22445 noted on the admission sheet."],
+    "body": [
+      "Attendant contact 97011-22445 noted on the admission sheet."
+    ],
     "expect_phi": true,
-    "entities": [{ "type": "IN_PHONE", "value": "97011-22445" }]
+    "entities": [
+      {
+        "type": "IN_PHONE",
+        "value": "97011-22445"
+      }
+    ]
   },
   {
     "id": "id-email-patient",
     "category": "identifier_format",
     "subject": "",
-    "body": ["Send the report to the patient at priya.raghavan88@yahoo.co.in as requested."],
+    "body": [
+      "Send the report to the patient at priya.raghavan88@yahoo.co.in as requested."
+    ],
     "expect_phi": true,
-    "entities": [{ "type": "EMAIL_ADDRESS", "value": "priya.raghavan88@yahoo.co.in" }]
+    "entities": [
+      {
+        "type": "EMAIL_ADDRESS",
+        "value": "priya.raghavan88@yahoo.co.in"
+      }
+    ]
   },
   {
     "id": "id-dob-slash",
     "category": "identifier_format",
     "subject": "",
-    "body": ["Date of birth recorded as 09/11/1958 on the Aadhaar card."],
+    "body": [
+      "Date of birth recorded as 09/11/1958 on the Aadhaar card."
+    ],
     "expect_phi": true,
-    "entities": [{ "type": "DATE_OF_BIRTH", "value": "09/11/1958" }]
+    "entities": [
+      {
+        "type": "DATE_OF_BIRTH",
+        "value": "09/11/1958"
+      }
+    ]
   },
   {
     "id": "id-dob-written",
     "category": "identifier_format",
     "subject": "",
-    "body": ["DOB: 21 March 1990, confirmed against the birth certificate."],
+    "body": [
+      "DOB: 21 March 1990, confirmed against the birth certificate."
+    ],
     "expect_phi": true,
-    "entities": [{ "type": "DATE_OF_BIRTH", "value": "21 March 1990" }]
+    "entities": [
+      {
+        "type": "DATE_OF_BIRTH",
+        "value": "21 March 1990"
+      }
+    ]
   },
   {
     "id": "id-person-with-title",
     "category": "identifier_format",
     "subject": "",
-    "body": ["Admission requested for Mrs Kalpana Venkataraman under the cardiology unit."],
+    "body": [
+      "Admission requested for Mrs Kalpana Venkataraman under the cardiology unit."
+    ],
     "expect_phi": true,
-    "entities": [{ "type": "PERSON", "value": "Kalpana Venkataraman" }]
+    "entities": [
+      {
+        "type": "PERSON",
+        "value": "Kalpana Venkataraman"
+      }
+    ]
   },
   {
     "id": "id-insurance-policy",
     "category": "identifier_format",
     "subject": "",
-    "body": ["Policy no. HDF/HLT/2026/8871204 is active until March next year."],
+    "body": [
+      "Policy no. HDF/HLT/2026/8871204 is active until March next year."
+    ],
     "expect_phi": true,
-    "entities": [{ "type": "INSURANCE_POLICY", "value": "HDF/HLT/2026/8871204" }]
+    "entities": [
+      {
+        "type": "INSURANCE_POLICY",
+        "value": "HDF/HLT/2026/8871204"
+      }
+    ]
   },
   {
     "id": "id-lab-accession",
     "category": "identifier_format",
     "subject": "",
-    "body": ["Sample accession LAB-2026-0091185 is still pending in the haematology queue."],
+    "body": [
+      "Sample accession LAB-2026-0091185 is still pending in the haematology queue."
+    ],
     "expect_phi": true,
-    "entities": [{ "type": "LAB_ACCESSION", "value": "LAB-2026-0091185" }]
+    "entities": [
+      {
+        "type": "LAB_ACCESSION",
+        "value": "LAB-2026-0091185"
+      }
+    ]
   },
   {
     "id": "id-medical-license",
     "category": "identifier_format",
     "subject": "",
-    "body": ["Signed by Dr Anitha Krishnan, Medical Council Reg. No. TN-56472."],
+    "body": [
+      "Signed by Dr Anitha Krishnan, Medical Council Reg. No. TN-56472."
+    ],
     "expect_phi": true,
-    "entities": [{ "type": "MEDICAL_LICENSE", "value": "TN-56472" }],
-    "ignore_types": ["PERSON"]
+    "entities": [
+      {
+        "type": "MEDICAL_LICENSE",
+        "value": "TN-56472"
+      }
+    ],
+    "ignore_types": [
+      "PERSON"
+    ]
   },
   {
     "id": "id-bank-ifsc",
@@ -263,34 +465,109 @@
     ],
     "expect_phi": true,
     "entities": [
-      { "type": "BANK_ACCOUNT", "value": "004701548823" },
-      { "type": "IN_IFSC", "value": "YCRF0LU32LA" }
+      {
+        "type": "BANK_ACCOUNT",
+        "value": "004701548823"
+      },
+      {
+        "type": "IN_IFSC",
+        "value": "YCRF0LU32LA"
+      }
     ]
   },
   {
     "id": "id-upi",
     "category": "identifier_format",
     "subject": "",
-    "body": ["Patient paid the deposit from 9845123456@ybl this morning."],
+    "body": [
+      "Patient paid the deposit from 9845123456@ybl this morning."
+    ],
     "expect_phi": true,
-    "entities": [{ "type": "IN_UPI", "value": "9845123456@ybl" }],
-    "ignore_types": ["IN_PHONE"],
+    "entities": [
+      {
+        "type": "IN_UPI",
+        "value": "9845123456@ybl"
+      }
+    ],
+    "ignore_types": [
+      "IN_PHONE"
+    ],
     "notes": "The handle embeds a mobile number, so a phone hit here is defensible - don't-care."
   },
   {
     "id": "id-passport",
     "category": "identifier_format",
     "subject": "",
-    "body": ["Passport K4471982 attached for the medical visa letter."],
+    "body": [
+      "Passport K4471982 attached for the medical visa letter."
+    ],
     "expect_phi": true,
-    "entities": [{ "type": "IN_PASSPORT", "value": "K4471982" }]
+    "entities": [
+      {
+        "type": "IN_PASSPORT",
+        "value": "K4471982"
+      }
+    ]
   },
   {
     "id": "id-driving-licence",
     "category": "identifier_format",
     "subject": "",
-    "body": ["ID proof used at admission was driving licence KA0520110044821."],
+    "body": [
+      "ID proof used at admission was driving licence KA0520110044821."
+    ],
     "expect_phi": true,
-    "entities": [{ "type": "IN_DRIVING_LICENSE", "value": "KA0520110044821" }]
+    "entities": [
+      {
+        "type": "IN_DRIVING_LICENSE",
+        "value": "KA0520110044821"
+      }
+    ]
+  },
+  {
+    "id": "id-icd-covid-u-code",
+    "category": "identifier_format",
+    "subject": "COVID diagnosis",
+    "body": [
+      "Confirmed diagnosis U07.1, patient isolated on ward 3."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "ICD10",
+        "value": "U07.1"
+      }
+    ],
+    "notes": "U07.1 is COVID-19. The letter class excluded U because U-codes were once reserved, so every COVID diagnosis was missed."
+  },
+  {
+    "id": "id-icd-u-code-sequelae",
+    "category": "identifier_format",
+    "subject": "",
+    "body": [
+      "Post COVID-19 condition coded U09.9 for the discharge summary."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "ICD10",
+        "value": "U09.9"
+      }
+    ]
+  },
+  {
+    "id": "id-icd-external-cause",
+    "category": "identifier_format",
+    "subject": "",
+    "body": [
+      "Injury diagnosis V01.00, pedestrian struck, admitted overnight."
+    ],
+    "expect_phi": true,
+    "entities": [
+      {
+        "type": "ICD10",
+        "value": "V01.00"
+      }
+    ]
   }
 ]

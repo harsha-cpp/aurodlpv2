@@ -1,10 +1,3 @@
-"""Spreadsheet extraction: XLSX via openpyxl, legacy XLS via xlrd.
-
-Spreadsheets are the highest-volume exposure in a hospital: one patient-list
-export is hundreds of records in a single attachment. Legacy ``.xls`` still
-turns up constantly from older HIS exports and was previously unreadable.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Iterable
@@ -33,7 +26,6 @@ class _Workbook(Protocol):
 
 
 def extract_text(data: bytes) -> str:
-    """Try XLSX first, then legacy XLS."""
     text = _extract_xlsx(data)
     if text:
         return text

@@ -1,10 +1,3 @@
-"""PDF extraction via PyMuPDF, with OCR fallback for pages that carry no text.
-
-Pages are rendered at ~300 DPI for OCR. The default ``get_pixmap()`` renders at
-72 DPI, which is well below what Tesseract needs and produced empty output on
-every scanned prescription the engine was pointed at.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Iterator
@@ -18,10 +11,8 @@ from PIL import Image
 
 logger = structlog.get_logger(__name__)
 
-#: Below this many characters a page is treated as needing OCR.
 LOW_TEXT_CHARS = 50
 MAX_PDF_PAGES = 50
-#: PyMuPDF's base resolution. 300/72 gives the zoom factor OCR wants.
 PDF_BASE_DPI = 72
 OCR_TARGET_DPI = 300
 
@@ -71,8 +62,6 @@ def extract_pages(data: bytes) -> list[PdfPageText]:
                 logger.warning("pdf attachment page limit reached", max_pages=MAX_PDF_PAGES)
                 break
             text = page.get_text("text").strip()
-            # A page with little text is a scan whether or not PyMuPDF reports
-            # embedded image objects, so OCR on text density alone.
             ocr_image = _render_for_ocr(page) if len(text) < LOW_TEXT_CHARS else None
             pages.append(PdfPageText(text=text, ocr_image=ocr_image))
     except Exception:

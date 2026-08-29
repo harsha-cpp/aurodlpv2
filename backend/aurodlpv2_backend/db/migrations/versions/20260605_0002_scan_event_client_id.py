@@ -1,10 +1,3 @@
-"""Add client event id for scan-event idempotency.
-
-Revision ID: 20260605_0002
-Revises: 20260521_0001
-Create Date: 2026-06-05
-"""
-
 from __future__ import annotations
 
 import sqlalchemy as sa
@@ -15,7 +8,6 @@ down_revision = "20260521_0001"
 branch_labels: tuple[str, ...] | None = None
 depends_on: tuple[str, ...] | None = None
 
-
 def upgrade() -> None:
     op.add_column("scan_events", sa.Column("client_event_id", sa.Text(), nullable=True))
     op.create_unique_constraint(
@@ -23,7 +15,6 @@ def upgrade() -> None:
         "scan_events",
         ["org_id", "client_event_id"],
     )
-
 
 def downgrade() -> None:
     op.drop_constraint("uq_scan_events_org_client_event", "scan_events", type_="unique")

@@ -1,10 +1,3 @@
-"""Phase 0 baseline: orgs, members, refresh tokens, approved domains, scan events.
-
-Revision ID: 20260521_0001
-Revises:
-Create Date: 2026-05-21
-"""
-
 from __future__ import annotations
 
 import sqlalchemy as sa
@@ -15,7 +8,6 @@ revision = "20260521_0001"
 down_revision: str | None = None
 branch_labels: tuple[str, ...] | None = None
 depends_on: tuple[str, ...] | None = None
-
 
 def upgrade() -> None:
     op.create_table(
@@ -203,7 +195,6 @@ def upgrade() -> None:
         "scan_events",
         ["org_id", "action", "event_time"],
     )
-
 
 def downgrade() -> None:
     op.drop_index("ix_scan_events_org_action_time", table_name="scan_events")

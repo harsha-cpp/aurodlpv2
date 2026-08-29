@@ -1,6 +1,6 @@
 # aurodlpv2-backend
 
-FastAPI service for the Auro Healthcare DLP platform — multi-tenant auth,
+FastAPI service for the Auro Healthcare DLP platform - multi-tenant auth,
 organization + domain allowlists, and scan-event ingestion + analytics.
 
 Build roadmap: [`docs/plans/backend.md`](../docs/plans/backend.md).
@@ -8,7 +8,7 @@ Build roadmap: [`docs/plans/backend.md`](../docs/plans/backend.md).
 ## Quickstart
 
 ```bash
-# from repo root — start Postgres (and the rest of the dev stack)
+# from repo root - start Postgres (and the rest of the dev stack)
 make dev-up
 cd backend
 uv sync --all-extras
@@ -43,7 +43,7 @@ aurodlpv2_backend/
 
 - Python 3.12, **strict** pyright, ruff for lint + format, pytest + pytest-asyncio.
 - SQLAlchemy 2.0 typed models, async sessions only (`asyncpg`).
-- Pydantic v2 everywhere — request/response models live next to their routers.
+- Pydantic v2 everywhere - request/response models live next to their routers.
 - All API routes are namespaced under `/api/v1`; `/healthz` + `/readyz` for probes.
 - Auth is a JWT access token (Bearer) plus an httpOnly refresh cookie (no rotation,
   30-day expiry); roles are `owner` / `admin` / `analyst`.
@@ -53,4 +53,4 @@ aurodlpv2_backend/
 
 Implemented: multi-tenant auth, organizations, members, domain allowlists, and
 scan-event ingestion + analytics over Postgres. Server-side deep scan, OCR, and
-quarantine remain on the roadmap — see [`docs/plans/backend.md`](../docs/plans/backend.md).
+quarantine remain on the roadmap - see [`docs/plans/backend.md`](../docs/plans/backend.md).

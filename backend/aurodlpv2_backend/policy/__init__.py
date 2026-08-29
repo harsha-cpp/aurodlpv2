@@ -1,5 +1,3 @@
-"""Configurable policy: rules as data, evaluated per scan."""
-
 from aurodlpv2_backend.policy.defaults import BUILTIN_POLICY_SET, BUILTIN_POLICY_VERSION
 from aurodlpv2_backend.policy.engine import (
     APPROVED_RECIPIENT_CLASSES,

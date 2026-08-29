@@ -7,7 +7,7 @@
 #                       useful in compose/dev; on Kubernetes the readiness probe
 #                       and a restart loop do this better.
 #   RUN_MIGRATIONS=true run `alembic upgrade head` under a Postgres advisory
-#                       lock before starting. Safe with N replicas — the losers
+#                       lock before starting. Safe with N replicas - the losers
 #                       block until the winner finishes, then see head and
 #                       no-op. Prefer the one-shot `migrate` service in
 #                       infra/docker-compose.prod.yml; this flag exists for

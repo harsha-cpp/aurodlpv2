@@ -86,3 +86,9 @@ tmp/
 # Docker / data volumes
 infra/data/
 *.timestamp-*.mjs
+
+# Scratch and build artefacts
+*.pyc
+*.tmp.mjs
+*.tmp.py
+*.tmp.ts

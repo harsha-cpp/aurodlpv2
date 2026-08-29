@@ -1,5 +1,3 @@
-"""Extractor coverage across the formats hospitals actually send."""
-
 from __future__ import annotations
 
 import io
@@ -38,7 +36,6 @@ def _scan(path: Path, mime: str) -> set[str]:
 
 
 def test_csv_attachment_is_scanned(tmp_path: Path) -> None:
-    """A patient-list CSV is the most common bulk export and was unreadable."""
     path = tmp_path / "patients.csv"
     path.write_text("uhid,name,diagnosis\n0024518,Ramesh Kumar Iyer,E11.9\n", encoding="utf-8")
     assert "MRN" in _scan(path, "text/csv")
@@ -51,7 +48,6 @@ def test_plain_text_attachment_is_scanned(tmp_path: Path) -> None:
 
 
 def test_docx_header_and_textbox_text_is_extracted() -> None:
-    """Hospital templates put the patient banner in the header."""
     document = Document()
     document.add_paragraph("Body text with nothing sensitive.")
     document.sections[0].header.paragraphs[0].text = PHI_LINE
@@ -112,7 +108,6 @@ def test_zip_archive_members_are_scanned() -> None:
 
 
 def test_archive_depth_is_capped() -> None:
-    """A zip inside a zip inside a zip must not recurse without bound."""
     inner = io.BytesIO()
     with zipfile.ZipFile(inner, "w") as archive:
         archive.writestr("notes.txt", PHI_LINE)
@@ -128,7 +123,6 @@ def test_archive_depth_is_capped() -> None:
 
 
 def test_renamed_file_is_still_classified_by_content() -> None:
-    """Renaming a spreadsheet to .dat is not a way to skip the scan."""
     workbook = Workbook()
     sheet = workbook.active
     assert sheet is not None
@@ -155,12 +149,6 @@ def test_images_are_queued_for_ocr(tmp_path: Path, extension: str) -> None:
 
 
 def test_ocr_unavailability_is_reported_not_silently_empty() -> None:
-    """A scanned page that could not be read must not look like a clean page.
-
-    pytesseract used to live in an optional extra, so a deployment without it
-    returned "" for every scanned document and every one of them passed the DLP
-    scan. That is a false negative on PHI, not a missing feature.
-    """
     from PIL import Image
 
     from aurodlpv2_detection.config import DetectionConfig
@@ -179,3 +167,23 @@ def test_ocr_unavailability_is_reported_not_silently_empty() -> None:
     assert result.text == ""
     assert result.errors, "an unreadable page must be reported, not silently skipped"
     assert "ocr unavailable" in result.errors[0]
+
+
+def test_missing_tesseract_binary_is_reported_not_raised() -> None:
+    from PIL import Image
+
+    from aurodlpv2_detection.config import DetectionConfig
+    from aurodlpv2_detection.ocr import extract_text, tesseract_backend
+
+    def _no_binary(*_args: object, **_kwargs: object) -> tuple[str, float]:
+        raise OSError("tesseract is not installed or it's not in your PATH")
+
+    original = tesseract_backend.run
+    tesseract_backend.run = _no_binary  # type: ignore[assignment]
+    try:
+        result = extract_text([Image.new("RGB", (40, 20), "white")], DetectionConfig())
+    finally:
+        tesseract_backend.run = original  # type: ignore[assignment]
+
+    assert result.errors
+    assert result.text == ""

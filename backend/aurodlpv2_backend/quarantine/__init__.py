@@ -1,2 +1,1 @@
-"""Quarantine review APIs."""
 

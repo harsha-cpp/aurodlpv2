@@ -1,10 +1,3 @@
-"""Per-organisation policy persistence.
-
-Rules live in ``organizations.settings['policy']``. An org with nothing stored
-falls back to the builtin set, so the product behaves sensibly before anyone
-touches the editor and a bad edit can always be reverted by clearing the key.
-"""
-
 from __future__ import annotations
 
 from typing import Any, cast
@@ -25,7 +18,6 @@ POLICY_SETTINGS_KEY = "policy"
 
 
 def parse_policy_set(raw: object) -> PolicySet | None:
-    """Validate a stored blob, returning None when it is unusable."""
     if not isinstance(raw, dict):
         return None
     try:
@@ -36,7 +28,6 @@ def parse_policy_set(raw: object) -> PolicySet | None:
 
 
 async def load_policy_set(session: AsyncSession, org_id: UUID) -> PolicySet:
-    """The org's rules, or the builtin set."""
     settings_blob = await session.scalar(
         select(Organization.settings).where(Organization.id == org_id)
     )
@@ -54,8 +45,6 @@ async def save_policy_set(
     org = await session.get(Organization, org_id)
     if org is None:
         raise LookupError(org_id)
-    # JSONB columns are replaced wholesale rather than mutated, or SQLAlchemy
-    # will not see the change and the save silently does nothing.
     settings_blob = dict(org.settings or {})
     settings_blob[POLICY_SETTINGS_KEY] = policy_set.model_dump(mode="json")
     org.settings = settings_blob

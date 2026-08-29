@@ -1,10 +1,3 @@
-"""Per-device enrolment for the browser extension.
-
-Before this, every install in a hospital authenticated with the same org_code,
-so a lost laptop could only be dealt with by rotating the code and re-keying
-every other install. A device token is issued per install and revoked alone.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -42,8 +35,6 @@ class EnrollRequest(BaseModel):
 
 class EnrollResponse(BaseModel):
     device: DeviceOut
-    #: Shown once. Only the argon2 hash is kept, so a lost token is re-issued,
-    #: never recovered.
     device_token: str
 
 
@@ -69,8 +60,6 @@ async def enroll_device(
     settings = get_settings()
     active = await _active_device_count(session, member)
     if active >= MAX_ACTIVE_DEVICES_PER_ORG:
-        # A compromised member token could otherwise mint tokens until the
-        # table fills; revoking is the intended remedy, not more enrolments.
         raise HTTPException(
             status.HTTP_409_CONFLICT, detail="active device limit reached, revoke unused devices"
         )
@@ -123,7 +112,6 @@ async def revoke_device(
     _admin: OwnerOrAdmin,
 ) -> DeviceOut:
     device = await session.get(DeviceToken, device_id)
-    # Tenant check before the 404 so one org cannot probe another's device ids.
     if device is None or device.org_id != member.org_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="device not found")
     if device.revoked_at is None:

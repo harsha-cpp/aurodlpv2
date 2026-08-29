@@ -1,10 +1,3 @@
-"""Run the labelled corpus through the engine and compare against a baseline.
-
-The baseline is a ratchet, not a target: every committed metric is a floor that
-a change may raise but must not lower. That is what turns "detection feels
-better" into something CI can decide.
-"""
-
 from __future__ import annotations
 
 import json
@@ -19,15 +12,11 @@ from aurodlpv2_detection.evaluation.corpus import Sample, load_corpus
 from aurodlpv2_detection.evaluation.metrics import EvaluationReport, Score, evaluate
 from aurodlpv2_detection.models import EmailPayload, Entity
 
-#: How far a metric may drift below the recorded floor before CI fails.
-#: Detection is deterministic, so this only absorbs float rounding.
 TOLERANCE = 0.005
 
 
 @dataclass(frozen=True, slots=True)
 class Regression:
-    """One metric that fell below its recorded floor."""
-
     metric: str
     baseline: float
     current: float
@@ -41,7 +30,6 @@ def run_corpus(
     samples: list[Sample],
     config: DetectionConfig | None = None,
 ) -> EvaluationReport:
-    """Detect over every sample and score the results."""
     scored: list[tuple[Sample, list[Entity]]] = []
     for sample in samples:
         result = detect_email(
@@ -62,7 +50,6 @@ def _score_dict(score: Score) -> dict[str, float]:
 
 
 def to_baseline(report: EvaluationReport) -> dict[str, object]:
-    """Serialize a report into the committed baseline shape."""
     return {
         "generated_at": datetime.now(UTC).isoformat(),
         "documents": report.documents_evaluated,
@@ -87,7 +74,6 @@ def _nested_float(source: dict[str, object], outer: str, inner: str) -> float | 
 
 
 def compare(report: EvaluationReport, baseline: dict[str, object]) -> list[Regression]:
-    """Return every metric that fell below its recorded floor."""
     regressions: list[Regression] = []
 
     def check_higher_is_better(metric: str, recorded: float | None, current: float) -> None:
@@ -145,7 +131,6 @@ def _row(label: str, score: Score) -> str:
 
 
 def render(report: EvaluationReport) -> str:
-    """Human-readable accuracy table."""
     header = (
         f"{'ENTITY TYPE':<20} {'SUPP':>5} {'TP':>5} {'FP':>5} {'FN':>5} "
         f"{'PRECISION':>9} {'RECALL':>8} {'F1':>7}"
@@ -171,7 +156,6 @@ def render(report: EvaluationReport) -> str:
 
 
 def render_failures(report: EvaluationReport, limit: int = 25) -> str:
-    """List the documents the engine got wrong, worst first."""
     interesting = [
         sample
         for sample in report.samples
@@ -193,5 +177,4 @@ def render_failures(report: EvaluationReport, limit: int = 25) -> str:
 
 
 def evaluate_corpus(corpus_dir: Path, config: DetectionConfig | None = None) -> EvaluationReport:
-    """Load, run and score a corpus directory in one call."""
     return run_corpus(load_corpus(corpus_dir), config)

@@ -2,25 +2,21 @@ export class ApiError extends Error {
   status: number;
   detail: string | object;
   constructor(status: number, detail: string | object) {
-    super(typeof detail === 'string' ? detail : JSON.stringify(detail));
-    this.name = 'ApiError';
+    super(typeof detail === "string" ? detail : JSON.stringify(detail));
+    this.name = "ApiError";
     this.status = status;
     this.detail = detail;
   }
 }
 
-const API_BASE = (import.meta.env['VITE_API_BASE_URL'] as string | undefined) ?? 'http://localhost:8000';
+const API_BASE =
+  (import.meta.env["VITE_API_BASE_URL"] as string | undefined) ??
+  "http://localhost:8000";
 
-// In-memory access token (lost on page reload — recovered via refresh cookie).
 let accessToken: string | null = null;
 
-// Singleton refresh promise — prevents concurrent refresh calls from racing.
-// Also caches a successful refresh result briefly so simultaneous bootstrap +
-// initial API calls share the same response (and the same rotated cookie).
 let refreshPromise: Promise<RefreshResult> | null = null;
 
-// Callback fired when refresh definitively fails (cookie expired/missing).
-// AuthProvider uses this to flip state to 'unauthenticated'.
 let onAuthLost: (() => void) | null = null;
 
 interface RefreshResult {
@@ -40,18 +36,13 @@ export function setOnAuthLost(cb: () => void): void {
   onAuthLost = cb;
 }
 
-/**
- * Singleton refresh — returns the same promise for concurrent callers.
- * Returns the raw response data so AuthProvider bootstrap can read member+org
- * without making a second /me call.
- */
 export function refreshSession(): Promise<RefreshResult> {
   if (refreshPromise) return refreshPromise;
   refreshPromise = (async () => {
     try {
       const res = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
-        method: 'POST',
-        credentials: 'include',
+        method: "POST",
+        credentials: "include",
       });
       if (!res.ok) {
         accessToken = null;
@@ -75,14 +66,17 @@ export function refreshSession(): Promise<RefreshResult> {
 }
 
 interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE' | 'PUT';
+  method?: "GET" | "POST" | "PATCH" | "DELETE" | "PUT";
   body?: unknown;
   query?: Record<string, string | number | undefined>;
   skipAuth?: boolean;
 }
 
-export async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
-  const { method = 'GET', body, query, skipAuth = false } = opts;
+export async function request<T>(
+  path: string,
+  opts: RequestOptions = {},
+): Promise<T> {
+  const { method = "GET", body, query, skipAuth = false } = opts;
   let url = `${API_BASE}${path}`;
   if (query) {
     const qs = new URLSearchParams();
@@ -94,13 +88,14 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
   }
 
   const headers: Record<string, string> = {};
-  if (body !== undefined) headers['Content-Type'] = 'application/json';
-  if (!skipAuth && accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+  if (!skipAuth && accessToken)
+    headers["Authorization"] = `Bearer ${accessToken}`;
 
   const init: RequestInit = {
     method,
     headers,
-    credentials: 'include',
+    credentials: "include",
   };
   if (body !== undefined) init.body = JSON.stringify(body);
 
@@ -109,7 +104,7 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
   if (res.status === 401 && !skipAuth) {
     const { accessToken: newToken } = await refreshSession();
     if (newToken) {
-      headers['Authorization'] = `Bearer ${newToken}`;
+      headers["Authorization"] = `Bearer ${newToken}`;
       res = await fetch(url, { ...init, headers });
     }
   }

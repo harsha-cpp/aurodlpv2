@@ -1,11 +1,3 @@
-"""Authenticated audit event listing.
-
-Filtering used to happen in the browser over whatever 200 rows the client
-happened to pull, which meant a hospital with real traffic could not find last
-Tuesday's incident, and hash-chain continuity could only ever be checked within
-one page. Filters and cursor pagination are server-side.
-"""
-
 from __future__ import annotations
 
 import base64
@@ -44,14 +36,12 @@ def _empty_events() -> list[AuditEventOut]:
 
 class AuditPage(BaseModel):
     events: list[AuditEventOut] = Field(default_factory=_empty_events)
-    #: Opaque. Pass back as ``cursor`` for the next page; null means the end.
     next_cursor: str | None = None
 
 
 class ChainStatus(BaseModel):
     ok: bool
     checked: int
-    #: 0-based position of the first broken link, when there is one.
     broken_at: int | None = None
     detail: str | None = None
 
@@ -145,8 +135,6 @@ async def list_audit_events(
 
     if cursor:
         cursor_time, cursor_id = _decode_cursor(cursor)
-        # Keyset rather than OFFSET: rows are only ever appended, so a stable
-        # (created_at, id) tuple cannot skip or repeat an event mid-scroll.
         statement = statement.where(
             or_(
                 AuditEvent.created_at < cursor_time,
@@ -157,9 +145,9 @@ async def list_audit_events(
     rows = list(
         (
             await session.scalars(
-                statement.order_by(
-                    AuditEvent.created_at.desc(), AuditEvent.id.desc()
-                ).limit(limit + 1)
+                statement.order_by(AuditEvent.created_at.desc(), AuditEvent.id.desc()).limit(
+                    limit + 1
+                )
             )
         ).all()
     )
@@ -193,9 +181,7 @@ async def verify_audit_chain(member: CurrentMember, session: DbSession) -> Chain
     """
     counted = int(
         await session.scalar(
-            select(func.count())
-            .select_from(AuditEvent)
-            .where(AuditEvent.org_id == member.org_id)
+            select(func.count()).select_from(AuditEvent).where(AuditEvent.org_id == member.org_id)
         )
         or 0
     )

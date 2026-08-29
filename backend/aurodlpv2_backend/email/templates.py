@@ -1,10 +1,3 @@
-"""Plain-text mail bodies.
-
-Text only, deliberately. Hospital mail gateways strip or quarantine HTML from
-unfamiliar senders, and a rewritten link in an invite is indistinguishable from
-a phish to the recipient.
-"""
-
 from __future__ import annotations
 
 from urllib.parse import quote
@@ -34,7 +27,7 @@ def password_reset_email(*, base_url: str, token: str, ttl_seconds: int) -> Mess
         "A password reset was requested for this address.\n\n"
         f"Reset your password:\n{_link(base_url, '/reset-password', token)}\n\n"
         f"This link works once and expires in {ttl_seconds // 60} minutes. "
-        "If you did not request a reset, no action is needed — your password "
+        "If you did not request a reset, no action is needed - your password "
         "has not changed.\n"
     )
     return subject, body

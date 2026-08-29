@@ -1,5 +1,3 @@
-"""Append-only audit event helpers."""
-
 from __future__ import annotations
 
 import hashlib
@@ -14,14 +12,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from aurodlpv2_backend.db.models import AuditEvent
 
-#: Transaction-scoped, so it releases when the caller commits or rolls back.
 _ORG_CHAIN_LOCK = text("SELECT pg_advisory_xact_lock(hashtext(CAST(:org_id AS text)))")
 
 
 @dataclass(frozen=True, slots=True)
 class ChainBreak:
-    """Where an org's audit chain stops verifying."""
-
     event_id: UUID
     position: int
     reason: str
@@ -62,9 +57,6 @@ async def write_audit_event(
     action: str,
     metadata: dict[str, object] | None = None,
 ) -> AuditEvent:
-    # Serialise writers per org before reading the tip. Two concurrent writers
-    # would otherwise both see the same predecessor and fork the chain, which
-    # reads as tampering to anyone verifying it later.
     await session.execute(_ORG_CHAIN_LOCK, {"org_id": str(org_id)})
     previous = await session.scalar(
         select(AuditEvent)
@@ -98,13 +90,6 @@ async def write_audit_event(
 
 
 async def verify_chain(session: AsyncSession, org_id: UUID) -> ChainBreak | None:
-    """Walk an org's audit chain and return the first link that fails.
-
-    Returns ``None`` when the chain verifies end to end. Catches both a row
-    edited in place (its hash no longer matches its contents) and a row deleted
-    or inserted out of order (the previous_hash no longer points at its
-    predecessor).
-    """
     rows = (
         await session.scalars(
             select(AuditEvent)

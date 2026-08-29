@@ -1,4 +1,4 @@
-# Auro Healthcare DLP — production stack.
+# Auro Healthcare DLP - production stack.
 #
 #   docker compose -f infra/docker-compose.prod.yml up -d
 #
@@ -27,7 +27,7 @@ name: aurodlp-prod
 # compose network, and an operator editing api.env cannot accidentally break them.
 x-backend-env: &backend-env
   APP_ENV: production
-  # asyncpg for the app, psycopg for alembic — two URLs, one set of credentials.
+  # asyncpg for the app, psycopg for alembic - two URLs, one set of credentials.
   DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:?set POSTGRES_USER}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:?set POSTGRES_DB}
   DATABASE_SYNC_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
   REDIS_URL: redis://:${REDIS_PASSWORD:?set REDIS_PASSWORD}@redis:6379/0
@@ -47,7 +47,7 @@ x-backend-env: &backend-env
   # MinIO rejects the AWS SSE header unless KMS is configured; leave empty for
   # MinIO, set to AES256 (or aws:kms) on real S3.
   S3_SERVER_SIDE_ENCRYPTION: ${S3_SERVER_SIDE_ENCRYPTION:-}
-  # A JSON array, not a comma list — see the note in infra/.env.prod.example.
+  # A JSON array, not a comma list - see the note in infra/.env.prod.example.
   CORS_ORIGINS: ${CORS_ORIGINS:?set CORS_ORIGINS as a JSON array, e.g. ["https://dlp.hospital.example"]}
   # Public URL of the dashboard. Invite / password-reset / verify links are built
   # from it, so a wrong value produces mails nobody can act on.
@@ -61,7 +61,7 @@ x-backend-env: &backend-env
   SMTP_FROM: ${SMTP_FROM:?set SMTP_FROM, e.g. Auro DLP <no-reply@hospital.example>}
   SMTP_TLS: ${SMTP_TLS:-true}
   # TOTP secrets are encrypted with this. It defaults to JWT_SECRET, which means
-  # rotating the JWT secret would lock every user out of MFA — keep them separate
+  # rotating the JWT secret would lock every user out of MFA - keep them separate
   # and rotate them on separate schedules.
   MFA_ENCRYPTION_KEY: ${MFA_ENCRYPTION_KEY:?set MFA_ENCRYPTION_KEY - a second independent secret}
   # Number of proxies that append to X-Forwarded-For between the client and the
@@ -233,7 +233,7 @@ services:
   # scale to N replicas safely: compose runs it to completion before any API or
   # worker container starts, so there is exactly one alembic process. (The image
   # entrypoint can also do this via RUN_MIGRATIONS=true, under a Postgres
-  # advisory lock — see infra/docker/run-migrations.py — for deploy targets that
+  # advisory lock - see infra/docker/run-migrations.py - for deploy targets that
   # have no place to put an init container.)
   migrate:
     image: ${IMAGE_PREFIX:-aurodlp}/api:${IMAGE_TAG:-latest}
@@ -277,7 +277,7 @@ services:
         required: true
     environment: *backend-env
     ports:
-      # Loopback only — terminate TLS in a reverse proxy on the host.
+      # Loopback only - terminate TLS in a reverse proxy on the host.
       - "127.0.0.1:${API_PORT:-8000}:8000"
     healthcheck:
       # Inherited from the image (HEALTHCHECK in api.Dockerfile); repeated here
@@ -352,7 +352,7 @@ services:
       dockerfile: docker/dashboard.Dockerfile
       args:
         # BUILD-TIME. Vite inlines this into the bundle and the image bakes it
-        # into the CSP connect-src, so changing it means rebuilding the image —
+        # into the CSP connect-src, so changing it means rebuilding the image -
         # `docker compose up -d dashboard` alone will not pick up a new value.
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:?set VITE_API_BASE_URL - the public URL of the API, e.g. https://dlp-api.hospital.example}
     restart: unless-stopped
@@ -376,7 +376,7 @@ services:
         limits: { cpus: "0.5", memory: 256m }
 
 # ---------------------------------------------------------------------------
-# Volumes — named, so `docker compose down` does not take the database with it.
+# Volumes - named, so `docker compose down` does not take the database with it.
 # `docker compose down -v` still does. See docs/deployment.md for backups.
 # ---------------------------------------------------------------------------
 volumes:

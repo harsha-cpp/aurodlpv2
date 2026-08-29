@@ -1,5 +1,3 @@
-"""Auth API — signup, login, MFA challenge, refresh rotation, sessions, recovery."""
-
 from __future__ import annotations
 
 import asyncio
@@ -70,8 +68,6 @@ router = APIRouter()
 _ORG_CODE_BYTES = 18
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
 
-# Re-exported for callers that imported the response shapes from this module
-# before they moved into auth.session.
 __all__ = ["AuthResponse", "MemberView", "OrganizationView", "router"]
 
 
@@ -130,8 +126,6 @@ class SignupRequest(BaseModel):
 
 class LoginRequest(BaseModel):
     email: EmailStr
-    # Not the policy minimum: old accounts predate the 12-character rule and
-    # must still be able to sign in (and then reset).
     password: str = Field(min_length=8, max_length=128)
     org_slug: str | None = Field(default=None, min_length=2, max_length=120)
 
@@ -171,8 +165,6 @@ async def signup(
 ) -> AuthResponse:
     settings = get_settings()
     if not settings.allow_open_signup:
-        # Hospitals buy seats; self-serve tenant creation on a production
-        # deployment lets anyone stand up an org against the same database.
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail="open signup is disabled")
 
     email = str(payload.email).lower().strip()
@@ -205,9 +197,6 @@ async def signup(
         ) from exc
 
 
-# `response_model=None` produced an untyped `{}` in the schema, so a generated
-# client could not see that login may answer with an MFA challenge instead of
-# a session. The explicit union documents both branches.
 @router.post(
     "/login",
     response_model=AuthResponse | MfaChallengeResponse,
@@ -267,8 +256,6 @@ async def login(
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="organization missing")
 
     if await _mfa_enabled(session, member.id):
-        # Hand back proof of the password step only. No session exists until
-        # the code is checked, so a stolen password alone gets nothing.
         return MfaChallengeResponse(
             challenge_token=issue_challenge_token(member.id, org.id),
             expires_in=CHALLENGE_TTL_SECONDS,
@@ -282,8 +269,8 @@ async def refresh(response: Response, request: Request, session: DbSession) -> A
 
     The old token stays usable for ``refresh_rotation_grace_seconds`` so two
     dashboard tabs refreshing at once do not sign each other out. Presented
-    after that window it can only have been copied, so the whole family — every
-    descendant of that login — is revoked.
+    after that window it can only have been copied, so the whole family - every
+    descendant of that login - is revoked.
     """
     settings = get_settings()
     refresh_cookie = read_refresh_cookie(request, settings)
@@ -355,8 +342,6 @@ async def refresh(response: Response, request: Request, session: DbSession) -> A
         await session.commit()
         set_refresh_cookie(response, issued.raw_token, settings, issued.expires_at)
     else:
-        # Inside the grace window: the sibling request already rotated and set
-        # the successor cookie. Rotating again would invalidate it.
         await session.commit()
 
     return AuthResponse(
@@ -376,9 +361,6 @@ async def logout(response: Response, request: Request, session: DbSession) -> Re
             token_id, _ = parse_refresh_token(refresh_cookie)
             record = await session.get(RefreshToken, token_id)
             if record is not None:
-                # Kill the family, not just the presented link: a rotated
-                # predecessor left alive inside the grace window would let the
-                # session be resurrected right after logout.
                 await _revoke_family(session, record, datetime.now(UTC))
                 await session.commit()
         except TokenError:
@@ -549,8 +531,6 @@ async def reset_password(payload: ResetPasswordRequest, session: DbSession) -> R
 
     password_hash = await asyncio.to_thread(hash_password, payload.password)
     record.used_at = now
-    # One address is one identity across orgs — /switch-org already treats it
-    # that way — so a reset must not leave a stale password on a second org.
     siblings = (
         await session.scalars(select(OrgMember).where(OrgMember.email == member.email))
     ).all()
@@ -560,8 +540,6 @@ async def reset_password(payload: ResetPasswordRequest, session: DbSession) -> R
             sibling.status = "active"
             sibling.invite_token = None
             sibling.invite_expires_at = None
-    # A reset is what you do after a compromise; leaving old sessions alive
-    # would hand the attacker the account anyway.
     await session.execute(
         update(RefreshToken)
         .where(
@@ -608,7 +586,6 @@ async def verify_email(payload: VerifyEmailRequest, session: DbSession) -> Respo
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="invalid verification token")
 
     record.used_at = now
-    # Proof of control is proof for the address, not for one membership row.
     siblings = (
         await session.scalars(select(OrgMember).where(OrgMember.email == member.email))
     ).all()
@@ -646,9 +623,7 @@ async def me(member: CurrentMember, session: DbSession) -> AuthResponse:
     return AuthResponse(
         access_token="",
         expires_in=0,
-        member=serialize_member(
-            db_member, mfa_enabled=await _mfa_enabled(session, db_member.id)
-        ),
+        member=serialize_member(db_member, mfa_enabled=await _mfa_enabled(session, db_member.id)),
         organization=serialize_org(org, viewer_role=db_member.role),
     )
 

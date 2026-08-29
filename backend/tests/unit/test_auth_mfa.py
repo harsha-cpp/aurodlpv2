@@ -40,7 +40,6 @@ def test_secret_round_trips_through_encryption() -> None:
 
 @pytest.mark.unit
 def test_ciphertext_differs_per_call_for_the_same_secret() -> None:
-    """A fresh nonce each time, so equal secrets are not equal ciphertexts."""
     secret = generate_secret()
 
     assert encrypt_secret(secret, settings=_KEY_A) != encrypt_secret(secret, settings=_KEY_A)
@@ -86,7 +85,6 @@ def test_backup_code_is_single_use() -> None:
 
     assert remaining is not None
     assert len(remaining) == 2
-    # Replaying the same code against what is left must now fail.
     assert consume_backup_code(remaining, codes[1]) is None
 
 
@@ -119,7 +117,6 @@ def test_expired_challenge_token_is_rejected() -> None:
 
 @pytest.mark.unit
 def test_access_token_is_not_accepted_as_a_challenge() -> None:
-    """The challenge only proves the password step, so the types must not mix."""
     access = issue_access_token(str(uuid4()), str(uuid4()), "owner")
 
     with pytest.raises(MfaError):

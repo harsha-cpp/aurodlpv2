@@ -65,7 +65,6 @@ async def test_valid_device_token_resolves_to_its_org_and_member() -> None:
 
 @pytest.mark.unit
 async def test_revoked_device_is_refused_without_touching_other_installs() -> None:
-    """Revoking one lost laptop is the whole point of per-device tokens."""
     raw_token, device = _device(revoked_at=datetime.now(UTC))
 
     with pytest.raises(HTTPException) as exc_info:
@@ -107,7 +106,6 @@ async def test_non_device_credentials_are_refused(header: str | None) -> None:
 
 @pytest.mark.unit
 async def test_last_seen_is_not_rewritten_on_every_scan() -> None:
-    """Scans fire per keystroke; a row update on each one would be a hot spot."""
     raw_token, device = _device(last_seen_at=datetime.now(UTC))
     session = _FakeSession(device)
 

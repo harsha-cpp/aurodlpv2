@@ -25,7 +25,6 @@ def test_detect_email_finds_abha() -> None:
 
 
 def test_detect_email_masks_raw_values() -> None:
-    """Raw PHI must never leave the engine."""
     result = detect_email(EmailPayload(body="Aadhaar 7534 7930 7460 on file"))
 
     assert result.entities
@@ -46,8 +45,7 @@ def test_detect_email_scans_docx_attachment(tmp_path: Path) -> None:
                     id="attachment-1",
                     filename="report.docx",
                     mime_type=(
-                        "application/vnd.openxmlformats-officedocument"
-                        ".wordprocessingml.document"
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                     ),
                     size_bytes=document_path.stat().st_size,
                     sha256="placeholder",
@@ -76,9 +74,6 @@ def test_detect_email_text_path_perf_under_budget() -> None:
 
 
 def test_overlapping_matches_resolve_to_the_composite_identifier() -> None:
-    """A formatted ABHA contains twelve digits that can pass the Aadhaar
-    checksum by chance. The composite must win, or every tenth ABHA invents a
-    phantom Aadhaar."""
     result = detect_email(EmailPayload(body="ABHA 96-9015-1720-1488 verified"))
 
     types = [entity.type for entity in result.entities]
@@ -87,7 +82,6 @@ def test_overlapping_matches_resolve_to_the_composite_identifier() -> None:
 
 
 def test_invalid_icd10_codes_are_dropped() -> None:
-    """A12 and B12 are not ICD-10 codes; a room number is not a diagnosis."""
     result = detect_email(
         EmailPayload(body="Clinical meeting in room A12, patient needs vitamin B12.")
     )

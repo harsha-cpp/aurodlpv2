@@ -1,13 +1,3 @@
-"""The built-in detection rule pack.
-
-Every rule here was written against a labelled corpus case, positive or
-negative. Where a rule looks over-specified, it is usually holding a
-false-positive trap shut: the raw ABHA rule needs literal ABHA vocabulary
-because a fourteen-digit vendor invoice is otherwise indistinguishable, and
-ICD-10 needs clinical vocabulary because "E11 series patient monitors" is a
-purchase order.
-"""
-
 from __future__ import annotations
 
 from typing import Final
@@ -16,29 +6,92 @@ from aurodlpv2_detection.rules.schema import Rule, RulePack
 
 RULE_PACK_VERSION: Final[str] = "2026.08.1"
 
-# Vocabulary shared by several rules ------------------------------------------
-
 _CLINICAL_CONTEXT: Final[list[str]] = [
-    "diagnosis", "diagnosed", "diagnostic", "icd", "coded", "coding", "condition",
-    "disease", "disorder", "syndrome", "patient", "admitted", "admission",
-    "discharge", "discharged", "treatment", "treated", "clinical", "symptoms",
-    "prognosis", "comorbidity", "presenting", "history of", "diabetes",
-    "hypertension", "pneumonia", "asthma", "anaemia", "anemia", "carcinoma",
-    "infection", "failure", "fracture", "delivery", "gastroenteritis",
-    "dermatitis", "keratitis", "reaction", "epilepsy", "primary",
+    "diagnosis",
+    "diagnosed",
+    "diagnostic",
+    "icd",
+    "coded",
+    "coding",
+    "condition",
+    "disease",
+    "disorder",
+    "syndrome",
+    "patient",
+    "admitted",
+    "admission",
+    "discharge",
+    "discharged",
+    "treatment",
+    "treated",
+    "clinical",
+    "symptoms",
+    "prognosis",
+    "comorbidity",
+    "presenting",
+    "history of",
+    "diabetes",
+    "hypertension",
+    "pneumonia",
+    "asthma",
+    "anaemia",
+    "anemia",
+    "carcinoma",
+    "infection",
+    "failure",
+    "fracture",
+    "delivery",
+    "gastroenteritis",
+    "dermatitis",
+    "keratitis",
+    "reaction",
+    "epilepsy",
+    "primary",
 ]
 
 _COMMERCIAL_NEGATIVE: Final[list[str]] = [
-    "invoice", "purchase order", "purchase", "vendor", "supplier", "quotation",
-    "quoted", "quote", "series", "model", "asset", "serial", "stationery",
-    "delivered", "store", "payment", "budget", "estimate", "release", "version",
-    "tracker", "deferred", "warranty", "decommissioned", "register", "reorder",
-    "stock", "batch", "shipment", "contract", "tender",
+    "invoice",
+    "purchase order",
+    "purchase",
+    "vendor",
+    "supplier",
+    "quotation",
+    "quoted",
+    "quote",
+    "series",
+    "model",
+    "asset",
+    "serial",
+    "stationery",
+    "delivered",
+    "store",
+    "payment",
+    "budget",
+    "estimate",
+    "release",
+    "version",
+    "tracker",
+    "deferred",
+    "warranty",
+    "decommissioned",
+    "register",
+    "reorder",
+    "stock",
+    "batch",
+    "shipment",
+    "contract",
+    "tender",
 ]
 
 _ABHA_CONTEXT: Final[list[str]] = [
-    "abha", "abdm", "health id", "health i.d", "health account",
-    "ayushman", "nha", "health locker",
+    "abha",
+    "abdm",
+    "health id",
+    "health i.d",
+    "health account",
+    "ayushman",
+    "nha",
+    "health locker",
 ]
 
 _AADHAAR_CONTEXT: Final[list[str]] = ["aadhaar", "aadhar", "uidai", "uid", "adhaar"]
@@ -48,21 +101,14 @@ _MRN_LABEL: Final[str] = (
     r"Hospital\s+No|Patient\s+ID|Patient\s+No|Reg(?:istration)?\s+No)"
 )
 
-#: Values look like 0024518, SMH-2026-004417, 22/4471. At least two digits, so
-#: a label followed by an ordinary word does not become an identifier.
 _ID_VALUE: Final[str] = r"(?=[A-Za-z0-9/-]*\d{2})[A-Za-z0-9][A-Za-z0-9/-]{3,20}"
 
 _ID_CONTINUATION: Final[str] = rf"\s*(?:,|and|through|to)\s*({_ID_VALUE})"
 
-#: Policy and claim references always carry digits.
 _POLICY_VALUE: Final[str] = r"(?=[A-Z0-9/-]*\d)[A-Z0-9][A-Z0-9/-]{5,30}"
 
-#: One capitalised name, optionally preceded by an initial: "Lakshmi Devi",
-#: "S Menon", "Rao", "K Subramanian".
 _NAME_VALUE: Final[str] = r"(?:[A-Z]\.?\s+)?[A-Z][a-z]{1,}(?:\s+[A-Z][a-z]{1,}){0,3}"
 
-#: Two or more capitalised words, for unanchored positions where a single
-#: capitalised word would sweep up "Friday" and "Thursday".
 _NAME_VALUE_MULTI: Final[str] = r"(?:[A-Z]\.?\s+)?[A-Z][a-z]{2,}(?:\s+[A-Z][a-z]{2,}){1,3}"
 
 
@@ -71,7 +117,6 @@ def _rule(**kwargs: object) -> Rule:
 
 
 BUILTIN_RULES: Final[list[Rule]] = [
-    # ---------------------------------------------------------- Aadhaar ----
     _rule(
         entity_type="IN_AADHAAR",
         name="aadhaar-12-digit",
@@ -82,7 +127,6 @@ BUILTIN_RULES: Final[list[Rule]] = [
         negative_terms=["invoice", "transaction", "reference", "budget", "placeholder", "staging"],
         priority=50,
     ),
-    # ------------------------------------------------------------- ABHA ----
     _rule(
         entity_type="ABHA_NUMBER",
         name="abha-formatted",
@@ -90,8 +134,6 @@ BUILTIN_RULES: Final[list[Rule]] = [
         base_confidence=0.85,
         validator="abha_number",
         context_terms=_ABHA_CONTEXT,
-        # Outranks Aadhaar so the twelve digits inside a formatted ABHA cannot
-        # be reported as a separate Aadhaar that happens to pass Verhoeff.
         priority=60,
     ),
     _rule(
@@ -111,10 +153,8 @@ BUILTIN_RULES: Final[list[Rule]] = [
         name="abha-address",
         pattern=r"\b[a-zA-Z0-9](?:[a-zA-Z0-9._-]{1,30})@(?:abdm|sbx|pmjay)\b",
         base_confidence=0.9,
-        # Beats EMAIL_ADDRESS on the same span: this is a health identifier.
         priority=70,
     ),
-    # -------------------------------------------------------------- PAN ----
     _rule(
         entity_type="IN_PAN",
         name="pan",
@@ -132,10 +172,8 @@ BUILTIN_RULES: Final[list[Rule]] = [
         base_confidence=0.9,
         validator="gstin",
         case_sensitive=True,
-        # A GSTIN embeds a PAN; the composite must win the overlap.
         priority=80,
     ),
-    # -------------------------------------------------------------- MRN ----
     _rule(
         entity_type="MRN",
         name="mrn-labelled",
@@ -178,14 +216,12 @@ BUILTIN_RULES: Final[list[Rule]] = [
         ),
         base_confidence=0.8,
         value_group=1,
-        # Outranks the unlabelled MRN shape, which matches the same token.
         priority=62,
     ),
-    # ------------------------------------------------------------ ICD-10 ----
     _rule(
         entity_type="ICD10",
         name="icd10-specific",
-        pattern=r"\b[A-TV-Z]\d{2}\.[0-9A-Z]{1,4}\b",
+        pattern=r"\b[A-Z]\d{2}\.[0-9A-Z]{1,4}\b",
         base_confidence=0.75,
         validator="icd10",
         case_sensitive=True,
@@ -198,7 +234,7 @@ BUILTIN_RULES: Final[list[Rule]] = [
     _rule(
         entity_type="ICD10",
         name="icd10-category",
-        pattern=r"\b[A-TV-Z]\d{2}\b",
+        pattern=r"\b[A-Z]\d{2}\b",
         base_confidence=0.5,
         validator="icd10",
         case_sensitive=True,
@@ -220,14 +256,22 @@ BUILTIN_RULES: Final[list[Rule]] = [
         base_confidence=0.6,
         value_group=1,
         context_terms=[
-            "council", "dr", "doctor", "consultant", "practitioner", "reported by",
-            "signed by", "nursing", "medical council", "verifying", "hire",
+            "council",
+            "dr",
+            "doctor",
+            "consultant",
+            "practitioner",
+            "reported by",
+            "signed by",
+            "nursing",
+            "medical council",
+            "verifying",
+            "hire",
         ],
         requires_context=True,
         context_boost=0.3,
         priority=57,
     ),
-    # -------------------------------------------------------- Insurance ----
     _rule(
         entity_type="INSURANCE_POLICY",
         name="policy-slash-format",
@@ -256,7 +300,6 @@ BUILTIN_RULES: Final[list[Rule]] = [
         case_sensitive=True,
         priority=56,
     ),
-    # ------------------------------------------------------------ Contact ----
     _rule(
         entity_type="IN_PHONE",
         name="indian-mobile",
@@ -282,7 +325,6 @@ BUILTIN_RULES: Final[list[Rule]] = [
             r"(?:ybl|okhdfcbank|oksbi|okaxis|okicici|paytm|upi|ibl|axl|apl|airtel)\b"
         ),
         base_confidence=0.85,
-        # Beats both EMAIL_ADDRESS and the mobile number inside the handle.
         priority=65,
     ),
     _rule(
@@ -296,7 +338,6 @@ BUILTIN_RULES: Final[list[Rule]] = [
         value_group=1,
         priority=50,
     ),
-    # ------------------------------------------------------ Other government --
     _rule(
         entity_type="IN_IFSC",
         name="ifsc",
@@ -340,11 +381,6 @@ BUILTIN_RULES: Final[list[Rule]] = [
         case_sensitive=True,
         priority=50,
     ),
-    # ------------------------------------------------------------- Names ----
-    # spaCy mis-tags Indian names as ORG often enough that anchored rules, not
-    # NER, carry name detection. NER supplements these at lower confidence.
-    # These are case_sensitive so that [A-Z][a-z]+ actually constrains
-    # capitalisation. The label halves stay case-insensitive via inline (?i:).
     _rule(
         entity_type="PERSON",
         name="person-titled",

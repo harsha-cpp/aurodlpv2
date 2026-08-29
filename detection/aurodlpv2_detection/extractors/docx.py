@@ -1,11 +1,3 @@
-"""DOCX extraction via python-docx.
-
-Body paragraphs and tables are only part of a Word document. Hospital templates
-routinely put the patient banner in the header and the record number in a text
-box, and the previous extractor read neither. Embedded images are surfaced for
-OCR because pasted screenshots of lab results are common.
-"""
-
 from __future__ import annotations
 
 import zipfile
@@ -52,7 +44,6 @@ class DocxContent:
 
 
 def extract(data: bytes) -> DocxContent:
-    """Text from body, tables, headers, footers and text boxes, plus images."""
     chunks: list[str] = []
     total = 0
 
@@ -77,8 +68,6 @@ def extract(data: bytes) -> DocxContent:
     except Exception:
         logger.warning("docx attachment extraction failed")
 
-    # Text boxes and other drawing content are not reachable through the
-    # python-docx object model, so read them out of the package XML.
     chunks.extend(_textbox_text(data))
     return DocxContent("\n".join(chunk for chunk in chunks if chunk), _embedded_images(data))
 
@@ -99,7 +88,6 @@ def _append(chunks: list[str], value: str, total: int) -> int:
 
 
 def _textbox_text(data: bytes) -> list[str]:
-    """Text inside drawing shapes, read from document.xml directly."""
     try:
         from xml.etree import ElementTree
 
@@ -125,7 +113,6 @@ def _textbox_text(data: bytes) -> list[str]:
 
 
 def _embedded_images(data: bytes) -> list[Image.Image]:
-    """Images pasted into the document, surfaced for OCR."""
     images: list[Image.Image] = []
     try:
         with zipfile.ZipFile(BytesIO(data)) as archive:

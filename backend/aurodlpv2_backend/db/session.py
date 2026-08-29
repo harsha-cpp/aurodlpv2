@@ -1,10 +1,3 @@
-"""Async SQLAlchemy engine and session factory.
-
-Neon's transaction-mode pooler does not support prepared statements, so we
-disable both the asyncpg statement cache and SQLAlchemy's own prepared
-statement cache when ``database_disable_prepared_statements`` is set.
-"""
-
 from __future__ import annotations
 
 from collections.abc import AsyncIterator

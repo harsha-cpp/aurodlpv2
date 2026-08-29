@@ -1,4 +1,4 @@
-# LOCAL DEVELOPMENT ONLY — backing services for `make dev-up`. The application
+# LOCAL DEVELOPMENT ONLY - backing services for `make dev-up`. The application
 # itself runs on the host (`make backend-dev`, `make dashboard-dev`).
 #
 # The deployable stack is infra/docker-compose.prod.yml: different images,

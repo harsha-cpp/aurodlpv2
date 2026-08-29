@@ -1,2 +1,1 @@
-"""Server-side scan APIs."""
 

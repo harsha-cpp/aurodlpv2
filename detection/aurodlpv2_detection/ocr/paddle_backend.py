@@ -1,11 +1,3 @@
-"""PaddleOCR backend. Lazy-imported (heavy) and cached per language.
-
-The previous version constructed a PaddleOCR engine for every image, reloading
-the detection and recognition models each time, and passed ``show_log`` and
-``cls`` — both removed in PaddleOCR 3.x. So on a modern install every call
-raised, was swallowed, and returned empty text.
-"""
-
 from __future__ import annotations
 
 import inspect
@@ -21,7 +13,6 @@ from aurodlpv2_detection.config import DetectionConfig
 
 logger = structlog.get_logger(__name__)
 
-#: Tesseract language code -> PaddleOCR language code.
 _PADDLE_LANGUAGES: dict[str, str] = {
     "hin": "hi",
     "mar": "mr",
@@ -54,11 +45,6 @@ def paddle_language(config: DetectionConfig) -> str:
 
 @lru_cache(maxsize=4)
 def _engine(language: str) -> _PaddleEngine | None:
-    """Build a PaddleOCR engine once per language.
-
-    Constructor arguments changed across major versions, so only the ones the
-    installed signature actually accepts are passed.
-    """
     try:
         factory: Any = import_module("paddleocr").PaddleOCR
     except ImportError:
@@ -113,7 +99,6 @@ def _parse_results(raw_results: object) -> tuple[str, float]:
     if not isinstance(raw_results, list):
         return "", 0.0
     for page_result in cast(list[object], raw_results):
-        # PaddleOCR 3.x returns dicts; 2.x returns nested lists.
         if isinstance(page_result, dict):
             _collect_from_dict(cast(dict[str, object], page_result), texts, confidences)
             continue

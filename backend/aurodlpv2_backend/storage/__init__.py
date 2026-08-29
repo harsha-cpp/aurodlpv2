@@ -1,15 +1,3 @@
-"""Attachment blob storage.
-
-Queued attachments were written to a local temp directory and read back by the
-Celery worker through the same path, which only works when the API and the
-worker share a filesystem — so it worked on one laptop and nowhere else. This
-abstracts the blob store so the worker can read what the API wrote regardless of
-which host each is on.
-
-Two backends: ``local`` for development and single-host installs, ``s3`` for
-anything real (S3 proper, or MinIO via ``S3_ENDPOINT_URL``).
-"""
-
 from __future__ import annotations
 
 import os
@@ -28,28 +16,24 @@ logger = structlog.get_logger(__name__)
 
 
 class BlobNotFoundError(KeyError):
-    """The requested key is not in the store."""
+    pass
 
 
 class BlobStore(ABC):
-    """Write-once, read-once, delete-after-scan blob storage."""
-
     @abstractmethod
     def put(self, data: bytes, *, suffix: str = "") -> str:
-        """Store bytes and return the key needed to read them back."""
+        pass
 
     @abstractmethod
     def get(self, key: str) -> bytes:
-        """Read the blob, raising BlobNotFoundError when it is gone."""
+        pass
 
     @abstractmethod
     def delete(self, key: str) -> None:
-        """Remove the blob. Missing keys are not an error."""
+        pass
 
 
 class LocalBlobStore(BlobStore):
-    """Filesystem-backed store for development and single-host installs."""
-
     def __init__(self, root: Path) -> None:
         self._root = root
         self._root.mkdir(parents=True, exist_ok=True)
@@ -72,8 +56,6 @@ class LocalBlobStore(BlobStore):
         self._path(key).unlink(missing_ok=True)
 
     def _path(self, key: str) -> Path:
-        # Keys are generated here, never client-supplied, but resolve anyway so
-        # a malformed key cannot escape the root.
         candidate = (self._root / Path(key).name).resolve()
         if not candidate.is_relative_to(self._root.resolve()):
             raise BlobNotFoundError(key)
@@ -81,11 +63,7 @@ class LocalBlobStore(BlobStore):
 
 
 class S3BlobStore(BlobStore):
-    """S3-compatible store. Works against AWS S3 and MinIO alike."""
-
     def __init__(self, settings: Settings) -> None:
-        # boto3 ships no type stubs, so the module is opaque here; every call
-        # through it is guarded by the try/except in get/put/delete.
         boto3 = cast(Any, import_module("boto3"))
 
         self._bucket = settings.s3_bucket
@@ -141,11 +119,9 @@ def get_store() -> BlobStore:
 
 
 def reset_store() -> None:
-    """Test hook: drop the cached store."""
     global _store  # noqa: PLW0603
     _store = None
 
 
 def purge_local_dir(path: Path) -> None:
-    """Remove a local scratch directory and everything under it."""
     shutil.rmtree(path, ignore_errors=True)

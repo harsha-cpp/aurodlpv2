@@ -1,5 +1,3 @@
-"""TOTP second factor: secret storage, code checks, and the login challenge."""
-
 from __future__ import annotations
 
 import hashlib
@@ -20,18 +18,15 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from aurodlpv2_backend.settings import Settings, get_settings
 
 CHALLENGE_TOKEN_TYPE = "mfa_challenge"
-#: Long enough to open an authenticator app, short enough that a challenge
-#: token lifted from a browser log is useless by the time it is read.
 CHALLENGE_TTL_SECONDS = 300
 BACKUP_CODE_COUNT = 10
 _BACKUP_CODE_BYTES = 5
 _NONCE_BYTES = 12
-#: One step either side, so a workstation clock a few seconds off still works.
 _TOTP_VALID_WINDOW = 1
 
 
 class MfaError(ValueError):
-    """The submitted second factor could not be accepted."""
+    pass
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,9 +53,6 @@ def verify_totp(secret: str, code: str) -> bool:
 
 
 def _encryption_key(settings: Settings) -> bytes:
-    # AES-GCM needs exactly 32 bytes; the configured value is an arbitrary
-    # passphrase, so widen it deterministically rather than demanding a
-    # correctly sized key in the environment.
     return hashlib.sha256(settings.mfa_encryption_key_value.encode("utf-8")).digest()
 
 
@@ -80,8 +72,6 @@ def decrypt_secret(blob: bytes, *, settings: Settings | None = None) -> str:
             blob[:_NONCE_BYTES], blob[_NONCE_BYTES:], None
         )
     except InvalidTag as exc:
-        # Wrong key, or the row was tampered with. Either way the member must
-        # re-enrol; a silent failure here would lock them out with no signal.
         raise MfaError("stored mfa secret is unreadable") from exc
     return plaintext.decode("utf-8")
 
@@ -91,17 +81,10 @@ def generate_backup_codes(count: int = BACKUP_CODE_COUNT) -> list[str]:
 
 
 def hash_backup_code(code: str) -> str:
-    # SHA-256 rather than argon2: these are full-entropy random codes, so there
-    # is no guessable plaintext for a slow hash to protect.
     return hashlib.sha256(_normalize_backup_code(code).encode("utf-8")).hexdigest()
 
 
 def consume_backup_code(hashed_codes: Sequence[str], submitted: str) -> list[str] | None:
-    """Return the remaining hashes once a code is spent, or None if it is wrong.
-
-    Compared in constant time and removed on use, so a backup code written on a
-    sticky note cannot be replayed after it has been used once.
-    """
     candidate = hash_backup_code(submitted)
     for index, stored in enumerate(hashed_codes):
         if hmac.compare_digest(stored, candidate):
@@ -120,12 +103,6 @@ def issue_challenge_token(
     settings: Settings | None = None,
     now: datetime | None = None,
 ) -> str:
-    """Short-lived proof that the password step already passed.
-
-    Returned instead of a session so the password and the code are never both
-    required in one request — the client can prompt for the code without
-    holding the password in memory.
-    """
     resolved = settings or get_settings()
     issued_at = now or datetime.now(UTC)
     payload: dict[str, object] = {

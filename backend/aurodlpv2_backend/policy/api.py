@@ -1,10 +1,3 @@
-"""Policy management API.
-
-Editing enforcement rules is a privileged act with an obvious blast radius, so
-every change is written to the audit log alongside a dry-run endpoint that lets
-an administrator see what a rule set would have done before committing to it.
-"""
-
 from __future__ import annotations
 
 from typing import Literal
@@ -53,8 +46,6 @@ class SimulationEntity(BaseModel):
 
 
 class SimulationRequest(BaseModel):
-    """A hypothetical scan, for previewing a rule change."""
-
     entities: list[SimulationEntity] = Field(default_factory=_empty_entities, max_length=200)
     risk_score: float = Field(default=0, ge=0, le=100)
     severity: Severity = "none"
@@ -63,7 +54,6 @@ class SimulationRequest(BaseModel):
     )
     sender_class: SenderClass = "internal"
     has_attachments: bool = False
-    #: When present, evaluate against this instead of the saved set.
     candidate: PolicySetIn | None = None
 
 
@@ -148,9 +138,7 @@ async def reset_policy(
         metadata={},
     )
     await session.commit()
-    return PolicySetOut(
-        version=policy_set.version, rules=policy_set.rules, is_custom=False
-    )
+    return PolicySetOut(version=policy_set.version, rules=policy_set.rules, is_custom=False)
 
 
 @router.post("/simulate", response_model=SimulationResponse)

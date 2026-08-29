@@ -1,20 +1,20 @@
 {
   "clean_false_alarm_rate": 0.0,
   "document": {
-    "f1": 0.9934,
+    "f1": 0.9936,
     "precision": 1.0,
-    "recall": 0.9868,
-    "support": 76.0
+    "recall": 0.9873,
+    "support": 79.0
   },
-  "documents": 116,
-  "duplicate_inflation": 1.0311,
+  "documents": 119,
+  "duplicate_inflation": 1.0305,
   "entity_total": {
-    "f1": 0.9822,
+    "f1": 0.9826,
     "precision": 1.0,
-    "recall": 0.9651,
-    "support": 172.0
+    "recall": 0.9657,
+    "support": 175.0
   },
-  "generated_at": "2026-08-28T12:45:12.144653+00:00",
+  "generated_at": "2026-08-28T17:06:40.725539+00:00",
   "per_type": {
     "ABHA_ADDRESS": {
       "f1": 1.0,
@@ -50,7 +50,7 @@
       "f1": 1.0,
       "precision": 1.0,
       "recall": 1.0,
-      "support": 24.0
+      "support": 27.0
     },
     "INSURANCE_POLICY": {
       "f1": 1.0,

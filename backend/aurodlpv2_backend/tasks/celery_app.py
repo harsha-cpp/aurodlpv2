@@ -1,5 +1,3 @@
-"""Celery application for queued scan work."""
-
 # pyright: reportUnknownMemberType=false
 
 from __future__ import annotations

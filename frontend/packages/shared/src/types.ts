@@ -1,18 +1,18 @@
-export type Action = 'allow' | 'warn' | 'block' | 'quarantine' | 'escalate';
-export type Severity = 'none' | 'low' | 'medium' | 'high' | 'critical';
+export type Action = "allow" | "warn" | "block" | "quarantine" | "escalate";
+export type Severity = "none" | "low" | "medium" | "high" | "critical";
 export type RecipientClass =
-  | 'internal'
-  | 'approved_partner'
-  | 'blocked'
-  | 'external'
-  | 'public_email'
-  | 'unknown';
+  | "internal"
+  | "approved_partner"
+  | "blocked"
+  | "external"
+  | "public_email"
+  | "unknown";
 
 export interface EntityHit {
   type: string;
   masked_value: string;
   confidence: number;
-  source: 'body' | 'subject' | 'attachment';
+  source: "body" | "subject" | "attachment";
   attachment_id?: string | undefined;
 }
 
@@ -46,7 +46,7 @@ export interface ScanEmailPayload {
 
 export interface AttachmentUploadResult {
   attachment_scan_id: string;
-  status: 'scanned' | 'queued' | 'failed';
+  status: "scanned" | "queued" | "failed";
   verdict?: Verdict | null | undefined;
   error?: string | null | undefined;
 }
@@ -64,10 +64,10 @@ export interface ScanFinalizePayload {
 export interface AuthTokens {
   access_token: string;
   expires_in: number;
-  token_type: 'Bearer';
+  token_type: "Bearer";
 }
 
-export type MemberRole = 'owner' | 'admin' | 'analyst' | 'viewer';
+export type MemberRole = "owner" | "admin" | "analyst" | "viewer";
 
 export interface UserProfile {
   user_id: string;

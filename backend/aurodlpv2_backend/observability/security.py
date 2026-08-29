@@ -1,5 +1,3 @@
-"""HTTP security headers and the shared API rate limit."""
-
 from __future__ import annotations
 
 import hashlib
@@ -20,14 +18,6 @@ _UNKNOWN_CLIENT = "unknown"
 
 
 def resolve_client_ip(request: Request, trusted_proxy_count: int) -> str:
-    """Real client IP, accounting for proxies that append to X-Forwarded-For.
-
-    Behind a load balancer ``request.client.host`` is the balancer, so five bad
-    passwords from one workstation would lock out the whole hospital. Only the
-    entries our own proxies appended are trustworthy: with ``n`` trusted hops
-    the client sits ``n`` places from the right. Anything further left is
-    attacker-controlled and never read.
-    """
     fallback = request.client.host if request.client else _UNKNOWN_CLIENT
     if trusted_proxy_count <= 0:
         return fallback
@@ -50,14 +40,6 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
-    """Coarse per-caller ceiling across /api/v1.
-
-    Redis-backed so the budget is shared by every worker rather than multiplied
-    by the process count. The in-memory fallback keeps local dev and a Redis
-    outage working, but is bounded: unauthenticated callers key by IP and a
-    spray of spoofed sources would otherwise grow the dict without limit.
-    """
-
     def __init__(
         self,
         app: ASGIApp,
@@ -85,8 +67,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
     def _is_exempt(self, path: str) -> bool:
-        # /scan and /events carry per-device limits of their own; a hospital's
-        # steady scan traffic must not eat the dashboard's budget.
         return any(path.startswith(prefix) for prefix in get_settings().api_rate_limit_exempt_paths)
 
     @property
@@ -103,7 +83,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 if count == 1:
                     await redis.expire(f"apirl:{key}", self._window_seconds)
             except Exception:
-                # A Redis blip must degrade to local counting, never to a 500.
                 self._redis = None
             else:
                 return count > self._limit

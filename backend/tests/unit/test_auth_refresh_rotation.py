@@ -17,8 +17,6 @@ from aurodlpv2_backend.utils.uuid import uuid7
 
 
 class _FakeSession:
-    """Just enough AsyncSession for the refresh handler and audit writer."""
-
     def __init__(self, record: RefreshToken, member: OrgMember, org: Organization) -> None:
         self.record = record
         self.member = member
@@ -37,7 +35,6 @@ class _FakeSession:
         return None
 
     async def scalar(self, _statement: object) -> object | None:
-        # No MFA row and no previous audit event.
         return None
 
     async def execute(self, statement: object, _params: object = None) -> None:
@@ -117,7 +114,6 @@ async def test_refresh_rotates_and_keeps_the_family() -> None:
     assert record.rotated_at is not None
     successors = [item for item in session.added if isinstance(item, RefreshToken)]
     assert len(successors) == 1
-    # Same family, so revoking a stolen lineage still catches the successor.
     assert successors[0].family_id == record.family_id
     assert successors[0].user_agent == "Chrome/131"
     assert successors[0].ip_address == "203.0.113.10"
@@ -125,7 +121,6 @@ async def test_refresh_rotates_and_keeps_the_family() -> None:
 
 @pytest.mark.unit
 async def test_concurrent_refresh_inside_the_grace_window_does_not_rotate_again() -> None:
-    """Two tabs refreshing at once must not sign each other out."""
     raw_token, session, _record = _setup(rotated_at=datetime.now(UTC))
 
     result = await refresh(Response(), _request(raw_token), _as_session(session))
@@ -145,7 +140,6 @@ async def test_replay_after_the_grace_window_revokes_the_family() -> None:
         await refresh(Response(), _request(raw_token), _as_session(session))
 
     assert exc_info.value.status_code == 401
-    # The bulk revoke plus the advisory lock taken by the audit writer.
     assert len(session.executed) >= 1
     assert [item for item in session.added if isinstance(item, RefreshToken)] == []
 

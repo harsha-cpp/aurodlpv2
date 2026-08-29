@@ -1,12 +1,3 @@
-"""Precision / recall scoring for the labelled corpus.
-
-Entity scoring matches a detection to a labelled span when the canonical type
-agrees, the field agrees, and the character ranges overlap. Overlap rather than
-exact equality is deliberate: an engine reporting ``2345 6789 0124`` where the
-label reads the same digits is correct, and boundary drift by one character is
-not the failure we are measuring.
-"""
-
 from __future__ import annotations
 
 from collections import defaultdict
@@ -22,8 +13,6 @@ DocOutcome = Literal["true_positive", "false_positive", "true_negative", "false_
 
 @dataclass(frozen=True, slots=True)
 class Score:
-    """Counts and derived rates for one entity type, or for a micro total."""
-
     true_positives: int = 0
     false_positives: int = 0
     false_negatives: int = 0
@@ -68,8 +57,6 @@ class MatchResult:
 
 @dataclass(frozen=True, slots=True)
 class SampleResult:
-    """What happened on one document."""
-
     sample_id: str
     category: str
     outcome: DocOutcome
@@ -79,8 +66,6 @@ class SampleResult:
 
 @dataclass(slots=True)
 class EvaluationReport:
-    """Aggregate result across the whole corpus."""
-
     per_type: dict[str, Score] = field(default_factory=dict[str, Score])
     entity_total: Score = Score()
     document: Score = Score()
@@ -93,14 +78,12 @@ class EvaluationReport:
 
     @property
     def clean_false_alarm_rate(self) -> float:
-        """Share of documents with no PHI that were flagged anyway."""
         if not self.clean_documents:
             return 0.0
         return self.clean_documents_flagged / self.clean_documents
 
     @property
     def duplicate_inflation(self) -> float:
-        """Detections emitted per distinct (type, value). 1.0 means no inflation."""
         if not self.distinct_detections:
             return 1.0
         return self.detections_emitted / self.distinct_detections
@@ -111,7 +94,6 @@ def _overlaps(left_start: int, left_end: int, right_start: int, right_end: int) 
 
 
 def match_spans(expected: tuple[ExpectedSpan, ...], detected: list[Entity]) -> MatchResult:
-    """Greedily pair labelled spans with detections."""
     remaining = list(detected)
     matched: list[ExpectedSpan] = []
     missed: list[ExpectedSpan] = []
@@ -139,16 +121,12 @@ def match_spans(expected: tuple[ExpectedSpan, ...], detected: list[Entity]) -> M
 
 
 def evaluate(scored: list[tuple[Sample, list[Entity]]]) -> EvaluationReport:
-    """Score a list of (sample, detections) pairs into a report."""
     tallies: dict[str, _Tally] = defaultdict(_Tally)
     document = _Tally()
     report = EvaluationReport()
     distinct: set[tuple[str, str, str]] = set()
 
     for sample, raw_detections in scored:
-        # Types marked "don't care" for this sample are neither credited nor
-        # penalised — a staff name in a duty roster is a correct PERSON hit but
-        # says nothing about whether the document carries patient data.
         detections = [
             entity
             for entity in raw_detections

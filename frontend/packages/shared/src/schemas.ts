@@ -1,21 +1,33 @@
-import { z } from 'zod';
+import { z } from "zod";
 
-export const actionSchema = z.enum(['allow', 'warn', 'block', 'quarantine', 'escalate']);
-export const severitySchema = z.enum(['none', 'low', 'medium', 'high', 'critical']);
+export const actionSchema = z.enum([
+  "allow",
+  "warn",
+  "block",
+  "quarantine",
+  "escalate",
+]);
+export const severitySchema = z.enum([
+  "none",
+  "low",
+  "medium",
+  "high",
+  "critical",
+]);
 export const recipientClassSchema = z.enum([
-  'internal',
-  'approved_partner',
-  'blocked',
-  'external',
-  'public_email',
-  'unknown',
+  "internal",
+  "approved_partner",
+  "blocked",
+  "external",
+  "public_email",
+  "unknown",
 ]);
 
 export const entityHitSchema = z.object({
   type: z.string(),
   masked_value: z.string(),
   confidence: z.number().min(0).max(1),
-  source: z.enum(['body', 'subject', 'attachment']),
+  source: z.enum(["body", "subject", "attachment"]),
   attachment_id: z.string().optional(),
 });
 
@@ -40,7 +52,7 @@ export const verdictSchema = z.object({
 
 export const attachmentUploadResultSchema = z.object({
   attachment_scan_id: z.string(),
-  status: z.enum(['scanned', 'queued', 'failed']),
+  status: z.enum(["scanned", "queued", "failed"]),
   verdict: verdictSchema.nullable().optional(),
   error: z.string().nullable().optional(),
 });
@@ -48,10 +60,10 @@ export const attachmentUploadResultSchema = z.object({
 export const authTokensSchema = z.object({
   access_token: z.string(),
   expires_in: z.number(),
-  token_type: z.literal('Bearer'),
+  token_type: z.literal("Bearer"),
 });
 
-export const memberRoleSchema = z.enum(['owner', 'admin', 'analyst', 'viewer']);
+export const memberRoleSchema = z.enum(["owner", "admin", "analyst", "viewer"]);
 
 export const userProfileSchema = z.object({
   user_id: z.string(),

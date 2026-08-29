@@ -1,7 +1,6 @@
-import { request } from '../lib/api';
-import type { Role } from '../lib/roles';
+import { request } from "../lib/api";
+import type { Role } from "../lib/roles";
 
-/** The signed-in member as the session endpoints describe them (MemberView). */
 export interface Member {
   id: string;
   email: string;
@@ -15,10 +14,6 @@ export interface Organization {
   id: string;
   name: string;
   slug: string;
-  /**
-   * Null for analysts and viewers. The org code authenticates extension
-   * installs, so the backend withholds it rather than showing it read-only.
-   */
   org_code: string | null;
   plan: string;
 }
@@ -31,7 +26,6 @@ export interface AuthResponse {
   mfa_required?: boolean;
 }
 
-/** Proof of the password step only — no session exists until the code checks out. */
 export interface MfaChallenge {
   mfa_required: true;
   challenge_token: string;
@@ -89,34 +83,73 @@ export interface MfaConfirmResponse {
 }
 
 export const authApi = {
-  signup: (body: SignupBody) => request<AuthResponse>('/api/v1/auth/signup', { method: 'POST', body, skipAuth: true }),
-  login: (body: LoginBody) => request<LoginResult>('/api/v1/auth/login', { method: 'POST', body, skipAuth: true }),
-  refresh: () => request<AuthResponse>('/api/v1/auth/refresh', { method: 'POST', skipAuth: true }),
-  logout: () => request<void>('/api/v1/auth/logout', { method: 'POST' }),
-  me: () => request<AuthResponse>('/api/v1/auth/me'),
-  myOrgs: () => request<OrgListItem[]>('/api/v1/auth/my-orgs'),
+  signup: (body: SignupBody) =>
+    request<AuthResponse>("/api/v1/auth/signup", {
+      method: "POST",
+      body,
+      skipAuth: true,
+    }),
+  login: (body: LoginBody) =>
+    request<LoginResult>("/api/v1/auth/login", {
+      method: "POST",
+      body,
+      skipAuth: true,
+    }),
+  refresh: () =>
+    request<AuthResponse>("/api/v1/auth/refresh", {
+      method: "POST",
+      skipAuth: true,
+    }),
+  logout: () => request<void>("/api/v1/auth/logout", { method: "POST" }),
+  me: () => request<AuthResponse>("/api/v1/auth/me"),
+  myOrgs: () => request<OrgListItem[]>("/api/v1/auth/my-orgs"),
   switchOrg: (orgId: string) =>
-    request<AuthResponse>('/api/v1/auth/switch-org', { method: 'POST', body: { org_id: orgId } }),
+    request<AuthResponse>("/api/v1/auth/switch-org", {
+      method: "POST",
+      body: { org_id: orgId },
+    }),
 
-  sessions: () => request<SessionOut[]>('/api/v1/auth/sessions'),
-  revokeAllSessions: () => request<void>('/api/v1/auth/sessions/revoke-all', { method: 'POST' }),
+  sessions: () => request<SessionOut[]>("/api/v1/auth/sessions"),
+  revokeAllSessions: () =>
+    request<void>("/api/v1/auth/sessions/revoke-all", { method: "POST" }),
 
   forgotPassword: (email: string) =>
-    request<void>('/api/v1/auth/forgot-password', { method: 'POST', body: { email }, skipAuth: true }),
+    request<void>("/api/v1/auth/forgot-password", {
+      method: "POST",
+      body: { email },
+      skipAuth: true,
+    }),
   resetPassword: (token: string, password: string) =>
-    request<void>('/api/v1/auth/reset-password', { method: 'POST', body: { token, password }, skipAuth: true }),
+    request<void>("/api/v1/auth/reset-password", {
+      method: "POST",
+      body: { token, password },
+      skipAuth: true,
+    }),
   verifyEmail: (token: string) =>
-    request<void>('/api/v1/auth/verify-email', { method: 'POST', body: { token }, skipAuth: true }),
-  resendVerification: () => request<void>('/api/v1/auth/resend-verification', { method: 'POST' }),
+    request<void>("/api/v1/auth/verify-email", {
+      method: "POST",
+      body: { token },
+      skipAuth: true,
+    }),
+  resendVerification: () =>
+    request<void>("/api/v1/auth/resend-verification", { method: "POST" }),
 
-  mfaStatus: () => request<MfaStatus>('/api/v1/auth/mfa'),
-  mfaEnroll: () => request<MfaEnrollResponse>('/api/v1/auth/mfa/enroll', { method: 'POST' }),
+  mfaStatus: () => request<MfaStatus>("/api/v1/auth/mfa"),
+  mfaEnroll: () =>
+    request<MfaEnrollResponse>("/api/v1/auth/mfa/enroll", { method: "POST" }),
   mfaConfirm: (code: string) =>
-    request<MfaConfirmResponse>('/api/v1/auth/mfa/confirm', { method: 'POST', body: { code } }),
-  mfaDisable: (code: string) => request<void>('/api/v1/auth/mfa/disable', { method: 'POST', body: { code } }),
+    request<MfaConfirmResponse>("/api/v1/auth/mfa/confirm", {
+      method: "POST",
+      body: { code },
+    }),
+  mfaDisable: (code: string) =>
+    request<void>("/api/v1/auth/mfa/disable", {
+      method: "POST",
+      body: { code },
+    }),
   mfaVerify: (challengeToken: string, code: string) =>
-    request<AuthResponse>('/api/v1/auth/mfa/verify', {
-      method: 'POST',
+    request<AuthResponse>("/api/v1/auth/mfa/verify", {
+      method: "POST",
       body: { challenge_token: challengeToken, code },
       skipAuth: true,
     }),

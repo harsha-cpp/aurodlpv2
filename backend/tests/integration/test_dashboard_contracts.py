@@ -1,11 +1,3 @@
-"""Contracts the dashboard depends on.
-
-Each of these was a gap the dashboard had to work around client-side: fanning
-out three requests to see a whole queue, pulling 200 audit rows to filter them
-in the browser, or claiming hash-chain continuity over whatever page happened
-to be loaded.
-"""
-
 from __future__ import annotations
 
 import uuid
@@ -55,11 +47,7 @@ async def _scan(client: AsyncClient, org_code: str, recipient: str) -> dict[str,
     return result
 
 
-# ----------------------------------------------------------- quarantine ----
-
-
 async def test_quarantine_accepts_status_all(api_client: AsyncClient) -> None:
-    """Without this the dashboard fans out one request per status."""
     token, org_code, _email = await _signup(api_client)
     headers = {"Authorization": f"Bearer {token}"}
     await api_client.post(
@@ -86,25 +74,16 @@ async def test_quarantine_rejects_an_unknown_status(api_client: AsyncClient) -> 
     assert response.status_code == 422
 
 
-# --------------------------------------------------------------- members ----
-
-
 async def test_member_roster_reports_verification_and_mfa_state(
     api_client: AsyncClient,
 ) -> None:
-    """An admin chasing 2FA coverage needs this on the roster, not per member."""
     token, _org_code, _email = await _signup(api_client)
-    response = await api_client.get(
-        "/api/v1/members", headers={"Authorization": f"Bearer {token}"}
-    )
+    response = await api_client.get("/api/v1/members", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 200, response.text
     member = response.json()[0]
     assert "email_verified" in member
     assert "mfa_enabled" in member
     assert member["mfa_enabled"] is False
-
-
-# ----------------------------------------------------------------- audit ----
 
 
 async def test_audit_filters_server_side_and_pages(api_client: AsyncClient) -> None:
@@ -159,7 +138,6 @@ async def test_audit_categories_are_listed(api_client: AsyncClient) -> None:
 async def test_audit_chain_verifies_the_whole_log_not_one_page(
     api_client: AsyncClient,
 ) -> None:
-    """The client can only ever check the rows it loaded; this checks all of them."""
     token, org_code, _email = await _signup(api_client)
     headers = {"Authorization": f"Bearer {token}"}
     for _ in range(3):
@@ -173,11 +151,7 @@ async def test_audit_chain_verifies_the_whole_log_not_one_page(
     assert status["broken_at"] is None
 
 
-# ------------------------------------------------------------------ login ----
-
-
 async def test_login_documents_both_response_branches() -> None:
-    """A generated client must be able to see the MFA challenge branch."""
     schema = create_app().openapi()
     payload = schema["paths"]["/api/v1/auth/login"]["post"]["responses"]["200"]
     body = payload["content"]["application/json"]["schema"]

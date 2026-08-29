@@ -1,5 +1,3 @@
-"""Public detection entrypoint."""
-
 from __future__ import annotations
 
 import time
@@ -51,9 +49,7 @@ def detect_email(
                 deadline=deadline,
             )
             ocr_pages += ocr_result.pages
-            extraction_errors.extend(
-                f"{attachment.id}: {error}" for error in ocr_result.errors
-            )
+            extraction_errors.extend(f"{attachment.id}: {error}" for error in ocr_result.errors)
             if ocr_result.text:
                 entities.extend(
                     _detect(

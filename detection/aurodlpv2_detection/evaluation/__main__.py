@@ -1,10 +1,3 @@
-"""CLI: ``python -m aurodlpv2_detection.evaluation``.
-
-    python -m aurodlpv2_detection.evaluation                  # print the report
-    python -m aurodlpv2_detection.evaluation --check          # fail on regression
-    python -m aurodlpv2_detection.evaluation --update-baseline
-"""
-
 from __future__ import annotations
 
 import argparse

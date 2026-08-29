@@ -1,10 +1,3 @@
-"""The exported rule pack must stay in step with the committed client copy.
-
-The extension and the engine drifted once already: different entity names,
-different confidences, different policy, and a verdict that depended on whether
-the backend answered. This test is what stops it happening twice.
-"""
-
 from __future__ import annotations
 
 import json
@@ -31,8 +24,7 @@ def test_committed_client_pack_matches_the_python_export() -> None:
 
     committed = CLIENT_PACK.read_text(encoding="utf-8")
     assert committed == export_json(), (
-        "the committed client rule pack is stale. Regenerate it with:\n"
-        "  make rulepack"
+        "the committed client rule pack is stale. Regenerate it with:\n  make rulepack"
     )
 
 
@@ -43,13 +35,10 @@ def test_committed_client_pack_matches_the_python_export() -> None:
         (r"x(?i:no|number)?y", r"x(?:[nN][oO]|[nN][uU][mM][bB][eE][rR])?y"),
         (r"\b[A-Z]{5}\b", r"\b[A-Z]{5}\b"),
         (r"(?i:a)(?i:b)", r"(?:[aA])(?:[bB])"),
-        # Escape sequences pass through: expanding the s in \s would turn a
-        # whitespace class into a literal.
         (r"(?i:no\.?\s*\d{2})", r"(?:[nN][oO]\.?\s*\d{2})"),
     ],
 )
 def test_inline_flag_translation(pattern: str, expected: str) -> None:
-    """JavaScript has no scoped inline flags, so (?i:...) is expanded."""
     assert to_javascript_pattern(pattern) == expected
 
 
@@ -59,7 +48,6 @@ def test_unbalanced_inline_group_is_rejected() -> None:
 
 
 def test_character_class_inside_inline_group_is_rejected() -> None:
-    """Better to fail the build than emit a silently wrong regex."""
     with pytest.raises(ValueError, match="character classes"):
         to_javascript_pattern(r"(?i:[a-z]+)")
 

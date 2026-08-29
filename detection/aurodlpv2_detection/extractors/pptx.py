@@ -1,9 +1,3 @@
-"""PPTX extraction via python-pptx.
-
-Case presentations and morbidity-meeting decks carry patient identifiers on the
-slides and in the speaker notes.
-"""
-
 from __future__ import annotations
 
 from importlib import import_module

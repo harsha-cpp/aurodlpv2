@@ -1,8 +1,7 @@
-import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { Component, type ErrorInfo, type ReactNode } from "react";
 
 interface Props {
   children: ReactNode;
-  /** Changing this resets the boundary — used to recover on navigation. */
   resetKey?: string;
 }
 
@@ -10,11 +9,6 @@ interface State {
   error: Error | null;
 }
 
-/**
- * One malformed response should cost the user a card, not the whole dashboard.
- * React unmounts the entire tree on an uncaught render error, so without this a
- * single unexpected null renders a blank white page with no way back.
- */
 export default class ErrorBoundary extends Component<Props, State> {
   override state: State = { error: null };
 
@@ -23,8 +17,7 @@ export default class ErrorBoundary extends Component<Props, State> {
   }
 
   override componentDidCatch(error: Error, info: ErrorInfo): void {
-    // No telemetry endpoint yet; the console is the only place this can go.
-    console.error('Dashboard render error', error, info.componentStack);
+    console.error("Dashboard render error", error, info.componentStack);
   }
 
   override componentDidUpdate(prev: Props): void {
@@ -39,31 +32,42 @@ export default class ErrorBoundary extends Component<Props, State> {
 
     return (
       <div className="card" style={{ maxWidth: 620 }}>
-        <h1 className="h2" style={{ marginBottom: 8 }}>This page failed to render</h1>
+        <h1 className="h2" style={{ marginBottom: 8 }}>
+          This page failed to render
+        </h1>
         <p className="muted">
-          Something in the data Auro received did not match what this screen expected. Your session is
-          still valid — the rest of the dashboard works.
+          Something in the data Auro received did not match what this screen
+          expected. Your session is still valid - the rest of the dashboard
+          works.
         </p>
         <pre
           className="mono subtle"
           style={{
-            whiteSpace: 'pre-wrap',
-            background: 'var(--bg)',
-            border: '1px solid var(--border)',
-            borderRadius: 6,
+            whiteSpace: "pre-wrap",
+            background: "var(--surface-2)",
+            border: "1px solid var(--rule)",
+            borderRadius: 4,
             padding: 12,
             marginTop: 12,
             maxHeight: 180,
-            overflow: 'auto',
+            overflow: "auto",
           }}
         >
           {error.message}
         </pre>
         <div className="row gap-2" style={{ marginTop: 16 }}>
-          <button type="button" className="btn btn-primary btn-sm" onClick={() => this.setState({ error: null })}>
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={() => this.setState({ error: null })}
+          >
             Try again
           </button>
-          <button type="button" className="btn btn-sm" onClick={() => window.location.reload()}>
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={() => window.location.reload()}
+          >
             Reload dashboard
           </button>
         </div>

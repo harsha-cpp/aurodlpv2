@@ -1,10 +1,3 @@
-"""Risk scoring on the 0-100 scale.
-
-These pin the properties the policy engine depends on: the scale is genuinely
-0-100, combinations outrank single identifiers, and repeating one value never
-outranks exposing several distinct ones.
-"""
-
 from __future__ import annotations
 
 import pytest
@@ -47,7 +40,6 @@ def test_no_entities_scores_zero() -> None:
 
 
 def test_scale_is_zero_to_one_hundred() -> None:
-    """The previous scale topped out near 7 while policy tested for >= 80."""
     risk, _ = score([_entity("IN_AADHAAR", "****7460")] * 1)
     assert 0.0 <= risk <= 100.0
     assert risk > 50.0
@@ -60,7 +52,6 @@ def test_single_aadhaar_is_high_severity() -> None:
 
 
 def test_combination_outranks_its_parts() -> None:
-    """A record number beside a diagnosis and a name is the PHI case."""
     mrn_only, _ = score([_entity("MRN", "***4518")])
     combined, severity = score(
         [
@@ -74,7 +65,6 @@ def test_combination_outranks_its_parts() -> None:
 
 
 def test_repeating_one_value_scores_below_several_distinct_values() -> None:
-    """Repetition is not exposure: five copies of one Aadhaar is one patient."""
     repeated, _ = score([_entity("IN_AADHAAR", "****7460") for _ in range(5)])
     distinct, _ = score(
         [
@@ -98,10 +88,9 @@ def test_confidence_scales_contribution() -> None:
 
 
 def test_bulk_export_reaches_critical() -> None:
-    """The case the old log scale could never push past 'high'."""
-    entities = [
-        _entity("MRN", f"***{index:04d}") for index in range(10)
-    ] + [_entity("PERSON", f"Patient {index}") for index in range(10)]
+    entities = [_entity("MRN", f"***{index:04d}") for index in range(10)] + [
+        _entity("PERSON", f"Patient {index}") for index in range(10)
+    ]
     risk, severity = score(entities)
     assert severity == "critical"
     assert risk > 95.0

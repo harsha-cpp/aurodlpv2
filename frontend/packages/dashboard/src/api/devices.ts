@@ -1,4 +1,4 @@
-import { request } from '../lib/api';
+import { request } from "../lib/api";
 
 export interface Device {
   id: string;
@@ -12,13 +12,16 @@ export interface Device {
 
 export interface DeviceEnrollResponse {
   device: Device;
-  /** Returned exactly once, at enrolment. The server only keeps a hash. */
   device_token: string;
 }
 
 export const devicesApi = {
-  list: () => request<Device[]>('/api/v1/devices'),
+  list: () => request<Device[]>("/api/v1/devices"),
   enroll: (label: string) =>
-    request<DeviceEnrollResponse>('/api/v1/devices/enroll', { method: 'POST', body: { label } }),
-  revoke: (id: string) => request<Device>(`/api/v1/devices/${id}/revoke`, { method: 'POST' }),
+    request<DeviceEnrollResponse>("/api/v1/devices/enroll", {
+      method: "POST",
+      body: { label },
+    }),
+  revoke: (id: string) =>
+    request<Device>(`/api/v1/devices/${id}/revoke`, { method: "POST" }),
 };

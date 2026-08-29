@@ -1,9 +1,3 @@
-"""Accuracy regression gate.
-
-The committed baseline is a ratchet: a change may raise any metric but must not
-lower one. Without this, "detection feels better" is unfalsifiable.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -29,7 +23,6 @@ def report() -> EvaluationReport:
 
 
 def test_corpus_loads_and_every_label_resolves() -> None:
-    """load_corpus raises if a labelled value is absent from the text."""
     samples = load_corpus(CORPUS_DIR)
     assert len(samples) >= 100, "corpus has shrunk below a usable size"
     assert any(not sample.expect_phi for sample in samples), "no negative samples"
@@ -38,6 +31,9 @@ def test_corpus_loads_and_every_label_resolves() -> None:
 
 def test_no_accuracy_regression(report: EvaluationReport) -> None:
     regressions = compare(report, load_baseline(BASELINE_PATH))
-    assert not regressions, "accuracy regressed:\n" + "\n".join(
-        f"  {regression}" for regression in regressions
-    ) + "\n\n" + render(report)
+    assert not regressions, (
+        "accuracy regressed:\n"
+        + "\n".join(f"  {regression}" for regression in regressions)
+        + "\n\n"
+        + render(report)
+    )

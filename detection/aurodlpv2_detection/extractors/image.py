@@ -1,5 +1,3 @@
-"""Image -> OCR pipeline (delegates to ocr.router)."""
-
 from __future__ import annotations
 
 from io import BytesIO

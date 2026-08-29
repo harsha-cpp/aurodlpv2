@@ -57,7 +57,7 @@ figure (detections per distinct value).
 
 ### The corpus
 
-`tests/corpus/*.json` — each file is an array of labelled samples:
+`tests/corpus/*.json` - each file is an array of labelled samples:
 
 ```json
 {
@@ -78,14 +78,14 @@ figure (detections per distinct value).
 - `body` is a string or an array of lines, joined with newlines.
 - `entities` lists every span that must be detected. Values are located in the
   text by the loader, so a labelled value that is not present raises at load
-  time — the corpus cannot silently rot.
+  time - the corpus cannot silently rot.
 - `expect_phi` is the document-level label. It may be true with no listed
   entities, for clinical narrative carrying no crisp identifier.
 - `ignore_types` marks types as don't-care for that sample: neither credited
   nor penalised. Use it for a staff name in a duty roster, or a PAN detected
   inside a GSTIN.
 - Types must come from `evaluation/taxonomy.py`, which is the target
-  vocabulary — including types the engine cannot detect yet, so the gaps show
+  vocabulary - including types the engine cannot detect yet, so the gaps show
   up as recall misses rather than disappearing.
 
 Files are grouped by intent: `clinical`, `administrative`, `identifiers`
@@ -101,7 +101,7 @@ of them drops. After a deliberate improvement:
 make accuracy-update          # re-record, then commit the new baseline
 ```
 
-Never re-record to make a red build green — that is the one thing the ratchet
+Never re-record to make a red build green - that is the one thing the ratchet
 exists to prevent.
 
 ## Status

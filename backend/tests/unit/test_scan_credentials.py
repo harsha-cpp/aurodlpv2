@@ -1,9 +1,3 @@
-"""Scan credential semantics.
-
-The org code names nobody, so anything derived from it must not imply it does.
-These pin the distinction between a verified identity and a claimed one.
-"""
-
 from __future__ import annotations
 
 from typing import Any
@@ -36,7 +30,6 @@ def test_device_principal_is_identified() -> None:
 
 @pytest.mark.unit
 def test_org_code_principal_is_not_identified() -> None:
-    """A shared secret is not an identity, and must not be reported as one."""
     assert _org_code().is_identified is False
 
 
@@ -56,9 +49,6 @@ def test_missing_identity_is_not_dressed_up() -> None:
     assert _org_code().actor(None) == "extension-unverified:unknown"
 
 
-# ------------------------------------------------------------ rate limiting --
-
-
 @pytest.mark.unit
 def test_limiter_allows_up_to_the_limit_then_rejects() -> None:
     limiter = CredentialRateLimiter()
@@ -70,7 +60,6 @@ def test_limiter_allows_up_to_the_limit_then_rejects() -> None:
 
 @pytest.mark.unit
 def test_limiter_keys_are_independent() -> None:
-    """One doctor hitting their ceiling must not throttle a colleague."""
     limiter = CredentialRateLimiter()
     limiter.check("a", limit=1, window_seconds=60)
     limiter.check("b", limit=1, window_seconds=60)
@@ -80,19 +69,14 @@ def test_limiter_keys_are_independent() -> None:
 
 @pytest.mark.unit
 def test_limiter_bounds_its_memory() -> None:
-    """Keyed by untrusted input, so it must not grow without limit."""
     limiter = CredentialRateLimiter()
     for index in range(MAX_TRACKED_KEYS + 500):
         limiter.check(f"key-{index}", limit=10, window_seconds=60)
     assert limiter.tracked_keys() <= MAX_TRACKED_KEYS
 
 
-# ------------------------------------------------------------ policy storage --
-
-
 @pytest.mark.unit
 def test_invalid_stored_policy_falls_back_rather_than_crashing_every_scan() -> None:
-    """A bad blob in the settings column must not take scanning down."""
     broken: dict[str, Any] = {"rules": [{"nonsense": True}]}
     assert parse_policy_set(broken) is None
     assert parse_policy_set("not a dict") is None

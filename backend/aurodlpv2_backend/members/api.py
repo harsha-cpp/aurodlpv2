@@ -1,5 +1,3 @@
-"""Member management — list, invite, update role, remove."""
-
 from __future__ import annotations
 
 import asyncio
@@ -46,9 +44,6 @@ class InviteRequest(BaseModel):
 
 class InviteResponse(BaseModel):
     member: MemberOut
-    #: The invite link is mailed to the invitee, never returned here. Handing
-    #: the raw token to the inviter turned every onboarding into an admin
-    #: pasting a credential into a chat window.
     email_sent: bool
 
 
@@ -119,8 +114,6 @@ async def list_members(member: CurrentMember, session: DbSession) -> list[Member
             .order_by(OrgMember.created_at.asc())
         )
     ).all()
-    # One query for the whole roster rather than one per member: an admin
-    # chasing 2FA coverage should not cost N round trips.
     enrolled = set(
         (
             await session.scalars(
@@ -184,8 +177,6 @@ async def invite_member(
         inviter_email=member.email,
         token=invite_token,
     )
-    # The member row is already committed, so a bounced SMTP hop must not undo
-    # the invite — the admin re-sends instead of re-creating.
     email_sent = await send_quietly(get_mailer(), to=email, subject=subject, body=body)
     return InviteResponse(member=_serialize(new_member), email_sent=email_sent)
 
@@ -214,8 +205,6 @@ async def accept_invite(payload: AcceptInvite, session: DbSession) -> AcceptInvi
     member.status = "active"
     member.invite_token = None
     member.invite_expires_at = None
-    # Redeeming a link that only arrived by mail is itself proof of control of
-    # the address, so there is nothing left to verify separately.
     member.email_verified_at = datetime.now(UTC)
     try:
         await session.commit()

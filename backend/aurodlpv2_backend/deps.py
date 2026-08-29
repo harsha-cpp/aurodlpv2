@@ -1,5 +1,3 @@
-"""Reusable FastAPI dependencies."""
-
 from __future__ import annotations
 
 import asyncio
@@ -23,8 +21,6 @@ from aurodlpv2_backend.auth.tokens import (
 from aurodlpv2_backend.db.models import DeviceToken, MemberRole, OrgMember
 from aurodlpv2_backend.db.session import get_session
 
-#: last_seen_at is a liveness signal, not an audit trail. Writing it on every
-#: scan would put a row update in front of every keystroke-triggered scan.
 _DEVICE_LAST_SEEN_INTERVAL = timedelta(minutes=5)
 
 
@@ -38,8 +34,6 @@ class Principal:
 
 @dataclass(frozen=True, slots=True)
 class DevicePrincipal:
-    """An enrolled extension install, not a logged-in human."""
-
     device_id: UUID
     org_id: UUID
     member_id: UUID | None
@@ -98,12 +92,6 @@ async def current_device(
     session: DbSession,
     x_auro_device_token: Annotated[str | None, Header()] = None,
 ) -> DevicePrincipal:
-    """Resolve an ``X-Auro-Device-Token`` header to the enrolled install.
-
-    Replaces the shared org_code as the scan credential: one lost laptop can
-    now be revoked on its own instead of forcing every install in the hospital
-    to be re-keyed.
-    """
     if not x_auro_device_token:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="missing device token")
     try:

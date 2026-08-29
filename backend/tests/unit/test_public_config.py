@@ -75,12 +75,5 @@ def test_list_settings_accept_csv_and_json(
     raw: str,
     expected: list[str],
 ) -> None:
-    """A deployer writing CORS_ORIGINS=a,b must not get a container that
-    refuses to boot.
-
-    pydantic-settings JSON-decodes complex fields inside the source, before any
-    field_validator runs, so the comma-splitting validator that looked like it
-    handled this was dead code.
-    """
     monkeypatch.setenv("CORS_ORIGINS", raw)
     assert Settings().cors_origins == expected

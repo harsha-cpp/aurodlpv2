@@ -29,7 +29,6 @@ def test_raw_token_is_prefixed_and_the_hash_does_not_contain_it() -> None:
     issued = issue_token(DEVICE_TOKEN_PREFIX, ttl=timedelta(days=1))
 
     assert issued.raw_token.startswith("aurodev_")
-    # Only the hash reaches the database; a dump must not yield the secret.
     assert issued.raw_token.encode("utf-8") not in issued.token_hash
 
 

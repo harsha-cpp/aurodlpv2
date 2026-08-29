@@ -1,10 +1,3 @@
-"""Per-device enrolment, refresh-token rotation, password reset, MFA.
-
-Revision ID: 20260610_0004
-Revises: 20260605_0003
-Create Date: 2026-06-10
-"""
-
 from __future__ import annotations
 
 import sqlalchemy as sa
@@ -16,21 +9,17 @@ down_revision = "20260605_0003"
 branch_labels: tuple[str, ...] | None = None
 depends_on: tuple[str, ...] | None = None
 
-
 def upgrade() -> None:
     op.add_column(
         "org_members",
         sa.Column("email_verified_at", sa.DateTime(timezone=True), nullable=True),
     )
-    # Members who already signed in predate verification; treating them as
-    # unverified would lock working accounts out on deploy.
     op.execute("UPDATE org_members SET email_verified_at = created_at WHERE status = 'active'")
 
     op.add_column(
         "refresh_tokens",
         sa.Column("family_id", postgresql.UUID(as_uuid=True), nullable=True),
     )
-    # Existing sessions each become their own family root.
     op.execute("UPDATE refresh_tokens SET family_id = id WHERE family_id IS NULL")
     op.alter_column("refresh_tokens", "family_id", nullable=False)
     op.add_column(
@@ -152,7 +141,6 @@ def upgrade() -> None:
         ),
         sa.UniqueConstraint("member_id", name="uq_member_mfa_member"),
     )
-
 
 def downgrade() -> None:
     op.drop_table("member_mfa")

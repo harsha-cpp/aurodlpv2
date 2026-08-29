@@ -1,6 +1,3 @@
-// Validators mirroring aurodlpv2_detection/recognition/validators.py.
-// A validator is what separates "twelve digits" from "an Aadhaar number".
-
 const VERHOEFF_D: readonly (readonly number[])[] = [
   [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
   [1, 2, 3, 4, 0, 6, 7, 8, 9, 5],
@@ -25,28 +22,63 @@ const VERHOEFF_P: readonly (readonly number[])[] = [
   [7, 0, 4, 6, 9, 1, 3, 2, 5, 8],
 ];
 
-const PAN_HOLDER_TYPES = new Set('PCHABGJLFTEK'.split(''));
+const PAN_HOLDER_TYPES = new Set("PCHABGJLFTEK".split(""));
 const PLACEHOLDER_PANS = new Set([
-  'ABCDE1234F',
-  'AAAAA0000A',
-  'AAAAA1111A',
-  'ABCDE0000A',
-  'XXXXX0000X',
-  'AAAPL1234C',
+  "ABCDE1234F",
+  "AAAAA0000A",
+  "AAAAA1111A",
+  "ABCDE0000A",
+  "XXXXX0000X",
+  "AAAPL1234C",
 ]);
-const GSTIN_ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const GSTIN_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const STATE_CODES = new Set([
-  'AN','AP','AR','AS','BR','CG','CH','DD','DL','DN','GA','GJ','HP','HR','JH','JK',
-  'KA','KL','LA','LD','MH','ML','MN','MP','MZ','NL','OD','OR','PB','PY','RJ','SK',
-  'TN','TR','TS','UK','UP','WB',
+  "AN",
+  "AP",
+  "AR",
+  "AS",
+  "BR",
+  "CG",
+  "CH",
+  "DD",
+  "DL",
+  "DN",
+  "GA",
+  "GJ",
+  "HP",
+  "HR",
+  "JH",
+  "JK",
+  "KA",
+  "KL",
+  "LA",
+  "LD",
+  "MH",
+  "ML",
+  "MN",
+  "MP",
+  "MZ",
+  "NL",
+  "OD",
+  "OR",
+  "PB",
+  "PY",
+  "RJ",
+  "SK",
+  "TN",
+  "TR",
+  "TS",
+  "UK",
+  "UP",
+  "WB",
 ]);
 
 function digitsOnly(value: string): string {
-  return value.replace(/\D/g, '');
+  return value.replace(/\D/g, "");
 }
 
 function isRepdigit(digits: string): boolean {
-  return new Set(digits.split('')).size === 1;
+  return new Set(digits.split("")).size === 1;
 }
 
 function isSequential(digits: string): boolean {
@@ -64,7 +96,7 @@ export function verhoeffOk(value: string): boolean {
   const digits = digitsOnly(value);
   if (!digits) return false;
   let checksum = 0;
-  const reversed = digits.split('').reverse();
+  const reversed = digits.split("").reverse();
   for (let i = 0; i < reversed.length; i++) {
     checksum = VERHOEFF_D[checksum]![VERHOEFF_P[i % 8]![Number(reversed[i])]!]!;
   }
@@ -74,9 +106,9 @@ export function verhoeffOk(value: string): boolean {
 export function validateAadhaar(value: string): boolean {
   const digits = digitsOnly(value);
   if (digits.length !== 12) return false;
-  if (digits[0] === '0' || digits[0] === '1') return false;
+  if (digits[0] === "0" || digits[0] === "1") return false;
   if (isRepdigit(digits) || isSequential(digits)) return false;
-  if (new Set(digits.split('')).size <= 2) return false;
+  if (new Set(digits.split("")).size <= 2) return false;
   return verhoeffOk(digits);
 }
 
@@ -85,7 +117,7 @@ export function validatePan(value: string): boolean {
   if (!/^[A-Z]{5}\d{4}[A-Z]$/.test(pan)) return false;
   if (PLACEHOLDER_PANS.has(pan)) return false;
   if (!PAN_HOLDER_TYPES.has(pan[3]!)) return false;
-  return new Set(pan.slice(0, 5).split('')).size !== 1;
+  return new Set(pan.slice(0, 5).split("")).size !== 1;
 }
 
 export function validateGstin(value: string): boolean {
@@ -112,7 +144,7 @@ export function validatePassport(value: string): boolean {
 }
 
 export function validateDrivingLicense(value: string): boolean {
-  const compact = value.trim().toUpperCase().replace(/[\s-]/g, '');
+  const compact = value.trim().toUpperCase().replace(/[\s-]/g, "");
   if (!/^[A-Z]{2}\d{13}$/.test(compact)) return false;
   return STATE_CODES.has(compact.slice(0, 2));
 }
@@ -123,17 +155,18 @@ export function validateVoterId(value: string): boolean {
 
 export function validateInPhone(value: string): boolean {
   let digits = digitsOnly(value);
-  if (digits.startsWith('91') && digits.length === 12) digits = digits.slice(2);
-  else if (digits.startsWith('0') && digits.length === 11) digits = digits.slice(1);
+  if (digits.startsWith("91") && digits.length === 12) digits = digits.slice(2);
+  else if (digits.startsWith("0") && digits.length === 11)
+    digits = digits.slice(1);
   if (digits.length !== 10) return false;
-  if (!'6789'.includes(digits[0]!)) return false;
+  if (!"6789".includes(digits[0]!)) return false;
   return !isRepdigit(digits);
 }
 
 export function validateAbhaNumber(value: string): boolean {
   const digits = digitsOnly(value);
   if (digits.length !== 14) return false;
-  if (digits[0] === '0') return false;
+  if (digits[0] === "0") return false;
   return !isRepdigit(digits);
 }
 
@@ -145,12 +178,9 @@ export function validateBankAccount(value: string): boolean {
 
 export type Validator = (value: string) => boolean;
 
-/**
- * ICD-10 validation is category-level on the client: the full 73,000-code
- * dictionary is too heavy for a content script, but rejecting invalid
- * categories is what stops "room A12" and "vitamin B12" flagging.
- */
-export function buildValidators(icd10Categories: readonly string[]): Record<string, Validator> {
+export function buildValidators(
+  icd10Categories: readonly string[],
+): Record<string, Validator> {
   const categories = new Set(icd10Categories);
   return {
     aadhaar: validateAadhaar,

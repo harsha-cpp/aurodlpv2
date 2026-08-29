@@ -1,5 +1,3 @@
-"""Mask detected PHI before returning it to callers."""
-
 from __future__ import annotations
 
 

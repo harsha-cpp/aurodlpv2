@@ -1,5 +1,3 @@
-"""Outbound mail for invites, password resets and email verification."""
-
 from __future__ import annotations
 
 from aurodlpv2_backend.email.mailer import (

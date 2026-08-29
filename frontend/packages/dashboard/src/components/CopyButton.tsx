@@ -1,35 +1,35 @@
-import { useState } from 'react';
-import { Check, Copy } from 'lucide-react';
+import { useState } from "react";
+import { Check, Copy } from "lucide-react";
 
-/**
- * Clipboard access is blocked on insecure origins and can be denied outright,
- * so a failure says so instead of silently pretending the copy worked.
- */
 export default function CopyButton({
   value,
-  label = 'Copy',
-  className = 'btn btn-ghost btn-sm',
+  label = "Copy",
+  className = "btn btn-ghost btn-sm",
 }: {
   value: string;
   label?: string;
   className?: string;
 }) {
-  const [state, setState] = useState<'idle' | 'copied' | 'failed'>('idle');
+  const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
 
   async function copy() {
     try {
       await navigator.clipboard.writeText(value);
-      setState('copied');
+      setState("copied");
     } catch {
-      setState('failed');
+      setState("failed");
     }
-    setTimeout(() => setState('idle'), 2500);
+    setTimeout(() => setState("idle"), 2500);
   }
 
   return (
     <button type="button" className={className} onClick={copy}>
-      {state === 'copied' ? <Check size={14} /> : <Copy size={14} />}
-      {state === 'copied' ? 'Copied' : state === 'failed' ? 'Copy failed — select it manually' : label}
+      {state === "copied" ? <Check size={14} /> : <Copy size={14} />}
+      {state === "copied"
+        ? "Copied"
+        : state === "failed"
+          ? "Copy failed - select it manually"
+          : label}
     </button>
   );
 }

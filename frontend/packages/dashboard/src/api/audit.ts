@@ -1,4 +1,4 @@
-import { request } from '../lib/api';
+import { request } from "../lib/api";
 
 export interface AuditEvent {
   id: string;
@@ -6,7 +6,6 @@ export interface AuditEvent {
   category: string;
   action: string;
   metadata: Record<string, unknown>;
-  /** Null only for the very first event in an organization's log. */
   previous_hash: string | null;
   event_hash: string;
   created_at: string;
@@ -14,16 +13,9 @@ export interface AuditEvent {
 
 export interface AuditPage {
   events: AuditEvent[];
-  /** Opaque. Pass back as `cursor` for the next page; null means the end. */
   next_cursor: string | null;
 }
 
-/**
- * Server-side verification of the whole chain.
- *
- * The client can only ever check continuity within the rows it happens to have
- * loaded, which is not a tamper-evidence claim worth making to an auditor.
- */
 export interface ChainStatus {
   ok: boolean;
   checked: number;
@@ -44,7 +36,7 @@ export interface AuditQuery {
 
 export const auditApi = {
   list: (query: AuditQuery = {}) =>
-    request<AuditPage>('/api/v1/audit', {
+    request<AuditPage>("/api/v1/audit", {
       query: {
         search: query.search?.trim() || undefined,
         category: query.category || undefined,
@@ -57,8 +49,7 @@ export const auditApi = {
       },
     }),
 
-  /** Distinct categories, so the filter offers only what actually exists. */
-  categories: () => request<string[]>('/api/v1/audit/categories'),
+  categories: () => request<string[]>("/api/v1/audit/categories"),
 
-  chain: () => request<ChainStatus>('/api/v1/audit/chain'),
+  chain: () => request<ChainStatus>("/api/v1/audit/chain"),
 };

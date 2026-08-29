@@ -1,41 +1,45 @@
-import { request } from '../lib/api';
-import type { PolicyAction, Severity } from '../lib/risk';
+import { request } from "../lib/api";
+import type { PolicyAction, Severity } from "../lib/risk";
 
 export type RecipientClass =
-  | 'internal'
-  | 'approved_partner'
-  | 'blocked'
-  | 'external'
-  | 'public_email'
-  | 'unknown';
+  | "internal"
+  | "approved_partner"
+  | "blocked"
+  | "external"
+  | "public_email"
+  | "unknown";
 
-/** A sender is never 'blocked' — that classification only applies to recipients. */
-export type SenderClass = 'internal' | 'approved_partner' | 'external' | 'public_email' | 'unknown';
+export type SenderClass =
+  | "internal"
+  | "approved_partner"
+  | "external"
+  | "public_email"
+  | "unknown";
 
 export const RECIPIENT_CLASSES: readonly RecipientClass[] = [
-  'internal',
-  'approved_partner',
-  'blocked',
-  'external',
-  'public_email',
-  'unknown',
+  "internal",
+  "approved_partner",
+  "blocked",
+  "external",
+  "public_email",
+  "unknown",
 ];
 
 export const SENDER_CLASSES: readonly SenderClass[] = [
-  'internal',
-  'approved_partner',
-  'external',
-  'public_email',
-  'unknown',
+  "internal",
+  "approved_partner",
+  "external",
+  "public_email",
+  "unknown",
 ];
 
 export const CLASS_LABELS: Record<RecipientClass, string> = {
-  internal: 'Internal',
-  approved_partner: 'Approved partner',
-  blocked: 'Blocked domain',
-  external: 'External',
-  public_email: 'Personal mailbox',
-  unknown: 'Unknown',
+  internal: "Internal",
+  approved_partner: "Approved partner",
+  blocked: "Blocked domain",
+  external: "External",
+  public_email: "Personal mailbox",
+  unknown: "Unknown",
 };
 
 export interface RuleConditions {
@@ -86,7 +90,6 @@ export interface SimulationRequest {
   recipient_classes: RecipientClass[];
   sender_class: SenderClass;
   has_attachments: boolean;
-  /** Unsaved rules to evaluate instead of the stored set. */
   candidate?: PolicySetIn | null;
 }
 
@@ -99,10 +102,14 @@ export interface SimulationResponse {
 }
 
 export const policyApi = {
-  get: () => request<PolicySet>('/api/v1/policy'),
-  defaults: () => request<PolicySet>('/api/v1/policy/defaults'),
-  replace: (body: PolicySetIn) => request<PolicySet>('/api/v1/policy', { method: 'PUT', body }),
-  reset: () => request<PolicySet>('/api/v1/policy/reset', { method: 'POST' }),
+  get: () => request<PolicySet>("/api/v1/policy"),
+  defaults: () => request<PolicySet>("/api/v1/policy/defaults"),
+  replace: (body: PolicySetIn) =>
+    request<PolicySet>("/api/v1/policy", { method: "PUT", body }),
+  reset: () => request<PolicySet>("/api/v1/policy/reset", { method: "POST" }),
   simulate: (body: SimulationRequest) =>
-    request<SimulationResponse>('/api/v1/policy/simulate', { method: 'POST', body }),
+    request<SimulationResponse>("/api/v1/policy/simulate", {
+      method: "POST",
+      body,
+    }),
 };

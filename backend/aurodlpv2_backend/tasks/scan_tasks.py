@@ -1,10 +1,3 @@
-"""Celery tasks for queued attachment scans.
-
-The worker reads attachment bytes from the blob store, not from a local path.
-The previous version passed a filesystem path through the database, which only
-worked when the API and the worker happened to share a disk.
-"""
-
 # pyright: reportUnknownMemberType=false, reportUntypedFunctionDecorator=false
 
 from __future__ import annotations
@@ -41,11 +34,8 @@ def _sync_engine() -> Engine:
 
 @contextmanager
 def _materialized(data: bytes, filename: str) -> Generator[Path]:
-    """The detection engine reads from a path, so stage the bytes and delete."""
     settings = get_settings()
     settings.attachment_temp_dir.mkdir(parents=True, exist_ok=True)
-    # Closed by the `with handle:` below and unlinked in `finally`; the
-    # handle is created detached so the path survives the close.
     handle = tempfile.NamedTemporaryFile(  # noqa: SIM115
         mode="wb",
         suffix=Path(filename).suffix[:20],
@@ -130,8 +120,6 @@ def process_attachment_scan(self: object, attachment_scan_id: str) -> None:
             row.status = "failed"
             row.error = str(exc)[:500]
         finally:
-            # The raw file is deleted whether the scan worked or not: it is
-            # patient data and it has no reason to outlive the attempt.
             store.delete(storage_key)
             row.storage_path = None
             session.commit()

@@ -1,9 +1,3 @@
-"""Session issuing: access token, rotating refresh cookie, response shape.
-
-Shared by the password login in ``auth.api`` and the MFA second step in
-``auth.mfa_api`` so both mint sessions the same way.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -19,15 +13,10 @@ from aurodlpv2_backend.observability.security import resolve_client_ip
 from aurodlpv2_backend.settings import Settings, get_settings
 from aurodlpv2_backend.utils.uuid import uuid7
 
-#: Enough to tell a laptop from a phone in the session list, short enough that
-#: a hostile client cannot pad the column.
 _USER_AGENT_MAX_LENGTH = 256
 
 REFRESH_COOKIE_PATH = "/api/v1/auth"
 
-#: The org_code still authenticates every extension install, so it is a
-#: credential, not a display field. A viewer who can read it can impersonate
-#: the whole hospital's scan traffic.
 ORG_CODE_ROLES: frozenset[str] = frozenset({"owner", "admin"})
 
 
@@ -44,7 +33,6 @@ class OrganizationView(BaseModel):
     id: str
     name: str
     slug: str
-    #: None for analysts and viewers — see ORG_CODE_ROLES.
     org_code: str | None = None
     plan: str
 
@@ -54,8 +42,6 @@ class AuthResponse(BaseModel):
     expires_in: int
     member: MemberView
     organization: OrganizationView
-    #: Always false here. Present so a client can branch on one field without
-    #: guessing which of the two login responses it received.
     mfa_required: bool = False
 
 
@@ -79,7 +65,6 @@ def serialize_member(
 
 
 def serialize_org(org: Organization, *, viewer_role: str | None = None) -> OrganizationView:
-    """Serialise an org, revealing org_code only to roles that can rotate it."""
     return OrganizationView(
         id=str(org.id),
         name=org.name,
@@ -133,7 +118,6 @@ async def issue_session(
     request: Request | None = None,
     mfa_enabled: bool = False,
 ) -> AuthResponse:
-    """Mint an access token plus a fresh refresh-token family."""
     settings = get_settings()
     access_token = issue_access_token(str(member.id), str(org.id), member.role)
     issued = await asyncio.to_thread(issue_refresh_token, ttl_days=settings.jwt_refresh_ttl_days)
@@ -142,8 +126,6 @@ async def issue_session(
         RefreshToken(
             id=issued.id,
             member_id=member.id,
-            # A new login starts a new family: revoking one stolen lineage must
-            # not sign the member out of their other, legitimate devices.
             family_id=uuid7(),
             token_hash=issued.token_hash,
             expires_at=issued.expires_at,

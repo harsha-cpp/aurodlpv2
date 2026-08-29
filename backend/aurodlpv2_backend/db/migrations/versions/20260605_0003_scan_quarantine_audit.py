@@ -1,10 +1,3 @@
-"""Add scan attachment state, quarantine queue, and immutable audit events.
-
-Revision ID: 20260605_0003
-Revises: 20260605_0002
-Create Date: 2026-06-05
-"""
-
 from __future__ import annotations
 
 import sqlalchemy as sa
@@ -15,7 +8,6 @@ revision = "20260605_0003"
 down_revision = "20260605_0002"
 branch_labels: tuple[str, ...] | None = None
 depends_on: tuple[str, ...] | None = None
-
 
 def upgrade() -> None:
     op.create_table(
@@ -228,7 +220,6 @@ def upgrade() -> None:
         FOR EACH ROW EXECUTE FUNCTION block_audit_event_mutation();
         """
     )
-
 
 def downgrade() -> None:
     op.execute("DROP TRIGGER IF EXISTS audit_events_no_delete ON audit_events")

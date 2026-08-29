@@ -1,10 +1,3 @@
-"""End-to-end scan flow against a real database.
-
-Covers the path a real message takes: signup, configure domains, scan, get a
-policy verdict, land in quarantine, and leave an audit trail. None of this was
-exercised before — tests/integration held a single empty __init__.py.
-"""
-
 from __future__ import annotations
 
 import uuid
@@ -19,14 +12,11 @@ from tests.integration.conftest import requires_database
 
 pytestmark = [pytest.mark.integration, requires_database]
 
-# A valid Aadhaar (passes the Verhoeff check) and a real ICD-10 code, so the
-# engine actually fires rather than the test passing on a rejected candidate.
 AADHAAR = "7534 7930 7460"
 BODY_WITH_PHI = f"Patient Lakshmi Devi, UHID 0024518, diagnosis E11.9. Aadhaar {AADHAAR}."
 
 
 async def _signup(client: AsyncClient) -> tuple[str, str]:
-    """Create an org, returning (access_token, org_code)."""
     suffix = uuid.uuid4().hex[:10]
     response = await client.post(
         "/api/v1/auth/signup",
@@ -104,7 +94,6 @@ async def test_phi_to_personal_gmail_is_quarantined_with_an_audit_trail(
     assert verdict["risk_score"] > 50
     types = {entity["type"] for entity in verdict["entities"]}
     assert {"IN_AADHAAR", "MRN"} <= types
-    # Raw PHI must never come back in a verdict.
     assert AADHAAR.replace(" ", "") not in response.text
     assert "0024518" not in response.text
 
@@ -113,20 +102,15 @@ async def test_phi_to_personal_gmail_is_quarantined_with_an_audit_trail(
     )
     assert org_id is not None
 
-    events = (
-        await db_session.scalars(select(ScanEvent).where(ScanEvent.org_id == org_id))
-    ).all()
+    events = (await db_session.scalars(select(ScanEvent).where(ScanEvent.org_id == org_id))).all()
     assert len(events) == 1
     assert events[0].user_email == "doctor@sunrisehospital.in"
 
-    audit = (
-        await db_session.scalars(select(AuditEvent).where(AuditEvent.org_id == org_id))
-    ).all()
+    audit = (await db_session.scalars(select(AuditEvent).where(AuditEvent.org_id == org_id))).all()
     assert {row.category for row in audit} >= {"scan"}
 
 
 async def test_sender_on_an_unapproved_domain_is_blocked(api_client: AsyncClient) -> None:
-    """The product's actual purpose: staff mailing patient data from a personal account."""
     token, org_code = await _signup(api_client)
     await _add_domain(api_client, token, "sunrisehospital.in", "internal")
 
@@ -191,9 +175,7 @@ async def test_repeated_client_scan_id_does_not_duplicate_the_event(
     org_id = await db_session.scalar(
         select(Organization.id).where(Organization.org_code == org_code)
     )
-    events = (
-        await db_session.scalars(select(ScanEvent).where(ScanEvent.org_id == org_id))
-    ).all()
+    events = (await db_session.scalars(select(ScanEvent).where(ScanEvent.org_id == org_id))).all()
     assert len(events) == 1, "a retried send must not double-count in analytics"
 
 
@@ -232,12 +214,9 @@ async def test_quarantined_message_appears_in_the_review_queue(
         select(Organization.id).where(Organization.org_code == org_code)
     )
     stored = (
-        await db_session.scalars(
-            select(QuarantineItem).where(QuarantineItem.org_id == org_id)
-        )
+        await db_session.scalars(select(QuarantineItem).where(QuarantineItem.org_id == org_id))
     ).all()
     assert stored
-    # The quarantine record keeps masked entities, never the raw message body.
     for item in stored:
         for entity in item.entities:
             assert AADHAAR.replace(" ", "") not in str(entity)
@@ -247,11 +226,6 @@ async def test_audit_events_reject_update_and_delete(
     api_client: AsyncClient,
     db_session: AsyncSession,
 ) -> None:
-    """Append-only is enforced by database triggers, not by convention.
-
-    The scan below exists to put a row in the table: an UPDATE over an empty
-    table succeeds trivially and would make this test pass for the wrong reason.
-    """
     _token, org_code = await _signup(api_client)
     await api_client.post(
         "/api/v1/scan/email",
@@ -268,9 +242,7 @@ async def test_audit_events_reject_update_and_delete(
     org_id = await db_session.scalar(
         select(Organization.id).where(Organization.org_code == org_code)
     )
-    rows = (
-        await db_session.scalars(select(AuditEvent).where(AuditEvent.org_id == org_id))
-    ).all()
+    rows = (await db_session.scalars(select(AuditEvent).where(AuditEvent.org_id == org_id))).all()
     assert rows, "the scan should have written audit events"
 
     with pytest.raises(Exception, match=r"(?i)append|immutable|update|not allowed"):

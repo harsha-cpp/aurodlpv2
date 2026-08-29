@@ -1,11 +1,3 @@
-"""Scan-API side of policy: the seam between detection output and the rules.
-
-Rule semantics live in test_policy_engine.py. This file covers the adapter —
-that entity hits and recipient classifications reach the engine correctly, and
-that reported risk is the score detection actually produced rather than a
-number the policy invented.
-"""
-
 # pyright: reportPrivateUsage=false
 
 from __future__ import annotations
@@ -66,12 +58,6 @@ def test_policy_quarantines_high_risk_phi_to_public_email() -> None:
 
 @pytest.mark.unit
 def test_reported_risk_is_the_detected_risk_not_an_invented_floor() -> None:
-    """The old ladder overwrote the score with 85 or 90.
-
-    That made the dashboard's average risk a blend of two different units: the
-    detection engine's number for allowed mail and a policy constant for
-    blocked mail.
-    """
     decision = _policy_decision(
         entities=[_entity()],
         recipients=[RecipientHit(email="person@gmail.com", classification="public_email")],
@@ -84,7 +70,6 @@ def test_reported_risk_is_the_detected_risk_not_an_invented_floor() -> None:
 
 @pytest.mark.unit
 def test_sender_from_an_unapproved_account_is_blocked() -> None:
-    """approved_domains carried a 'sender' direction that nothing ever read."""
     decision = _policy_decision(
         entities=[_entity("MRN", "***4518")],
         recipients=[RecipientHit(email="colleague@hospital.in", classification="internal")],

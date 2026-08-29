@@ -1,5 +1,3 @@
-"""Quarantine queue APIs for analysts and extension polling."""
-
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -17,8 +15,6 @@ from aurodlpv2_backend.deps import CurrentMember, DbSession, QuarantineReviewer
 router = APIRouter()
 
 QuarantineStatus = Literal["pending", "approved", "rejected"]
-#: "all" is a filter value, not a stored status: without it a client cannot
-#: ask for the whole queue in one request.
 QuarantineStatusFilter = Literal["pending", "approved", "rejected", "all"]
 
 

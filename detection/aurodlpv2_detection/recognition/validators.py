@@ -1,18 +1,9 @@
-"""Checksum and structural validators for Indian identifiers.
-
-A validator is the difference between "twelve digits" and "an Aadhaar number".
-Every rule that can be validated is, because precision on this corpus is
-dominated by digit runs that merely look like identifiers.
-"""
-
 from __future__ import annotations
 
 import itertools
 import re
 from collections.abc import Callable
 from typing import Final
-
-# ---------------------------------------------------------------- Verhoeff --
 
 _VERHOEFF_D: Final[tuple[tuple[int, ...], ...]] = (
     (0, 1, 2, 3, 4, 5, 6, 7, 8, 9),
@@ -44,7 +35,6 @@ def _digits(value: str) -> str:
 
 
 def verhoeff_ok(value: str) -> bool:
-    """Verhoeff check used by UIDAI for Aadhaar."""
     digits = _digits(value)
     if not digits:
         return False
@@ -52,9 +42,6 @@ def verhoeff_ok(value: str) -> bool:
     for index, char in enumerate(reversed(digits)):
         checksum = _VERHOEFF_D[checksum][_VERHOEFF_P[index % 8][int(char)]]
     return checksum == 0
-
-
-# ----------------------------------------------------------------- Aadhaar --
 
 
 def _is_repdigit(digits: str) -> bool:
@@ -81,9 +68,6 @@ def validate_aadhaar(value: str) -> bool:
     return verhoeff_ok(digits)
 
 
-# --------------------------------------------------------------------- PAN --
-
-#: Fourth character encodes the holder type. Anything else is not a PAN.
 _PAN_HOLDER_TYPES: Final[frozenset[str]] = frozenset("PCHABGJLFTEK")
 _PAN_RE: Final[re.Pattern[str]] = re.compile(r"^[A-Z]{5}[0-9]{4}[A-Z]$")
 _KNOWN_PLACEHOLDER_PANS: Final[frozenset[str]] = frozenset(
@@ -102,8 +86,6 @@ def validate_pan(value: str) -> bool:
     return len(set(pan[:5])) != 1
 
 
-# ------------------------------------------------------------------- GSTIN --
-
 _GSTIN_RE: Final[re.Pattern[str]] = re.compile(
     r"^[0-3][0-9][A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$"
 )
@@ -111,7 +93,6 @@ _GSTIN_ALPHABET: Final[str] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 
 def validate_gstin(value: str) -> bool:
-    """Structure plus the GSTIN mod-36 check digit."""
     gstin = value.strip().upper()
     if not _GSTIN_RE.match(gstin):
         return False
@@ -129,16 +110,12 @@ def validate_gstin(value: str) -> bool:
     return _GSTIN_ALPHABET[check] == gstin[14]
 
 
-# -------------------------------------------------------------------- IFSC --
-
 _IFSC_RE: Final[re.Pattern[str]] = re.compile(r"^[A-Z]{4}0[A-Z0-9]{6}$")
 
 
 def validate_ifsc(value: str) -> bool:
     return bool(_IFSC_RE.match(value.strip().upper()))
 
-
-# ---------------------------------------------------------------- Passport --
 
 _PASSPORT_RE: Final[re.Pattern[str]] = re.compile(r"^[A-PR-WY][0-9]{7}$")
 
@@ -147,15 +124,47 @@ def validate_passport(value: str) -> bool:
     return bool(_PASSPORT_RE.match(value.strip().upper()))
 
 
-# --------------------------------------------------------- Driving licence --
-
 _DL_RE: Final[re.Pattern[str]] = re.compile(r"^[A-Z]{2}[\s-]?[0-9]{2}[\s-]?[0-9]{4}[0-9]{7}$")
 _STATE_CODES: Final[frozenset[str]] = frozenset(
     {
-        "AN", "AP", "AR", "AS", "BR", "CG", "CH", "DD", "DL", "DN", "GA", "GJ",
-        "HP", "HR", "JH", "JK", "KA", "KL", "LA", "LD", "MH", "ML", "MN", "MP",
-        "MZ", "NL", "OD", "OR", "PB", "PY", "RJ", "SK", "TN", "TR", "TS", "UK",
-        "UP", "WB",
+        "AN",
+        "AP",
+        "AR",
+        "AS",
+        "BR",
+        "CG",
+        "CH",
+        "DD",
+        "DL",
+        "DN",
+        "GA",
+        "GJ",
+        "HP",
+        "HR",
+        "JH",
+        "JK",
+        "KA",
+        "KL",
+        "LA",
+        "LD",
+        "MH",
+        "ML",
+        "MN",
+        "MP",
+        "MZ",
+        "NL",
+        "OD",
+        "OR",
+        "PB",
+        "PY",
+        "RJ",
+        "SK",
+        "TN",
+        "TR",
+        "TS",
+        "UK",
+        "UP",
+        "WB",
     }
 )
 
@@ -167,8 +176,6 @@ def validate_driving_license(value: str) -> bool:
     return compact[:2] in _STATE_CODES
 
 
-# -------------------------------------------------------------- Voter (EPIC) --
-
 _VOTER_RE: Final[re.Pattern[str]] = re.compile(r"^[A-Z]{3}[0-9]{7}$")
 
 
@@ -176,23 +183,12 @@ def validate_voter_id(value: str) -> bool:
     return bool(_VOTER_RE.match(value.strip().upper()))
 
 
-# --------------------------------------------------------------------- ICD --
-
-
 def validate_icd10(value: str) -> bool:
-    """Dictionary lookup against ICD-10-CM.
-
-    A code the dictionary rejects is not a diagnosis, so it is dropped outright
-    rather than emitted at low confidence.
-    """
     try:
         import simple_icd_10_cm as icd
     except ImportError:  # pragma: no cover - dependency is declared
         return False
     return bool(icd.is_valid_item(value.strip().upper()))
-
-
-# ------------------------------------------------------------------- Phone --
 
 
 def validate_in_phone(value: str) -> bool:
@@ -208,9 +204,6 @@ def validate_in_phone(value: str) -> bool:
     return not _is_repdigit(digits)
 
 
-# ------------------------------------------------------------------- ABHA --
-
-
 def validate_abha_number(value: str) -> bool:
     digits = _digits(value)
     if len(digits) != 14:
@@ -218,9 +211,6 @@ def validate_abha_number(value: str) -> bool:
     if digits[0] == "0":
         return False
     return not _is_repdigit(digits)
-
-
-# ------------------------------------------------------------- Bank account --
 
 
 def validate_bank_account(value: str) -> bool:

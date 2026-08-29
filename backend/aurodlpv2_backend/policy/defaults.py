@@ -1,13 +1,3 @@
-"""The default policy set.
-
-These reproduce the behaviour the hardcoded ladder was reaching for, plus the
-sender rules it never had. An organisation can override the whole set; this is
-what applies until it does.
-
-Ordering is the semantics: the first matching rule wins, so the hard stops sit
-at the top and the catch-alls at the bottom.
-"""
-
 from __future__ import annotations
 
 from typing import Final
@@ -117,8 +107,7 @@ BUILTIN_RULES: Final[list[PolicyRule]] = [
         action="warn",
         min_reported_severity="medium",
         user_message=(
-            "Possible patient data addressed outside the approved list. "
-            "Review before sending."
+            "Possible patient data addressed outside the approved list. Review before sending."
         ),
     ),
     PolicyRule(

@@ -1,11 +1,3 @@
-"""Device-token scanning, and what it fixes about attribution.
-
-The org code is one static secret shared by everyone in a hospital: it names
-nobody, so an audit row could never say who sent a message, and revoking it
-re-keys every install at once. These tests cover the replacement and the
-migration window in which both credentials are accepted.
-"""
-
 from __future__ import annotations
 
 import uuid
@@ -25,7 +17,6 @@ BODY_WITH_PHI = f"Patient Lakshmi Devi, UHID 0024518, diagnosis E11.9. Aadhaar {
 
 
 async def _signup(client: AsyncClient) -> tuple[str, str, str]:
-    """Returns (access_token, org_code, owner_email)."""
     suffix = uuid.uuid4().hex[:10]
     email = f"owner-{suffix}@sunrisehospital.in"
     response = await client.post(
@@ -78,7 +69,6 @@ async def test_device_token_supplies_the_sender_the_client_could_not_scrape(
     api_client: AsyncClient,
     db_session: AsyncSession,
 ) -> None:
-    """The whole point: the audit row names a person, not 'unknown'."""
     token, org_code, owner_email = await _signup(api_client)
     device_token = await _enroll_device(api_client, token)
 
@@ -90,7 +80,6 @@ async def test_device_token_supplies_the_sender_the_client_could_not_scrape(
             "subject": "Discharge summary",
             "body": BODY_WITH_PHI,
             "recipients": ["patient@gmail.com"],
-            # No user_email at all - the extension could not read it.
         },
     )
     assert response.status_code == 200, response.text
@@ -98,9 +87,7 @@ async def test_device_token_supplies_the_sender_the_client_could_not_scrape(
     org_id = await db_session.scalar(
         select(Organization.id).where(Organization.org_code == org_code)
     )
-    events = (
-        await db_session.scalars(select(ScanEvent).where(ScanEvent.org_id == org_id))
-    ).all()
+    events = (await db_session.scalars(select(ScanEvent).where(ScanEvent.org_id == org_id))).all()
     assert len(events) == 1
     assert events[0].user_email == owner_email
 
@@ -109,7 +96,6 @@ async def test_unattributed_scan_records_no_sender_rather_than_a_fake_one(
     api_client: AsyncClient,
     db_session: AsyncSession,
 ) -> None:
-    """org_code names nobody, so the sender is genuinely absent."""
     _token, org_code, _email = await _signup(api_client)
 
     response = await api_client.post(
@@ -127,9 +113,7 @@ async def test_unattributed_scan_records_no_sender_rather_than_a_fake_one(
     org_id = await db_session.scalar(
         select(Organization.id).where(Organization.org_code == org_code)
     )
-    events = (
-        await db_session.scalars(select(ScanEvent).where(ScanEvent.org_id == org_id))
-    ).all()
+    events = (await db_session.scalars(select(ScanEvent).where(ScanEvent.org_id == org_id))).all()
     assert len(events) == 1
     assert events[0].user_email is None, "an unattributable send must not invent a user"
 
@@ -138,9 +122,7 @@ async def test_revoked_device_token_is_rejected(api_client: AsyncClient) -> None
     token, _org_code, _email = await _signup(api_client)
     device_token = await _enroll_device(api_client, token)
 
-    listing = await api_client.get(
-        "/api/v1/devices", headers={"Authorization": f"Bearer {token}"}
-    )
+    listing = await api_client.get("/api/v1/devices", headers={"Authorization": f"Bearer {token}"})
     assert listing.status_code == 200, listing.text
     device_id = listing.json()[0]["id"]
 
@@ -161,7 +143,6 @@ async def test_revoked_device_token_is_rejected(api_client: AsyncClient) -> None
         },
     )
     assert response.status_code == 401
-    # Revoking one laptop must not affect anyone else's install.
 
 
 async def test_scan_without_any_credential_is_rejected(api_client: AsyncClient) -> None:

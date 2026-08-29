@@ -1,5 +1,3 @@
-"""Approved domain allow-list per organization."""
-
 from __future__ import annotations
 
 import re
@@ -24,11 +22,6 @@ _EMAIL_RE = re.compile(
 
 
 def _normalize_domain(raw: str) -> str:
-    """Accept either a bare domain (apollo.com) or a full email (john@gmail.com).
-
-    Full emails are stored verbatim and matched exactly by the extension, so a
-    hospital can whitelist individual senders even without owning a domain.
-    """
     value = raw.strip().lower()
     if "@" in value and not value.startswith("@"):
         if not _EMAIL_RE.match(value):

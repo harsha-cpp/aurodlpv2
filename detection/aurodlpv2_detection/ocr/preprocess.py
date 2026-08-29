@@ -1,10 +1,3 @@
-"""Image preparation for OCR.
-
-Tesseract wants roughly 300 DPI, greyscale, high-contrast input. Feeding it a
-72-DPI colour screenshot of a prescription is the single biggest cause of empty
-OCR output, and the previous pipeline did exactly that.
-"""
-
 from __future__ import annotations
 
 import structlog
@@ -12,15 +5,12 @@ from PIL import Image, ImageFilter, ImageOps
 
 logger = structlog.get_logger(__name__)
 
-#: Below this, upscale before OCR. A scanned page at 72 DPI is ~612x792.
 MIN_OCR_WIDTH = 1600
-#: Never blow an image up past this; the gain flattens and the cost does not.
 MAX_OCR_WIDTH = 4000
 MAX_OCR_PIXELS = 40_000_000
 
 
 def prepare(image: Image.Image) -> Image.Image:
-    """Greyscale, upscale small images, normalise contrast, sharpen."""
     try:
         working = image.convert("L")
         working = _upscale(working)

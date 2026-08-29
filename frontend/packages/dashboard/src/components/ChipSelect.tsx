@@ -1,4 +1,3 @@
-/** Multi-select as toggle chips — the option set is small and always visible. */
 export default function ChipSelect<T extends string>({
   options,
   selected,
@@ -13,7 +12,11 @@ export default function ChipSelect<T extends string>({
   label?: string;
 }) {
   function toggle(value: T) {
-    onChange(selected.includes(value) ? selected.filter((v) => v !== value) : [...selected, value]);
+    onChange(
+      selected.includes(value)
+        ? selected.filter((v) => v !== value)
+        : [...selected, value],
+    );
   }
 
   return (

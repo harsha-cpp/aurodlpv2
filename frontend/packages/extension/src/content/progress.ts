@@ -1,63 +1,78 @@
-// In-compose progress for the send-time scan.
-//
-// Between the click and the verdict there used to be nothing at all, for up to
-// 25 seconds. A Send button that looks dead gets clicked again, and again. The
-// strip is deliberately placed over the compose's bottom toolbar: it reports
-// what is happening, it covers the Send button while the scan runs, and it
-// carries the only way out — Cancel, which returns the user to the draft with
-// nothing sent.
+import { FONT_UI, palette } from "./theme";
 
-const STRIP_ID = 'aurodlp-scan-progress';
+const STRIP_ID = "aurodlp-scan-progress";
 
 export interface ScanProgress {
   setStep(text: string): void;
   close(): void;
 }
 
-export function showScanProgress(compose: Element, onCancel: () => void): ScanProgress {
+export function showScanProgress(
+  compose: Element,
+  onCancel: () => void,
+): ScanProgress {
   document.getElementById(STRIP_ID)?.remove();
+  const PALETTE = palette();
 
-  const strip = document.createElement('div');
+  const strip = document.createElement("div");
   strip.id = STRIP_ID;
-  strip.setAttribute('role', 'status');
-  strip.setAttribute('aria-live', 'polite');
+  strip.setAttribute("role", "status");
+  strip.setAttribute("aria-live", "polite");
   strip.style.cssText = [
-    'position:fixed',
-    'z-index:2147483645',
-    'display:flex',
-    'align-items:center',
-    'gap:10px',
-    'box-sizing:border-box',
-    'padding:8px 12px',
-    'background:#0a0a0a',
-    'color:#fafafa',
-    'border:1px solid #262626',
-    'border-radius:8px',
-    "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",
-    'font-size:12px',
-    'line-height:1.4',
-    'box-shadow:0 10px 30px rgba(0,0,0,0.45)',
-  ].join(';');
+    "position:fixed",
+    "z-index:2147483645",
+    "display:flex",
+    "align-items:center",
+    "gap:10px",
+    "box-sizing:border-box",
+    "padding:8px 10px 8px 12px",
+    `background:${PALETTE.surface}`,
+    `color:${PALETTE.ink}`,
+    `border:1px solid ${PALETTE.rule}`,
+    `border-left:3px solid ${PALETTE.accent}`,
+    "border-radius:6px",
+    `font-family:${FONT_UI}`,
+    "font-size:12.5px",
+    "line-height:1.4",
+    `box-shadow:${PALETTE.shadow}`,
+  ].join(";");
 
-  const label = document.createElement('span');
-  label.style.cssText = 'flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
-  label.textContent = 'Checking this message…';
+  const spinner = document.createElement("span");
+  spinner.setAttribute("aria-hidden", "true");
+  spinner.style.cssText = [
+    "flex:none",
+    "width:12px",
+    "height:12px",
+    `border:2px solid ${PALETTE.rule}`,
+    `border-top-color:${PALETTE.accent}`,
+    "border-radius:50%",
+    "animation:aurodlp-spin 640ms linear infinite",
+  ].join(";");
 
-  const cancel = document.createElement('button');
-  cancel.type = 'button';
-  cancel.textContent = 'Cancel';
+  const label = document.createElement("span");
+  label.style.cssText =
+    "flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
+  label.textContent = "Checking this message...";
+
+  const cancel = document.createElement("button");
+  cancel.type = "button";
+  cancel.textContent = "Cancel";
   cancel.style.cssText = [
-    'flex:none',
-    'padding:4px 10px',
-    'border-radius:6px',
-    'border:1px solid #404040',
-    'background:transparent',
-    'color:#fafafa',
-    'font-size:12px',
-    'cursor:pointer',
-  ].join(';');
+    "flex:none",
+    "height:26px",
+    "padding:0 10px",
+    "border-radius:4px",
+    `border:1px solid ${PALETTE.ruleStrong}`,
+    `background:${PALETTE.surface}`,
+    `color:${PALETTE.ink}`,
+    "font:inherit",
+    "font-size:12px",
+    "font-weight:500",
+    "cursor:pointer",
+  ].join(";");
 
-  strip.append(label, cancel);
+  ensureKeyframes();
+  strip.append(spinner, label, cancel);
   document.body.appendChild(strip);
 
   const position = (): void => {
@@ -74,18 +89,17 @@ export function showScanProgress(compose: Element, onCancel: () => void): ScanPr
   const close = (): void => {
     if (closed) return;
     closed = true;
-    window.removeEventListener('resize', position);
-    window.removeEventListener('scroll', position, true);
+    window.removeEventListener("resize", position);
+    window.removeEventListener("scroll", position, true);
     clearInterval(follow);
     strip.remove();
   };
 
-  // Gmail composes are draggable and the window can be resized mid-scan.
   const follow = setInterval(position, 250);
-  window.addEventListener('resize', position);
-  window.addEventListener('scroll', position, true);
+  window.addEventListener("resize", position);
+  window.addEventListener("scroll", position, true);
 
-  cancel.addEventListener('click', (event) => {
+  cancel.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
     close();
@@ -100,6 +114,16 @@ export function showScanProgress(compose: Element, onCancel: () => void): ScanPr
   };
 }
 
+const KEYFRAMES_ID = "aurodlp-progress-keyframes";
+
+function ensureKeyframes(): void {
+  if (document.getElementById(KEYFRAMES_ID)) return;
+  const style = document.createElement("style");
+  style.id = KEYFRAMES_ID;
+  style.textContent = "@keyframes aurodlp-spin{to{transform:rotate(360deg)}}";
+  document.head.appendChild(style);
+}
+
 export function attachmentStep(done: number, total: number): string {
-  return `Scanning attachments… ${Math.min(done + 1, total)} of ${total}`;
+  return `Scanning attachments... ${Math.min(done + 1, total)} of ${total}`;
 }

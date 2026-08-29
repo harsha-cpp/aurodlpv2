@@ -1,15 +1,3 @@
-"""Serialize the rule pack for the browser extension.
-
-The extension used to carry its own hand-written regexes, which drifted: it
-called the same identifier ``ABHA_ID`` where the engine said ``ABHA``, scored it
-differently, and applied different policy. A message got a different verdict
-depending on whether the backend happened to answer. One pack, exported, ends
-that.
-
-JavaScript has no scoped inline flags, so ``(?i:abc)`` is expanded to
-``[aA][bB][cC]`` on the way out.
-"""
-
 from __future__ import annotations
 
 import json
@@ -28,12 +16,6 @@ _INLINE_FLAG: Final[str] = "(?i:"
 
 
 def _expand_case_insensitive_group(body: str) -> str:
-    """Turn the contents of a ``(?i:...)`` group into explicit classes.
-
-    Escape sequences pass through untouched: expanding the ``s`` in ``\\s``
-    would turn a whitespace class into a literal, which is the kind of silent
-    corruption that only shows up as a missed detection in production.
-    """
     out: list[str] = []
     index = 0
     while index < len(body):
@@ -43,11 +25,8 @@ def _expand_case_insensitive_group(body: str) -> str:
             index += 2
             continue
         if character == "[":
-            # Case folding inside a character class needs range rewriting; no
-            # rule needs it yet, so fail loudly rather than emit a wrong regex.
             raise ValueError(
-                "character classes inside (?i:...) are not supported by the "
-                "JavaScript translation"
+                "character classes inside (?i:...) are not supported by the JavaScript translation"
             )
         if character.isalpha() and character.isascii():
             out.append(f"[{character.lower()}{character.upper()}]")
@@ -58,7 +37,6 @@ def _expand_case_insensitive_group(body: str) -> str:
 
 
 def to_javascript_pattern(pattern: str) -> str:
-    """Rewrite a Python pattern into an equivalent JavaScript one."""
     result: list[str] = []
     index = 0
     while index < len(pattern):
@@ -107,30 +85,19 @@ def rule_to_dict(rule: Rule) -> dict[str, Any]:
         "priority": rule.priority,
         "valueGroup": rule.value_group,
         "caseSensitive": rule.case_sensitive,
-        "continuation": (
-            to_javascript_pattern(rule.continuation) if rule.continuation else None
-        ),
+        "continuation": (to_javascript_pattern(rule.continuation) if rule.continuation else None),
     }
 
 
 def icd10_categories() -> list[str]:
-    """Valid three-character ICD-10-CM categories.
-
-    The client cannot carry the full 73,000-code dictionary, but category-level
-    validation is enough to reject the codes that actually cause trouble: A12
-    (a room number) and B12 (a vitamin) are both invalid categories.
-    """
     import simple_icd_10_cm as icd
 
     return sorted(
-        code
-        for code in icd.get_all_codes(with_dots=False)
-        if len(code) == 3 and code[0].isalpha()
+        code for code in icd.get_all_codes(with_dots=False) if len(code) == 3 and code[0].isalpha()
     )
 
 
 def export_pack(pack: RulePack | None = None) -> dict[str, Any]:
-    """The full client payload: rules plus the scoring constants."""
     resolved = pack or BUILTIN_RULE_PACK
     return {
         "version": resolved.version,

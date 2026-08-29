@@ -1,5 +1,3 @@
-"""Org-code authenticated scanning and server-side policy decisions."""
-
 from __future__ import annotations
 
 import asyncio
@@ -65,8 +63,6 @@ _SEVERITY_RANK: dict[str, int] = {
     "high": 3,
     "critical": 4,
 }
-#: Identifiers that make a patient directly re-identifiable. Names come from
-#: the detection rule pack; there is one vocabulary now, not one per client.
 _HIGH_RISK_ENTITY_TYPES = {
     "IN_AADHAAR",
     "IN_PAN",
@@ -120,8 +116,6 @@ class Verdict(BaseModel):
 
 
 class ScanEmailRequest(BaseModel):
-    # Optional because an enrolled device authenticates with X-Auro-Device-Token
-    # instead. One of the two must be present; the endpoint enforces that.
     org_code: str | None = Field(default=None, min_length=3, max_length=128)
     client_scan_id: str = Field(min_length=4, max_length=128)
     subject: str = Field(default="", max_length=5000)
@@ -159,13 +153,6 @@ class AttachmentScanResponse(BaseModel):
 
 
 def _sender_email(principal: ScanPrincipal, claimed: object) -> str | None:
-    """Prefer the enrolled device's address over the client's claim.
-
-    The extension scrapes the sender from a Gmail aria-label and used to fall
-    back to the literal string "unknown", which then became the actor on the
-    audit row. A device token carries a verified address; when there is none,
-    record the claim as unverified rather than dressing it up as fact.
-    """
     if principal.email:
         return principal.email.lower()
     if claimed:
@@ -270,12 +257,6 @@ async def _classify_sender(
     org_id: UUID,
     sender: str,
 ) -> SenderClass:
-    """Where the message is being sent FROM.
-
-    The product exists because staff send patient data from personal accounts,
-    and no policy rule looked at this before: `direction='sender'` rows sat in
-    approved_domains and were never queried.
-    """
     address = _addr(sender)
     if not address:
         return "unknown"
@@ -321,7 +302,6 @@ def _policy_decision(
     has_attachments: bool = False,
     policy_set: PolicySet | None = None,
 ) -> PolicyDecision:
-    """Evaluate the org's policy rules against what detection found."""
     facts = build_facts(
         entities=[(entity.type, entity.masked_value) for entity in entities],
         risk_score=detected_risk_score,
@@ -469,11 +449,7 @@ async def _finalize_verdict(
         for entity in (row.entities or [])
     )
     recipient_hits = await _classify_recipients(session, org.id, recipients)
-    sender_class = (
-        await _classify_sender(session, org.id, user_email)
-        if user_email
-        else "unknown"
-    )
+    sender_class = await _classify_sender(session, org.id, user_email) if user_email else "unknown"
     policy_set = await load_policy_set(session, org.id)
     detected_risk = max(
         [float(result.risk_score), *[float(row.risk_score) for row in attachment_rows]],
@@ -556,7 +532,6 @@ def _is_deep_scan_candidate(filename: str, mime_type: str, size_bytes: int) -> b
 
 
 async def _store_queued_attachment(data: bytes, filename: str) -> str:
-    """Park bytes in the blob store until a worker picks the scan up."""
     store = get_store()
     suffix = filename[filename.rfind(".") :] if "." in filename else ""
     return await asyncio.to_thread(store.put, data, suffix=suffix)
@@ -584,9 +559,7 @@ async def scan_email(
     session: DbSession,
     x_auro_device_token: Annotated[str | None, Header()] = None,
 ) -> Verdict:
-    principal = await principal_for_request(
-        session, payload.org_code, x_auro_device_token
-    )
+    principal = await principal_for_request(session, payload.org_code, x_auro_device_token)
     enforce_scan_limit(principal)
     org = await _org_for(session, principal)
     verdict = await _finalize_verdict(
@@ -798,9 +771,7 @@ async def finalize_scan(
     session: DbSession,
     x_auro_device_token: Annotated[str | None, Header()] = None,
 ) -> Verdict:
-    principal = await principal_for_request(
-        session, payload.org_code, x_auro_device_token
-    )
+    principal = await principal_for_request(session, payload.org_code, x_auro_device_token)
     enforce_scan_limit(principal)
     org = await _org_for(session, principal)
     rows: list[AttachmentScan] = []

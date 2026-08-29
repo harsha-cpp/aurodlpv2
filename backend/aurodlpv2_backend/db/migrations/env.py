@@ -1,9 +1,3 @@
-"""Alembic environment.
-
-Uses ``settings.database_sync_url`` (psycopg) for migrations; the app uses
-asyncpg for runtime.
-"""
-
 from __future__ import annotations
 
 from logging.config import fileConfig

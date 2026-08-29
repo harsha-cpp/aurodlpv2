@@ -1,11 +1,3 @@
-"""Policy evaluation.
-
-Takes what detection found plus how the sender and recipients are classified,
-and returns the action. Every decision names the rule that produced it, so the
-audit log and the user-facing message can both point at something specific
-rather than at "the policy".
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -23,9 +15,6 @@ from aurodlpv2_backend.policy.models import (
     Severity,
 )
 
-#: Identifiers that stand for a distinct patient. Counting these is how "one
-#: record" is told apart from "a database export", which the old risk-only
-#: ladder could not do.
 SUBJECT_IDENTIFIERS = frozenset(
     {"MRN", "PATIENT_VISIT_ID", "ABHA_NUMBER", "ABHA_ADDRESS", "IN_AADHAAR", "LAB_ACCESSION"}
 )
@@ -39,11 +28,7 @@ def _empty_strings() -> list[str]:
 
 @dataclass(frozen=True, slots=True)
 class ScanFacts:
-    """Everything policy is allowed to look at."""
-
     entity_types: frozenset[str]
-    #: Distinct (type, masked value) pairs — repetition of one value is not
-    #: additional exposure.
     distinct_entity_count: int
     distinct_subject_count: int
     risk_score: float
@@ -71,7 +56,6 @@ def build_facts(
     sender_class: SenderClass,
     has_attachments: bool,
 ) -> ScanFacts:
-    """``entities`` is a list of (type, masked_value)."""
     distinct = {(entity_type, value) for entity_type, value in entities}
     subjects = {
         (entity_type, value)
@@ -91,18 +75,11 @@ def build_facts(
 
 
 def _matches(rule: PolicyRule, facts: ScanFacts) -> bool:  # noqa: PLR0911
-    # One early return per condition. This reads as the rule definition
-    # itself; collapsing it into a comprehension would hide which condition
-    # rejected a message, which is the first thing anyone debugging asks.
     conditions = rule.conditions
 
-    if conditions.entity_types_any and not (
-        facts.entity_types & set(conditions.entity_types_any)
-    ):
+    if conditions.entity_types_any and not (facts.entity_types & set(conditions.entity_types_any)):
         return False
-    if conditions.entity_types_all and not (
-        set(conditions.entity_types_all) <= facts.entity_types
-    ):
+    if conditions.entity_types_all and not (set(conditions.entity_types_all) <= facts.entity_types):
         return False
     if (
         conditions.min_entity_count is not None
@@ -127,8 +104,6 @@ def _matches(rule: PolicyRule, facts: ScanFacts) -> bool:  # noqa: PLR0911
     ):
         return False
     if conditions.recipient_class_all:
-        # An empty recipient list must not satisfy an "all recipients are
-        # approved" rule by vacuous truth.
         if not facts.recipient_classes:
             return False
         if not set(facts.recipient_classes) <= set(conditions.recipient_class_all):
@@ -148,7 +123,6 @@ def _raise_severity(current: Severity, floor: Severity | None) -> Severity:
 
 
 def evaluate(facts: ScanFacts, policy_set: PolicySet | None = None) -> PolicyDecision:
-    """First matching rule wins."""
     resolved = policy_set or BUILTIN_POLICY_SET
     for rule in resolved.ordered():
         if not _matches(rule, facts):
@@ -161,9 +135,6 @@ def evaluate(facts: ScanFacts, policy_set: PolicySet | None = None) -> PolicyDec
             user_message=rule.user_message,
         )
 
-    # No rule matched. Allowing is the only safe default here because the
-    # builtin set ends in a catch-all: reaching this means an operator replaced
-    # the set and left a gap, so say so rather than silently permitting.
     return PolicyDecision(
         action="warn" if facts.distinct_entity_count else "allow",
         severity=facts.severity,
@@ -181,5 +152,4 @@ ActionName = Literal["allow", "warn", "block", "quarantine", "escalate"]
 
 
 def strongest(actions: list[ActionName]) -> ActionName:
-    """Most restrictive action wins when several apply."""
     return max(actions, key=lambda action: ACTION_RANK[action]) if actions else "allow"

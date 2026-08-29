@@ -1,20 +1,3 @@
-"""File text extraction.
-
-The dispatcher chooses a backend by sniffed MIME type, falling back to the
-declared type and then the filename extension — a renamed file is not a reason
-to skip scanning it.
-
-    application/pdf                 -> pdf.py    (PyMuPDF, OCR fallback)
-    .docx                           -> docx.py   (body, tables, headers, boxes)
-    .xlsx / .xls                    -> xlsx.py   (openpyxl / xlrd)
-    .pptx                           -> pptx.py   (slides + speaker notes)
-    text/*, .csv, .log, .json       -> text.py
-    .rtf                            -> text.py   (striprtf)
-    message/rfc822, .eml            -> email     (recursive, stdlib)
-    application/zip, .zip           -> archive   (depth and size capped)
-    image/*                         -> image.py  (-> OCR)
-"""
-
 from __future__ import annotations
 
 import zipfile
@@ -40,7 +23,6 @@ PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presen
 XLS_MIME = "application/vnd.ms-excel"
 
 MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024
-#: Guards against zip bombs: total bytes read out of one archive.
 MAX_ARCHIVE_UNPACKED_BYTES = 64 * 1024 * 1024
 MAX_ARCHIVE_MEMBERS = 50
 MAX_EMBEDDED_DEPTH = 2
@@ -159,9 +141,6 @@ def _extract_kind(
     return ExtractionResult("", [], [f"{attachment_id}: unsupported file type"])
 
 
-#: Magic-byte signatures. libmagic is not always present (and is not present
-#: on a stock macOS dev box), and a renamed attachment must not skip the scan,
-#: so content signatures are checked first and independently.
 _SIGNATURES: tuple[tuple[bytes, str], ...] = (
     (b"%PDF", "pdf"),
     (b"\x89PNG\r\n\x1a\n", "image"),
@@ -171,7 +150,7 @@ _SIGNATURES: tuple[tuple[bytes, str], ...] = (
     (b"BM", "image"),
     (b"II*\x00", "image"),
     (b"MM\x00*", "image"),
-    (b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1", "xlsx"),  # OLE2: legacy .xls/.doc
+    (b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1", "xlsx"),
     (b"{\\rtf", "rtf"),
 )
 
@@ -192,7 +171,6 @@ def _sniff_signature(data: bytes) -> str | None:
 
 
 def _zip_kind(data: bytes) -> str:
-    """Office formats are zips; look inside to tell them apart."""
     try:
         with zipfile.ZipFile(BytesIO(data)) as archive:
             names = archive.namelist()
@@ -230,8 +208,6 @@ def _classify(data: bytes, filename: str, declared_mime: str) -> str | None:
     for mime in (sniffed, declared_mime.lower()):
         kind = _kind_from_mime(mime)
         if kind is not None:
-            # A generic zip signature is how every Office file sniffs, so let
-            # the extension disambiguate before settling for "archive".
             if kind == "archive":
                 by_extension = _EXTENSION_KINDS.get(Path(filename).suffix.lower())
                 if by_extension is not None:
@@ -240,7 +216,6 @@ def _classify(data: bytes, filename: str, declared_mime: str) -> str | None:
     by_extension = _EXTENSION_KINDS.get(Path(filename).suffix.lower())
     if by_extension is not None:
         return by_extension
-    # A renamed text file is still a text file.
     return "text" if _looks_like_text(data) else None
 
 
@@ -281,7 +256,6 @@ def _detect_mime(data: bytes, fallback: str) -> str:
 
 
 def _extract_email(data: bytes, attachment_id: str, depth: int) -> ExtractionResult:
-    """A forwarded .eml carries its own body and attachments."""
     if depth >= MAX_EMBEDDED_DEPTH:
         return ExtractionResult("", [], [f"{attachment_id}: embedded depth limit"])
 
@@ -322,7 +296,6 @@ def _extract_email(data: bytes, attachment_id: str, depth: int) -> ExtractionRes
 
 
 def _extract_archive(data: bytes, attachment_id: str, depth: int) -> ExtractionResult:
-    """Zip members, with member count, size and depth caps against zip bombs."""
     if depth >= MAX_EMBEDDED_DEPTH:
         return ExtractionResult("", [], [f"{attachment_id}: embedded depth limit"])
 

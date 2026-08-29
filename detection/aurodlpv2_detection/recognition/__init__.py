@@ -1,5 +1,3 @@
-"""Text analysis: rule pack + NER, resolved into non-overlapping entities."""
-
 from __future__ import annotations
 
 from aurodlpv2_detection.config import DetectionConfig
@@ -46,7 +44,6 @@ def _enabled_types(config: DetectionConfig) -> frozenset[str] | None:
 
 
 def _custom_mrn_rules(config: DetectionConfig) -> list[Rule]:
-    """Per-tenant MRN shapes, so one hospital's format is a setting not a fork."""
     return [
         Rule(
             entity_type="MRN",
@@ -72,7 +69,6 @@ def analyze(
     attachment_id: str | None = None,
     rule_pack: RulePack | None = None,
 ) -> list[Entity]:
-    """Detect entities in one field of text."""
     if not text.strip():
         return []
 

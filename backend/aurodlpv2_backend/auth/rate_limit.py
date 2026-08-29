@@ -1,5 +1,3 @@
-"""Login-specific rate limiter with Redis and local-dev fallback."""
-
 from __future__ import annotations
 
 import hashlib
@@ -92,9 +90,6 @@ class LoginRateLimiter:
         return LoginLimitResult(True)
 
     def _key(self, request: Request, email: str) -> str:
-        # Keyed on the real client IP: behind a load balancer every request
-        # carries the balancer's address, so one attacker would lock out the
-        # entire hospital after five bad passwords.
         client = resolve_client_ip(request, get_settings().trusted_proxy_count)
         return hashlib.sha256(f"{client}:{email.lower()}".encode()).hexdigest()
 

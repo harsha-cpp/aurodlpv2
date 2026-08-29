@@ -315,7 +315,7 @@
     {
       "entityType": "ICD10",
       "name": "icd10-specific",
-      "pattern": "\\b[A-TV-Z]\\d{2}\\.[0-9A-Z]{1,4}\\b",
+      "pattern": "\\b[A-Z]\\d{2}\\.[0-9A-Z]{1,4}\\b",
       "baseConfidence": 0.75,
       "validator": "icd10",
       "contextTerms": [
@@ -405,7 +405,7 @@
     {
       "entityType": "ICD10",
       "name": "icd10-category",
-      "pattern": "\\b[A-TV-Z]\\d{2}\\b",
+      "pattern": "\\b[A-Z]\\d{2}\\b",
       "baseConfidence": 0.5,
       "validator": "icd10",
       "contextTerms": [

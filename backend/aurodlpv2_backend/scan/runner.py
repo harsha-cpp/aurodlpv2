@@ -1,12 +1,3 @@
-"""Run the detection engine without blocking the event loop.
-
-``detect_email`` is synchronous and CPU-bound: spaCy plus regex work over the
-whole message. Calling it directly inside an async handler stalls every other
-request in that worker for the duration, health checks included. It runs in a
-worker thread here, bounded by a semaphore so a burst of large attachments
-cannot spawn unbounded threads.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -25,7 +16,6 @@ _semaphore_limit: int | None = None
 
 
 def _get_semaphore() -> asyncio.Semaphore:
-    """Lazily built so the limit is read after settings are loaded."""
     global _semaphore, _semaphore_limit  # noqa: PLW0603 - process-wide by design
     limit = get_settings().scan_max_concurrency
     if _semaphore is None or _semaphore_limit != limit:
@@ -35,7 +25,6 @@ def _get_semaphore() -> asyncio.Semaphore:
 
 
 async def run_detection(payload: EmailPayload) -> ScanResult:
-    """Detect in a worker thread, bounded by scan_max_concurrency."""
     async with _get_semaphore():
         return await asyncio.to_thread(detect_email, payload)
 
@@ -54,7 +43,6 @@ async def scan_attachment_bytes(
     mime_type: str,
     sha256: str,
 ) -> ScanResult:
-    """Write bytes to a private temp file, scan, then delete unconditionally."""
     with _temporary_attachment(data, filename) as path:
         return await run_detection(
             EmailPayload(
@@ -76,8 +64,6 @@ async def scan_attachment_bytes(
 def _temporary_attachment(data: bytes, filename: str) -> Generator[Path]:
     settings = get_settings()
     settings.attachment_temp_dir.mkdir(parents=True, exist_ok=True)
-    # Closed by the `with handle:` below and unlinked in `finally`; the
-    # handle is created detached so the path survives the close.
     handle = tempfile.NamedTemporaryFile(  # noqa: SIM115
         mode="wb",
         suffix=Path(filename).suffix[:20],

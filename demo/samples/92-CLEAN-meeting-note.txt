@@ -1,0 +1,5 @@
+Clinical meeting moved to room A12 on the second floor.
+Ward B12 needs vitamin B12 stock delivered.
+Monitor model E11 quotation from the vendor is attached.
+Known issue K21 in the tracker is deferred to v2.15.
+Capital budget 9845000000 rupees against a revised estimate.

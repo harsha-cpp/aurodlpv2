@@ -1,11 +1,3 @@
-"""Policy engine behaviour.
-
-Each test names the real gap it covers. The scores used here are on the 0-100
-scale the detection engine actually produces — the previous policy tests passed
-in a risk score of 82, a value the old log-scale engine could never emit, which
-is exactly why the scale mismatch survived CI.
-"""
-
 from __future__ import annotations
 
 import pytest
@@ -49,7 +41,6 @@ def test_blocked_recipient_always_blocks() -> None:
 
 
 def test_unapproved_sender_with_phi_is_blocked() -> None:
-    """The leak the product exists to stop, which policy never checked before."""
     decision = _decide(
         entities=[("MRN", "***4518")],
         risk=52.5,
@@ -101,12 +92,6 @@ def test_high_risk_phi_to_personal_gmail_is_quarantined() -> None:
 
 
 def test_discharge_summary_to_personal_gmail_is_not_merely_a_warning() -> None:
-    """A record number plus a diagnosis plus a name used to score 'warn'.
-
-    The old ladder only escalated on a hardcoded high-risk entity list that
-    excluded MRN and ICD10, so exactly this message slipped through as a
-    warning the sender could click past.
-    """
     decision = _decide(
         entities=[("MRN", "***4518"), ("ICD10", "E11.9"), ("PERSON", "Lakshmi Devi")],
         risk=80.1,
@@ -117,7 +102,6 @@ def test_discharge_summary_to_personal_gmail_is_not_merely_a_warning() -> None:
 
 
 def test_bulk_export_to_external_is_blocked_not_quarantined() -> None:
-    """Five distinct patients leaving is a different event from one record."""
     entities = [("MRN", f"***{index:04d}") for index in range(6)]
     decision = _decide(
         entities=entities,
@@ -130,7 +114,6 @@ def test_bulk_export_to_external_is_blocked_not_quarantined() -> None:
 
 
 def test_repeating_one_identifier_is_not_a_bulk_export() -> None:
-    """Distinct-value counting: the same MRN six times is one patient."""
     entities = [("MRN", "***4518")] * 6
     decision = _decide(
         entities=entities,
@@ -202,7 +185,6 @@ def test_disabled_rules_are_skipped() -> None:
 
 
 def test_a_policy_set_with_no_matching_rule_warns_rather_than_allowing() -> None:
-    """An operator who leaves a gap should get noise, not silent permission."""
     empty = PolicySet(version="test", rules=[])
     decision = _decide(entities=[("IN_AADHAAR", "****7460")], risk=71.3, policy_set=empty)
     assert decision.action == "warn"
@@ -221,14 +203,10 @@ def test_min_reported_severity_raises_but_never_lowers() -> None:
             )
         ],
     )
-    raised = _decide(
-        entities=[("MRN", "***1")], risk=20, severity="low", policy_set=policy_set
-    )
+    raised = _decide(entities=[("MRN", "***1")], risk=20, severity="low", policy_set=policy_set)
     assert raised.severity == "medium"
 
-    kept = _decide(
-        entities=[("MRN", "***1")], risk=90, severity="critical", policy_set=policy_set
-    )
+    kept = _decide(entities=[("MRN", "***1")], risk=90, severity="critical", policy_set=policy_set)
     assert kept.severity == "critical"
 
 

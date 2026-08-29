@@ -1,8 +1,3 @@
-"""Auro Healthcare DLP detection engine.
-
-Spec: ``docs/plans/detection-engine.md``.
-"""
-
 from aurodlpv2_detection.models import (
     Attachment,
     EmailPayload,

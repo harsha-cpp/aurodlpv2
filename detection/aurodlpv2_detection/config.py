@@ -1,9 +1,3 @@
-"""Detection engine configuration.
-
-See ``docs/plans/detection-engine.md`` §11. Pydantic settings allow per-tenant
-overrides (e.g. hospital-specific MRN patterns, OCR language sets).
-"""
-
 from __future__ import annotations
 
 from pydantic import BaseModel, Field
@@ -28,8 +22,6 @@ class RecognizerConfig(BaseModel):
 
 
 class NlpConfig(BaseModel):
-    # en_core_web_sm ships as a declared dependency. en_core_web_lg is a drop-in
-    # upgrade for tenants who install it and want better name recall.
     spacy_model: str = "en_core_web_sm"
     use_ner: bool = True
     medical_ner_context_boost: bool = False

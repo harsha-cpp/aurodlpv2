@@ -1,18 +1,3 @@
-"""Hybrid OCR router.
-
-Algorithm:
-    1. Preprocess (greyscale, upscale to ~300 DPI equivalent, contrast, sharpen).
-    2. Run Tesseract with every configured language at once.
-    3. Fall back to PaddleOCR when Tesseract's mean confidence is low, or when
-       the tenant has configured an Indic language.
-    4. Per-page and whole-document deadlines.
-
-The Indic decision is made from *configuration*, not from Tesseract's output.
-The previous version tested Tesseract's text for Devanagari codepoints while
-running it with ``lang="eng"``, which cannot emit Devanagari — so the fallback
-could never fire.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -29,22 +14,33 @@ from aurodlpv2_detection.ocr.tesseract_backend import OcrUnavailableError
 logger = structlog.get_logger(__name__)
 
 INDIC_RANGES = (
-    (0x0900, 0x097F),  # Devanagari
-    (0x0980, 0x09FF),  # Bengali
-    (0x0A00, 0x0A7F),  # Gurmukhi
-    (0x0A80, 0x0AFF),  # Gujarati
-    (0x0B00, 0x0B7F),  # Oriya
-    (0x0B80, 0x0BFF),  # Tamil
-    (0x0C00, 0x0C7F),  # Telugu
-    (0x0C80, 0x0CFF),  # Kannada
-    (0x0D00, 0x0D7F),  # Malayalam
+    (0x0900, 0x097F),
+    (0x0980, 0x09FF),
+    (0x0A00, 0x0A7F),
+    (0x0A80, 0x0AFF),
+    (0x0B00, 0x0B7F),
+    (0x0B80, 0x0BFF),
+    (0x0C00, 0x0C7F),
+    (0x0C80, 0x0CFF),
+    (0x0D00, 0x0D7F),
 )
 
-#: Tesseract language codes that are not Latin script.
 INDIC_TESSERACT_LANGS = frozenset(
     {
-        "hin", "ben", "pan", "guj", "ori", "tam", "tel", "kan", "mal",
-        "mar", "nep", "san", "asm", "urd",
+        "hin",
+        "ben",
+        "pan",
+        "guj",
+        "ori",
+        "tam",
+        "tel",
+        "kan",
+        "mal",
+        "mar",
+        "nep",
+        "san",
+        "asm",
+        "urd",
     }
 )
 
@@ -58,13 +54,10 @@ class OcrResult:
     text: str
     confidence: float
     pages: int
-    #: Non-empty when OCR could not run. The caller surfaces these so a page
-    #: that could not be read is visibly unread rather than silently clean.
     errors: list[str] = field(default_factory=_empty_errors)
 
 
 def wants_indic(config: DetectionConfig) -> bool:
-    """True when the tenant has configured a non-Latin script."""
     languages = {language.lower() for language in config.ocr.languages}
     return bool(languages & INDIC_TESSERACT_LANGS)
 
@@ -92,10 +85,12 @@ def extract_text(
         try:
             text, confidence = extract_image_text(image, config, deadline=deadline)
         except OcrUnavailableError as exc:
-            # Report once and stop: if the engine is missing for one page it is
-            # missing for all of them.
             logger.error("OCR engine unavailable", error=str(exc))
             errors.append(f"ocr unavailable: {exc}")
+            break
+        except Exception as exc:
+            logger.error("OCR failed unexpectedly", error=str(exc))
+            errors.append(f"ocr failed: {exc}")
             break
         pages += 1
         if text:

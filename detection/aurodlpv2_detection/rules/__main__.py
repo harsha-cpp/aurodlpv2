@@ -1,5 +1,3 @@
-"""CLI: ``python -m aurodlpv2_detection.rules > rulepack.json``."""
-
 from __future__ import annotations
 
 import argparse

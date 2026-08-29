@@ -1,33 +1,3 @@
-"""Labelled corpus loading and validation.
-
-A corpus is a directory of ``*.json`` files, each holding an array of labelled
-samples::
-
-    [
-      {
-        "id": "discharge-001",
-        "category": "discharge_summary",
-        "subject": "Discharge summary - Mrs L Devi",
-        "body": ["Dear Dr Rao,", "", "UHID 0024518 was discharged today."],
-        "expect_phi": true,
-        "entities": [{"type": "MRN", "value": "0024518"}],
-        "notes": "optional"
-      }
-    ]
-
-``body`` may be a string or an array of lines, which the loader joins with
-newlines — email bodies are multi-line and a corpus nobody can read is a corpus
-nobody will maintain.
-
-``entities`` lists every span that must be detected. A value occurring more
-than once in the text is expected once per occurrence: list it once and the
-loader expands it. ``expect_phi`` is the document-level label and may be true
-with no listed entities, for clinical narrative carrying no crisp identifier.
-
-Every labelled value must appear verbatim in the subject or body. The loader
-raises on any that does not, so the corpus cannot silently rot.
-"""
-
 from __future__ import annotations
 
 import json
@@ -41,13 +11,11 @@ FieldName = Literal["subject", "body"]
 
 
 class CorpusError(ValueError):
-    """Raised when a corpus file is malformed or internally inconsistent."""
+    pass
 
 
 @dataclass(frozen=True, slots=True)
 class ExpectedSpan:
-    """One span of ground truth, resolved to offsets in a named field."""
-
     type: str
     value: str
     field: FieldName
@@ -57,8 +25,6 @@ class ExpectedSpan:
 
 @dataclass(frozen=True, slots=True)
 class Sample:
-    """One labelled document."""
-
     id: str
     category: str
     subject: str
@@ -73,7 +39,6 @@ class Sample:
 
 
 def _occurrences(haystack: str, needle: str) -> list[tuple[int, int]]:
-    """Non-overlapping occurrences of ``needle`` in ``haystack``."""
     spans: list[tuple[int, int]] = []
     if not needle:
         return spans
@@ -198,7 +163,6 @@ def _parse_sample(raw: object, source: Path, index: int) -> Sample:
 
 
 def load_corpus(directory: Path) -> list[Sample]:
-    """Load and validate every ``*.json`` file under ``directory``."""
     if not directory.is_dir():
         raise CorpusError(f"corpus directory not found: {directory}")
 

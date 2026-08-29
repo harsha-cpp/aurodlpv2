@@ -33,7 +33,6 @@ def _as_session(session: _FakeSession) -> AsyncSession:
 
 @pytest.mark.unit
 async def test_chain_tip_is_read_under_an_advisory_lock() -> None:
-    """Without the lock two writers pick the same predecessor and fork the chain."""
     session = _FakeSession()
     org_id = uuid4()
 
@@ -47,7 +46,6 @@ async def test_chain_tip_is_read_under_an_advisory_lock() -> None:
 
     lock_calls = [call for call in session.calls if "pg_advisory_xact_lock" in call]
     assert lock_calls, "expected a per-org advisory lock before reading the tip"
-    # The lock must be taken before the SELECT, not after it.
     assert session.calls.index(lock_calls[0]) < session.calls.index("scalar")
     assert str(org_id) in "".join(session.calls)
 

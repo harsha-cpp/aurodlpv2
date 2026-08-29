@@ -1,5 +1,3 @@
-"""Organization management — current org, regenerate code, update settings."""
-
 from __future__ import annotations
 
 import hashlib
@@ -29,8 +27,6 @@ class OrgOut(BaseModel):
     id: str
     name: str
     slug: str
-    #: Omitted for analysts and viewers: the org_code still authenticates every
-    #: extension install, so read access to it is read access to scan traffic.
     org_code: str | None = None
     plan: str
 

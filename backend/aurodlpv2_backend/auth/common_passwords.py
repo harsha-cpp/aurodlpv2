@@ -1,10 +1,3 @@
-"""Embedded deny-list of the most-guessed passwords.
-
-Credential stuffing against a hospital dashboard starts here, not with a
-dictionary attack. Kept small and in-process deliberately: a network lookup on
-every signup would add a failure mode to account creation.
-"""
-
 from __future__ import annotations
 
 _RAW = """
@@ -41,6 +34,4 @@ backup backup123 database database123 postgres postgres123 mysql123
 server123 network123 firewall123 security security123 private123
 """
 
-#: Lower-cased so comparisons are case-insensitive; "Password1" is not a
-#: meaningfully better secret than "password1".
 COMMON_PASSWORDS: frozenset[str] = frozenset(_RAW.split())

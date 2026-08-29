@@ -1,10 +1,3 @@
-"""Plain text, CSV and RTF extraction.
-
-CSV matters more than it looks: a patient-list export pasted into a spreadsheet
-and saved as CSV is one of the most common bulk-exposure paths, and nothing
-handled it before.
-"""
-
 from __future__ import annotations
 
 import csv
@@ -20,7 +13,6 @@ MAX_EXTRACTED_CHARS = 1_000_000
 
 
 def decode(data: bytes) -> str:
-    """Best-effort decode, sniffing the encoding when it is not UTF-8."""
     for encoding in ("utf-8", "utf-8-sig"):
         try:
             return data.decode(encoding)
@@ -58,7 +50,6 @@ def _is_delimited(decoded: str, filename: str) -> bool:
 
 
 def extract_delimited(decoded: str) -> str:
-    """Render CSV/TSV with each value carrying its column header."""
     from aurodlpv2_detection.extractors.tabular import render_rows
 
     try:
@@ -76,9 +67,7 @@ def extract_delimited(decoded: str) -> str:
 def extract_rtf(data: bytes) -> str:
     try:
         striprtf = cast(Any, import_module("striprtf.striprtf"))
-        return cast(str, striprtf.rtf_to_text(decode(data), errors="ignore"))[
-            :MAX_EXTRACTED_CHARS
-        ]
+        return cast(str, striprtf.rtf_to_text(decode(data), errors="ignore"))[:MAX_EXTRACTED_CHARS]
     except Exception:
         logger.warning("rtf attachment extraction failed")
         return ""

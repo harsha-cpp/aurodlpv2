@@ -31,7 +31,6 @@ def test_admins_can_read_the_org_code(role: MemberRole) -> None:
 @pytest.mark.unit
 @pytest.mark.parametrize("role", ["analyst", "viewer"])
 def test_lower_roles_never_see_the_org_code(role: MemberRole) -> None:
-    """The org_code authenticates every extension install, so it is a secret."""
     assert serialize_org_out(_org(), role).org_code is None
     assert serialize_org(_org(), viewer_role=role).org_code is None
 

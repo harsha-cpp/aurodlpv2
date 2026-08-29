@@ -1,9 +1,3 @@
-"""Data contracts for the detection engine.
-
-See ``docs/plans/detection-engine.md`` §4. Raw PHI never leaves the engine;
-only ``masked_value`` is returned.
-"""
-
 from __future__ import annotations
 
 from datetime import datetime

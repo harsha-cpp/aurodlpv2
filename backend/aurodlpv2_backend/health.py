@@ -1,5 +1,3 @@
-"""Readiness probes for runtime dependencies."""
-
 from __future__ import annotations
 
 import asyncio

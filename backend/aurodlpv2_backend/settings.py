@@ -1,5 +1,3 @@
-"""Runtime configuration loaded from environment."""
-
 from __future__ import annotations
 
 from functools import lru_cache
@@ -17,13 +15,10 @@ from pydantic_settings.sources import PydanticBaseSettingsSource
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
-#: Settings a deployer will reasonably write as "a,b,c" in a .env file.
 _CSV_LIST_FIELDS = frozenset({"cors_origins", "api_rate_limit_exempt_paths"})
 
 
 class _CsvOrJsonDecoder:
-    """Mixin: accept ``a,b`` as well as ``["a","b"]`` for list settings."""
-
     def decode_complex_value(
         self,
         field_name: str,
@@ -40,18 +35,11 @@ class _CsvOrJsonDecoder:
 
 
 class CsvOrJsonEnvSource(_CsvOrJsonDecoder, EnvSettingsSource):
-    """Environment variables, with CSV tolerated for list fields.
-
-    pydantic-settings JSON-decodes complex fields in the source, before any
-    ``field_validator`` runs, so a plain comma-separated value raised a
-    SettingsError at startup. An operator writing
-    ``CORS_ORIGINS=https://a,https://b`` should not get a container that
-    refuses to boot.
-    """
+    pass
 
 
 class CsvOrJsonDotEnvSource(_CsvOrJsonDecoder, DotEnvSettingsSource):
-    """The same tolerance for values read out of a .env file."""
+    pass
 
 
 class Settings(BaseSettings):
@@ -62,17 +50,14 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # ---- App ---------------------------------------------------------------
     app_env: str = Field(default="local")
     log_level: str = Field(default="INFO")
     log_format: str = Field(default="json")
 
-    # ---- HTTP --------------------------------------------------------------
     api_host: str = Field(default="0.0.0.0")
     api_port: int = Field(default=8000)
     cors_origins: list[str] = Field(default_factory=list)
 
-    # ---- Database ----------------------------------------------------------
     database_url: str = Field(
         default="postgresql+asyncpg://aurodlpv2:aurodlpv2@localhost:5433/aurodlpv2"
     )
@@ -81,13 +66,11 @@ class Settings(BaseSettings):
     )
     database_pool_size: int = Field(default=5)
     database_max_overflow: int = Field(default=5)
-    # Disable asyncpg prepared statements (required for transaction-mode poolers like Neon).
     database_disable_prepared_statements: bool = Field(default=True)
     redis_url: str = Field(default="redis://localhost:6379/0")
     celery_broker_url: str = Field(default="redis://localhost:6379/0")
     celery_result_backend: str = Field(default="redis://localhost:6379/0")
 
-    # ---- Auth --------------------------------------------------------------
     jwt_secret: SecretStr = Field(default=SecretStr("change-me-change-me-change-me-32!"))
     jwt_algorithm: str = Field(default="HS256")
     jwt_access_ttl_seconds: int = Field(default=900)
@@ -97,35 +80,21 @@ class Settings(BaseSettings):
     refresh_cookie_samesite: Literal["lax", "strict", "none"] = Field(default="lax")
     login_rate_limit_per_minute: int = Field(default=5)
     login_rate_limit_per_hour: int = Field(default=20)
-    # Behind a load balancer request.client.host is the LB, so every hospital
-    # shares one login bucket. Set to the number of proxies that append to
-    # X-Forwarded-For so the real client IP can be read from the right position.
     trusted_proxy_count: int = Field(default=0, ge=0, le=8)
-    # Self-serve tenant creation. Hospitals run this closed; dev needs it open.
     allow_open_signup: bool = Field(default=True)
-    # Concurrent refresh calls (two dashboard tabs) must not log the user out,
-    # so a rotated token stays usable for this long before it reads as theft.
     refresh_rotation_grace_seconds: int = Field(default=60, ge=0, le=600)
     password_reset_ttl_seconds: int = Field(default=3600, ge=300, le=86400)
     email_verification_ttl_hours: int = Field(default=24, ge=1, le=168)
     device_token_ttl_days: int = Field(default=365, ge=1, le=3650)
     mfa_issuer: str = Field(default="Auro Healthcare DLP")
-    # TOTP secrets are password-equivalent; a DB dump must not hand over MFA.
-    # Defaults to jwt_secret so local dev works without extra config.
     mfa_encryption_key: SecretStr | None = Field(default=None)
 
-    # ---- API rate limit (RateLimitMiddleware) --------------------------------
-    # Shared across workers via Redis, so the budget is per-key not per-process.
-    # A hospital behind one NAT IP puts every workstation on one key, hence the
-    # high ceiling; /scan and /events get their own per-device limits elsewhere.
     api_rate_limit_per_minute: int = Field(default=600, ge=1)
     api_rate_limit_exempt_paths: list[str] = Field(
         default_factory=lambda: ["/api/v1/scan", "/api/v1/events"]
     )
-    # Bounds the in-memory fallback so a spray of unique keys cannot OOM a worker.
     api_rate_limit_max_keys: int = Field(default=10_000, ge=100)
 
-    # ---- Outbound mail -------------------------------------------------------
     mailer_backend: Literal["console", "smtp"] = Field(default="console")
     smtp_host: str = Field(default="localhost")
     smtp_port: int = Field(default=587)
@@ -133,14 +102,11 @@ class Settings(BaseSettings):
     smtp_password: SecretStr | None = Field(default=None)
     smtp_from: str = Field(default="Auro Healthcare DLP <no-reply@localhost>")
     smtp_tls: bool = Field(default=True)
-    # Base URL of the dashboard, used to build invite / reset / verify links.
     app_base_url: str = Field(default="http://localhost:5173")
 
-    # ---- Attachments / object storage ----------------------------------------
     attachment_temp_dir: Path = Field(default=Path("/tmp/aurodlpv2-attachments"))
     quarantine_storage_dir: Path = Field(default=Path("/tmp/aurodlpv2-quarantine"))
     scan_deep_scan_threshold_bytes: int = Field(default=10 * 1024 * 1024)
-    # "local" only works when the API and the Celery worker share a filesystem.
     storage_backend: Literal["local", "s3"] = Field(default="local")
     s3_bucket: str = Field(default="aurodlpv2-attachments")
     s3_prefix: str = Field(default="queued-scans")
@@ -150,17 +116,10 @@ class Settings(BaseSettings):
     s3_secret_access_key: SecretStr | None = Field(default=None)
     s3_server_side_encryption: str | None = Field(default="AES256")
 
-    # ---- Scan execution ------------------------------------------------------
-    # Detection is CPU-bound and synchronous. Running it on the event loop stalls
-    # every other request in the worker, health checks included.
     scan_max_concurrency: int = Field(default=4, ge=1, le=64)
-    # /scan and /events are exempt from the IP-keyed global limiter (a whole
-    # hospital shares one NAT address). The budget lives on the credential
-    # instead; these are the ceilings.
     scan_rate_limit_per_device_per_minute: int = Field(default=60, ge=1)
     scan_rate_limit_per_org_per_minute: int = Field(default=600, ge=1)
 
-    # ---- Observability -------------------------------------------------------
     sentry_dsn: str | None = Field(default=None)
 
     @field_validator("cors_origins", "api_rate_limit_exempt_paths", mode="before")

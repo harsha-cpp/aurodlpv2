@@ -1,5 +1,3 @@
-"""Rule-pack pattern matching with validation and context scoring."""
-
 from __future__ import annotations
 
 import re
@@ -13,14 +11,11 @@ from aurodlpv2_detection.rules.schema import Rule
 
 logger = structlog.get_logger(__name__)
 
-#: A match below this never leaves the engine.
 MIN_CONFIDENCE = 0.5
 
 
 @dataclass(frozen=True, slots=True)
 class RawMatch:
-    """One candidate before overlap resolution."""
-
     entity_type: str
     rule_name: str
     value: str
@@ -39,11 +34,6 @@ def _compiled(pattern: str, case_sensitive: bool) -> re.Pattern[str]:
 
 @lru_cache(maxsize=512)
 def _term_pattern(terms: tuple[str, ...]) -> re.Pattern[str] | None:
-    """Word-boundary alternation over a term list.
-
-    Substring matching would let "ip" fire inside "equipment"; the boundary
-    keeps context terms honest.
-    """
     if not terms:
         return None
     escaped = sorted((re.escape(term) for term in terms), key=len, reverse=True)
@@ -55,7 +45,6 @@ def _window(text: str, start: int, end: int, radius: int) -> str:
 
 
 def _score(rule: Rule, text: str, start: int, end: int) -> tuple[float, bool] | None:
-    """Confidence for a candidate, or None when the rule rejects it."""
     window = _window(text, start, end, rule.context_window)
 
     positive = _term_pattern(tuple(rule.context_terms))
@@ -106,7 +95,6 @@ def _emit(
 
 
 def _continuations(rule: Rule, text: str, cursor: int) -> list[RawMatch]:
-    """Walk a comma-separated list of further values after a labelled match."""
     if rule.continuation is None:
         return []
     pattern = _compiled(rule.continuation, rule.case_sensitive)
@@ -125,7 +113,6 @@ def _continuations(rule: Rule, text: str, cursor: int) -> list[RawMatch]:
 
 
 def apply_rule(rule: Rule, text: str) -> list[RawMatch]:
-    """Every candidate this rule finds in ``text``."""
     try:
         pattern = _compiled(rule.pattern, rule.case_sensitive)
     except re.error:

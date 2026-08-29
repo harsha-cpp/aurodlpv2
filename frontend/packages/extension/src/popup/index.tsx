@@ -1,12 +1,6 @@
-import { StrictMode, useEffect, useState, useCallback } from 'react';
-import { createRoot } from 'react-dom/client';
-import './styles.css';
-
-const ShieldIcon = () => (
-  <svg viewBox="0 0 24 24">
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-  </svg>
-);
+import { StrictMode, useEffect, useState, useCallback } from "react";
+import { createRoot } from "react-dom/client";
+import "./styles.css";
 
 interface CachedConfig {
   org_code: string;
@@ -15,24 +9,27 @@ interface CachedConfig {
 }
 
 function Popup() {
-  const [orgCode, setOrgCodeInput] = useState('');
+  const [orgCode, setOrgCodeInput] = useState("");
   const [savedCode, setSavedCode] = useState<string | null>(null);
   const [orgName, setOrgName] = useState<string | null>(null);
   const [showSaved, setShowSaved] = useState(false);
 
   useEffect(() => {
-    chrome.storage.local.get(['aurodlp_org_code', 'aurodlp_config'], (result) => {
-      const code = (result.aurodlp_org_code as string | undefined) ?? '';
-      setOrgCodeInput(code);
-      setSavedCode(code || null);
-      const config = result.aurodlp_config as CachedConfig | undefined;
-      setOrgName(config?.organization_name ?? null);
-    });
+    chrome.storage.local.get(
+      ["aurodlp_org_code", "aurodlp_config"],
+      (result) => {
+        const code = (result.aurodlp_org_code as string | undefined) ?? "";
+        setOrgCodeInput(code);
+        setSavedCode(code || null);
+        const config = result.aurodlp_config as CachedConfig | undefined;
+        setOrgName(config?.organization_name ?? null);
+      },
+    );
     const listener = (
       changes: { [k: string]: chrome.storage.StorageChange },
       area: chrome.storage.AreaName,
     ): void => {
-      if (area !== 'local') return;
+      if (area !== "local") return;
       if (changes.aurodlp_config) {
         const cfg = changes.aurodlp_config.newValue as CachedConfig | undefined;
         setOrgName(cfg?.organization_name ?? null);
@@ -45,80 +42,101 @@ function Popup() {
   const handleSave = useCallback(() => {
     const trimmed = orgCode.trim().toUpperCase();
     if (trimmed.length < 4 || trimmed === savedCode) return;
-    chrome.storage.local.set({ aurodlp_org_code: trimmed, aurodlp_org_skipped: false });
+    chrome.storage.local.set({
+      aurodlp_org_code: trimmed,
+      aurodlp_org_skipped: false,
+    });
     setSavedCode(trimmed);
     setShowSaved(true);
     setTimeout(() => setShowSaved(false), 2000);
-    chrome.runtime.sendMessage({ type: 'REFRESH_CONFIG' }).catch(() => {
-      /* sw inactive */
-    });
+    chrome.runtime.sendMessage({ type: "REFRESH_CONFIG" }).catch(() => {});
   }, [orgCode, savedCode]);
 
-  const hasChanges = orgCode.trim().toUpperCase() !== (savedCode ?? '') && orgCode.trim().length >= 4;
+  const hasChanges =
+    orgCode.trim().toUpperCase() !== (savedCode ?? "") &&
+    orgCode.trim().length >= 4;
+  const linked = Boolean(savedCode);
 
   return (
     <div className="popup">
       <div className="popup-header">
         <div className="popup-brand">
+          <span className="popup-title">Auro</span>
+          <span className="popup-tag">DLP</span>
+        </div>
+        <span className="popup-version">v0.2.0</span>
+      </div>
+
+      <div className="popup-body">
+        <div
+          className={`status-card${linked ? "" : " is-unlinked"}`}
+          role="status"
+        >
+          <span className="status-dot" aria-hidden="true" />
           <div>
-            <div className="popup-title">AURO</div>
-            <div className="popup-version">v0.2.0</div>
-          </div>
-        </div>
-        <div className="popup-status">
-          <div className="popup-status-dot" />
-          Active
-        </div>
-      </div>
-
-      <div className="status-card">
-        <div className="status-icon">
-          <ShieldIcon />
-        </div>
-        <div>
-          <div className="status-label">Protection Active</div>
-          <div className="status-desc">Scanning emails and attachments for PHI</div>
-        </div>
-      </div>
-
-      <div className="settings-section">
-        <div className="settings-title">Organization</div>
-        <div className="settings-field">
-          <label className="settings-label">Org Code</label>
-          <div className="settings-input-row">
-            <input
-              className="settings-input"
-              type="text"
-              placeholder="AUR-XXXXXX"
-              autoComplete="off"
-              spellCheck={false}
-              value={orgCode}
-              onChange={(e) => setOrgCodeInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSave()}
-            />
-            <button
-              className="settings-btn settings-btn-save"
-              onClick={handleSave}
-              disabled={!hasChanges}
-            >
-              Save
-            </button>
-          </div>
-          {showSaved && <div className="settings-saved">Connected</div>}
-          {orgName && savedCode && !showSaved && (
-            <div className="settings-meta">
-              Connected to <span className="settings-meta-org">{orgName}</span>
+            <div className="status-label">
+              {linked ? "Protection on" : "Not linked yet"}
             </div>
-          )}
+            <div className="status-desc">
+              {linked
+                ? orgName
+                  ? `Checking outgoing mail for ${orgName}.`
+                  : "Checking outgoing mail and attachments for patient data."
+                : "Messages with patient data are held for review until this install is linked."}
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div className="settings-title">Organization</div>
+          <div className="settings-field">
+            <label className="settings-label" htmlFor="org-code">
+              Organization code
+            </label>
+            <div className="settings-input-row">
+              <input
+                id="org-code"
+                className="settings-input"
+                type="text"
+                placeholder="AUR-XXXXXX"
+                autoComplete="off"
+                spellCheck={false}
+                value={orgCode}
+                onChange={(e) => setOrgCodeInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSave()}
+              />
+              <button
+                type="button"
+                className="settings-btn"
+                onClick={handleSave}
+                disabled={!hasChanges}
+              >
+                Link
+              </button>
+            </div>
+            {showSaved && <div className="settings-saved">Linked.</div>}
+            {orgName && savedCode && !showSaved && (
+              <div className="settings-meta">
+                Linked to <span className="settings-meta-org">{orgName}</span>
+              </div>
+            )}
+            <p className="settings-hint">
+              Get the code from your dashboard, or ask an admin to enrol this
+              device instead.
+            </p>
+          </div>
         </div>
       </div>
 
-      <div className="popup-footer">
-        <span className="popup-footer-text">Protected by AURO</span>
-      </div>
+      <div className="popup-footer">Auro Healthcare DLP</div>
     </div>
   );
 }
 
-const root = document.getElementById('root');
-if (root) createRoot(root).render(<StrictMode><Popup /></StrictMode>);
+const root = document.getElementById("root");
+if (root)
+  createRoot(root).render(
+    <StrictMode>
+      <Popup />
+    </StrictMode>,
+  );

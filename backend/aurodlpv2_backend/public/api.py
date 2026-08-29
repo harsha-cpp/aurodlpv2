@@ -1,5 +1,3 @@
-"""Public unauthenticated endpoints — used by the browser extension."""
-
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, status
@@ -25,11 +23,7 @@ class PublicDomain(BaseModel):
 
 class PublicConfig(BaseModel):
     organization: PublicOrg
-    # The extension fails closed when it has no usable config. An org can opt
-    # back into allow-on-no-config, but it has to be a decision someone made.
     fail_open: bool = False
-    # Recipient allow-list only. Blocked domains are intentionally separated so
-    # clients can never accidentally treat them as approved destinations.
     domains: list[PublicDomain]
     blocked_domains: list[PublicDomain]
 

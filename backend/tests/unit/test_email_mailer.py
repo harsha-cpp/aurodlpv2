@@ -47,7 +47,6 @@ def test_invite_body_carries_a_usable_link() -> None:
 
 @pytest.mark.unit
 def test_reset_link_token_is_url_encoded() -> None:
-    """Prefixed tokens are urlsafe-base64, but the encoder must not be assumed."""
     _subject, body = password_reset_email(
         base_url="https://dlp.example.org", token="a+b/c=", ttl_seconds=3600
     )
@@ -76,7 +75,6 @@ def test_console_backend_is_the_default_and_smtp_is_opt_in() -> None:
 
 @pytest.mark.unit
 async def test_send_quietly_reports_failure_without_raising() -> None:
-    """A reset for an unknown address must not 500 — that would enumerate users."""
     assert await send_quietly(_ExplodingMailer(), to="x@y.z", subject="s", body="b") is False
 
 

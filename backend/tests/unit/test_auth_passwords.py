@@ -29,7 +29,6 @@ def test_common_passwords_are_rejected_even_when_long(password: str) -> None:
 
 @pytest.mark.unit
 def test_deny_list_matches_through_separators() -> None:
-    """Long enough, not literally on the list, but collapses onto an entry."""
     with pytest.raises(PasswordPolicyError):
         validate_password("letmein-2025")
 
@@ -37,7 +36,6 @@ def test_deny_list_matches_through_separators() -> None:
 @pytest.mark.unit
 @pytest.mark.parametrize("password", ["password123456", "1234qwerty1234", "Passw0rd!2026"])
 def test_padding_a_famous_password_to_length_is_still_rejected(password: str) -> None:
-    """The obvious way to satisfy a 12-character rule is to pad "password"."""
     with pytest.raises(PasswordPolicyError):
         validate_password(password)
 
@@ -45,14 +43,12 @@ def test_padding_a_famous_password_to_length_is_still_rejected(password: str) ->
 @pytest.mark.unit
 @pytest.mark.parametrize("password", ["aaaaaaaaaaaaaa", "abababababab"])
 def test_long_but_near_empty_passwords_are_rejected(password: str) -> None:
-    """No deny-list catches every repetition; count distinct characters instead."""
     with pytest.raises(PasswordPolicyError):
         validate_password(password)
 
 
 @pytest.mark.unit
 def test_all_digit_passwords_are_rejected() -> None:
-    """Twelve digits is a phone number or a date of birth."""
     with pytest.raises(PasswordPolicyError):
         validate_password("981234567890")
 
