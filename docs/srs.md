@@ -2,18 +2,29 @@
 
 ## 1. Purpose
 
-Auro Healthcare DLP production v1 protects Gmail sends by scanning message
-content and attachments for healthcare identifiers before the message leaves
-the sender. The primary scan path is server-side through the Python detection
-engine. The browser extension keeps a lightweight local fallback for backend
-outages and timeout cases.
+Auro Healthcare DLP production v1 stops healthcare identifiers leaving the
+browser on two separate paths.
+
+The Gmail path scans message content and attachments before the message leaves
+the sender. Its primary scan is server-side through the Python detection engine,
+imported in-process by the FastAPI backend. The extension keeps a lightweight
+local fallback for backend outages and timeout cases.
+
+The web-input path runs on every other HTTP and HTTPS page. It blocks patient
+data being pasted or typed into any editable field, decides locally and
+synchronously from the offline rule pack, and reports each block to the backend
+for audit.
 
 ## 2. Scope
 
 In scope:
 
 - Gmail compose send interception in the Chrome extension.
+- Universal web-input interception in the Chrome extension, on every HTTP and
+  HTTPS page except `mail.google.com`.
 - Org-code authenticated scan APIs under `/api/v1/scan`.
+- Org-code or device-token authenticated event ingest at `POST /api/v1/events`,
+  carrying a `channel` of `email` or `web`.
 - Server-side policy decisions using approved, blocked, and external recipient
   classifications.
 - Quarantine review and extension polling.
@@ -27,6 +38,10 @@ Out of scope for v1:
 - SSE/WebSocket quarantine updates. The extension polls.
 - Client-side DOCX/XLSX parsing. Those files are sent to the backend.
 - Storing raw message bodies after normal scans.
+- Server-side scanning of web-input text. The web-input path never sends the
+  candidate text anywhere.
+- Recipient, quarantine or escalation handling on the web-input path. Its only
+  outcomes are allow and block.
 
 ## 3. Actors
 
@@ -133,8 +148,16 @@ Email/password login shall be rate-limited by IP plus email:
 - 20 attempts per hour.
 
 Redis counters are used when Redis is reachable. Local development falls back
-to in-memory windows. Lockouts return HTTP 429 with `Retry-After`. Refresh token
-behavior remains non-rotating during refresh to avoid concurrent refresh races.
+to in-memory windows. Lockouts return HTTP 429 with `Retry-After`.
+
+Refresh tokens rotate on use. The rotated token stays usable for
+`refresh_rotation_grace_seconds` so two concurrent refresh calls do not fight;
+a replay after that grace window revokes the whole token family.
+
+`POST /api/v1/events` is rate limited separately by
+`scan_rate_limit_per_device_per_minute` (60) and
+`scan_rate_limit_per_org_per_minute` (600), in a fixed 60-second window. The
+counters are per API process and are not shared across replicas.
 
 ### 4.7 Extension Behavior
 
@@ -152,8 +175,107 @@ scanner and mark the verdict as degraded. The fallback validates Aadhaar with
 Verhoeff checksum, validates PAN structure and common fake samples, and assigns
 entity-specific confidence scores.
 
+### 4.8 Universal Web Input Protection
+
+A second content script shall be registered for `http://*/*` and `https://*/*`,
+with `exclude_matches` of `https://mail.google.com/*`, `run_at: document_start`,
+`all_frames: true` and `match_about_blank: true`. It runs in the isolated world.
+
+The guard shall decide locally and synchronously against the rule pack bundled
+into the content script. No network call, and no `chrome.*` call, occurs in the
+decision path.
+
+It shall listen in the capture phase and block on:
+
+- `paste`
+- `beforeinput`, for insertion input types, one check per inserted keystroke
+- `drop`
+- `input`, as an autofill backstop; the text has already landed, so the field is
+  cleared
+- `keydown` on Enter
+- `submit`, checking every editable in the form
+- `click` on a control whose accessible name matches send, submit, ask, generate,
+  run or continue
+
+A blocked event is stopped with `preventDefault()` and
+`stopImmediatePropagation()`.
+
+Eligible fields are text-like `input` elements, `textarea` elements, and elements
+that are `contenteditable` or carry `role="textbox"`. Password inputs shall never
+be inspected. Disabled, read-only and `aria-disabled` controls are skipped.
+
+Detected identifiers shall be classed as standalone or contextual:
+
+- Standalone (17): `IN_AADHAAR`, `IN_PAN`, `IN_PASSPORT`, `IN_DRIVING_LICENSE`,
+  `IN_VOTER_ID`, `ABHA_NUMBER`, `ABHA_ADDRESS`, `MRN`, `PATIENT_VISIT_ID`,
+  `LAB_ACCESSION`, `ICD10`, `MEDICAL_LICENSE`, `INSURANCE_POLICY`,
+  `BANK_ACCOUNT`, `IN_IFSC`, `IN_UPI`, `IN_GSTIN`. Any one of these blocks on its
+  own.
+- Contextual (4): `EMAIL_ADDRESS`, `IN_PHONE`, `PERSON`, `DATE_OF_BIRTH`. These
+  count only when a standalone identifier is present in the same inspected text,
+  or the text matches the clinical keyword pattern `PATIENT_CONTEXT`.
+
+The split is a requirement, not a tuning detail: blocking a bare email address
+made ordinary login and signup forms unusable.
+
+Text longer than 500,000 characters shall not be inspected and shall be blocked,
+so the guard fails closed rather than passing an unchecked paste.
+
+The block notice shall render in a closed shadow root, shall name only the entity
+types detected, shall never echo the matched value, and shall dismiss itself after
+6 seconds.
+
+### 4.9 Web Block Reporting
+
+A block, and only a block, shall be reported for audit. An allow reports nothing.
+
+A content script on an arbitrary site cannot post to the backend, because the
+request carries that site's origin and CORS refuses it. The content script shall
+therefore send a `WEB_BLOCK` runtime message and the MV3 service worker shall make
+the request, since it runs in the extension context where the `host_permissions`
+entry for the backend origin applies.
+
+The service worker shall `POST /api/v1/events` with `channel: "web"`,
+`site_host` set to `location.hostname`, `action: "block"`, the entity types,
+confidences and masked values, the risk score, the severity, the organization
+code, the last observed sender address or `null`, and a fresh `client_event_id`.
+The request has a 5-second abort timeout. A failure to report shall never turn a
+block into an allow.
+
+The worker shall drop a repeat of the same
+`site_host | reason | sorted entity types` key inside 60 seconds, and shall send
+nothing at all if the install has no organization code stored.
+
+The backend shall accept `channel` (`email` or `web`, default `email`) and
+`site_host` (max 253 characters, rejected if it contains `/`, `@` or whitespace).
+A `web` event without `site_host` is a 422; an `email` event with one is a 422.
+Both columns are added to `scan_events` by migration `20260829_0006`, with a
+check constraint and an `(org_id, channel, event_time)` index. Every accepted
+event writes one audit row with `category="scan"` whose metadata carries
+`channel`, `site_host`, `client_event_id`, `entity_count`, `entity_types`,
+`risk_score` and `severity`. Masked values are not written to audit metadata.
+
+Ingest is idempotent on `(org_id, client_event_id)` and returns
+`{"status": "duplicate"}` with HTTP 202 for a replay.
+
+### 4.10 Channel Analytics
+
+`GET /api/v1/events/analytics` shall return `by_channel`, an object with the
+integer keys `email` and `web`, and `top_sites`, the ten hostnames with the most
+web events in the window, ranked by descending count.
+
+The dashboard overview shall show a "Where" column on recent events reading
+`Gmail` for the email channel and the hostname for the web channel, a "Where data
+was blocked" card ranking sites, and an email/web split under the
+messages-scanned tile.
+
 ## 5. Data Protection Requirements
 
+- Web-input candidate text must never leave the browser. It must not be
+  transmitted, written to extension storage, or echoed in the block notice.
+- A web block report must carry only entity types, confidences, masked values,
+  risk, severity, hostname, organization code, sender address and event id.
+  Never the page URL, the page title, the field name or the surrounding DOM.
 - Raw email bodies must not be persisted for normal scans.
 - Normal attachment files must be deleted after synchronous scan completion.
 - Queued attachment files may be stored privately until the worker completes.
@@ -173,11 +295,14 @@ Backend checks:
 - Pytest
 - pip-audit
 
+Backend integration tests run against a real Postgres service container.
+
 Detection checks:
 
 - Ruff
 - Pyright
 - Pytest
+- The accuracy ratchet against `detection/tests/accuracy_baseline.json`
 - pip-audit
 
 Frontend checks:
@@ -186,4 +311,8 @@ Frontend checks:
 - Lint
 - Tests
 - Build
-- Audit where configured
+- `pnpm audit`
+
+The three deployment images (api, worker, dashboard) are also built in CI and
+started, so a Dockerfile that builds but produces an image that cannot boot fails
+the pipeline.

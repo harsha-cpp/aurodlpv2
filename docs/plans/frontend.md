@@ -2,7 +2,7 @@
 
 > Scope: Chrome Extension (MV3) that intercepts Gmail compose, talks to the FastAPI backend, and surfaces warning / block / quarantine flows. Plus the standalone **Admin Dashboard SPA** consumed by analysts and workspace admins.
 >
-> Audience: implementers. This document is plans-only — no scaffolding yet.
+> Audience: implementers. This document is plans-only - no scaffolding yet.
 
 ---
 
@@ -14,7 +14,7 @@
 3. Render a **warning / block / quarantine modal** in a style that fits Gmail but is style-isolated from Gmail's CSS.
 4. Operate cleanly under **MV3** constraints (no remote code, transient service worker, restricted scopes).
 5. Ship a **separate React SPA** for the admin dashboard (audit search, quarantine queue, policy editor, domain manager).
-6. Be **enterprise-deployable** — force-installable via `ExtensionInstallForcelist`, configurable via `chrome.storage.managed`.
+6. Be **enterprise-deployable** - force-installable via `ExtensionInstallForcelist`, configurable via `chrome.storage.managed`.
 
 ### Non-Goals (v1)
 - iOS / Android Gmail apps (out of scope per PRD).
@@ -53,8 +53,8 @@ graph TB
 ```
 
 Two independently deployed UI artifacts:
-- **`extension/`** — Chrome MV3 extension (zipped & uploaded to CWS / Workspace Marketplace).
-- **`dashboard/`** — Static React SPA built with Vite, served by Nginx behind the same domain as the API (e.g. `admin.aurodlpv2.io`).
+- **`extension/`** - Chrome MV3 extension (zipped & uploaded to CWS / Workspace Marketplace).
+- **`dashboard/`** - Static React SPA built with Vite, served by Nginx behind the same domain as the API (e.g. `admin.aurodlpv2.io`).
 
 ---
 
@@ -73,7 +73,7 @@ frontend/
 │   ├── src/
 │   │   ├── background/
 │   │   │   ├── index.ts             # SW entry; wakes on event, registers handlers
-│   │   │   ├── auth.ts              # chrome.identity flow → backend session exchange
+│   │   │   ├── auth.ts              # chrome.identity flow -> backend session exchange
 │   │   │   ├── api-client.ts        # fetch wrapper w/ JWT, retry, backoff
 │   │   │   ├── retry-queue.ts       # Workbox-style BackgroundSync queue
 │   │   │   └── messaging.ts         # typed onMessage router
@@ -177,11 +177,11 @@ frontend/
 | Bundle budget | Ext content script **<250 KB gz**; SW **<80 KB gz**; SPA initial **<350 KB gz** | Enforced via `size-limit` in CI |
 
 **Explicitly rejected:**
-- `gmail.js` — requires page-context injection, jQuery dep, poor MV3 story.
-- Raw `MutationObserver` re-implementation — Gmail DOM changes weekly; rebuilding InboxSDK in-house is anti-ROI.
-- Tailwind v4 in extension — known constructable-sheet propagation bug across shadow roots.
-- Next.js for dashboard — SSR is unnecessary; static Vite SPA behind Nginx is simpler and cheaper.
-- Puppeteer — Playwright has first-class extension support and richer fixtures.
+- `gmail.js` - requires page-context injection, jQuery dep, poor MV3 story.
+- Raw `MutationObserver` re-implementation - Gmail DOM changes weekly; rebuilding InboxSDK in-house is anti-ROI.
+- Tailwind v4 in extension - known constructable-sheet propagation bug across shadow roots.
+- Next.js for dashboard - SSR is unnecessary; static Vite SPA behind Nginx is simpler and cheaper.
+- Puppeteer - Playwright has first-class extension support and richer fixtures.
 
 ---
 
@@ -192,7 +192,7 @@ frontend/
   "manifest_version": 3,
   "name": "Auro Healthcare DLP",
   "version": "0.1.0",
-  "description": "Healthcare DLP for Gmail — blocks PHI leaks before Send.",
+  "description": "Healthcare DLP for Gmail - blocks PHI leaks before Send.",
   "minimum_chrome_version": "120",
 
   "permissions": [
@@ -253,8 +253,8 @@ frontend/
 ```
 
 Key constraints encoded:
-- **No** `gmail.readonly` / `gmail.modify` scopes — `openid email profile` is enough because content extraction happens client-side. This **avoids the annual third-party security assessment** (US$15–75 K).
-- `host_permissions` are narrow — `mail.google.com` + our API only. `optional_host_permissions` for staging.
+- **No** `gmail.readonly` / `gmail.modify` scopes - `openid email profile` is enough because content extraction happens client-side. This **avoids the annual third-party security assessment** (US$15-75 K).
+- `host_permissions` are narrow - `mail.google.com` + our API only. `optional_host_permissions` for staging.
 - `externally_connectable` only the admin dashboard origin can `sendMessage` into the SW (used for "open extension diagnostics from dashboard").
 - `managed-schema.json` exposes admin-controlled keys (backend URL, default action, telemetry opt-in) via `chrome.storage.managed`.
 
@@ -290,7 +290,7 @@ void InboxSDK.load(2, APP_ID).then(sdk => {
               │ verdict                              │ user clicks "Edit"
               ▼                                      ▼
    ┌──────────────────┐                       ┌───────────┐
-   │  CLEAN  →  send  │                       │  ABORTED  │
+   │  CLEAN  ->  send  │                       │  ABORTED  │
    └──────────────────┘                       └───────────┘
               │
               │ verdict.action
@@ -317,10 +317,10 @@ export function handleCompose(view: ComposeView) {
 
   view.on('presending', async (event) => {
     if (state === State.VERDICT && forceSendToken) {
-      // User confirmed override or quarantine release approved — let Gmail send.
+      // User confirmed override or quarantine release approved - let Gmail send.
       return;
     }
-    event.cancel();          // <— stops Gmail from sending
+    event.cancel();          // <- stops Gmail from sending
     state = State.SCANNING;
 
     const payload = extractEmail(view);
@@ -341,7 +341,7 @@ export function handleCompose(view: ComposeView) {
         state = State.ABORTED;
       }
     } catch (err) {
-      // backend outage path — see §10
+      // backend outage path - see §10
       const decision = await renderModal(view, { state: State.VERDICT, error: err });
       // ...
     } finally {
@@ -355,7 +355,7 @@ export function handleCompose(view: ComposeView) {
 }
 ```
 
-**Critical:** never call `view.send()` synchronously inside `presending` — it re-enters and loops. Use `setTimeout(..., 0)` plus a `forceSendToken` guard.
+**Critical:** never call `view.send()` synchronously inside `presending` - it re-enters and loops. Use `setTimeout(..., 0)` plus a `forceSendToken` guard.
 
 ### 6.4 Discovery: extract recipients, subject, body
 
@@ -410,7 +410,7 @@ export function takeFiles(compose: HTMLElement): File[] {
 ### 7.3 At Send time
 
 1. Use InboxSDK to find the compose root `view.getElement()`.
-2. Call `takeFiles(view.getElement())` → get original `File[]`.
+2. Call `takeFiles(view.getElement())` -> get original `File[]`.
 3. Cross-reference with `view.getFileAttachmentCardViews()` (InboxSDK API) to make sure the file count matches. If counts diverge (e.g. user uploaded a file we never saw), prompt to re-add or fall back to **deny by default**.
 4. Each `File` is converted to `Blob` and streamed via `FormData` to the SW, then to backend `/api/v1/scan/attachment` (multipart). See backend.md §6.
 
@@ -423,10 +423,10 @@ export function takeFiles(compose: HTMLElement): File[] {
 
 | Scenario | Behaviour |
 |---|---|
-| User adds attachment from Drive ("Insert files using Drive") | We **cannot** capture the file — it's a link. Detect via DOM attributes, scan link target via backend Drive integration (future scope). For v1, surface a non-blocking notice. |
+| User adds attachment from Drive ("Insert files using Drive") | We **cannot** capture the file - it's a link. Detect via DOM attributes, scan link target via backend Drive integration (future scope). For v1, surface a non-blocking notice. |
 | User pastes inline image (clipboard paste in body) | Listen for `paste` event with `clipboardData.files`. Treat as inline attachment. |
 | Compose pre-populated with attachments (e.g. Forward) | InboxSDK `view.getFileAttachmentCardViews()` returns descriptors only. We fall back to scanning the original message via backend Gmail API integration (v1.1) or warn user. |
-| Attachment removed by user after capture | `view.on('attachmentRemoved')` — drop from `capturedFiles`. |
+| Attachment removed by user after capture | `view.on('attachmentRemoved')` - drop from `capturedFiles`. |
 | Files > 25 MB Gmail limit | Gmail switches to Drive; treat as Drive case above. |
 
 ---
@@ -489,7 +489,7 @@ export function renderModal(view: ComposeView, props: ModalProps) {
 
 - Host `z-index: 2147483647` (max int) keeps us above Gmail's compose chrome.
 - Modal must trap focus (`@radix-ui/react-dialog`) and restore focus on close.
-- ESC closes modal but does **not** allow send — defaults to "edit".
+- ESC closes modal but does **not** allow send - defaults to "edit".
 
 ### 8.4 Accessibility & i18n
 
@@ -502,7 +502,7 @@ export function renderModal(view: ComposeView, props: ModalProps) {
 | Component | Purpose |
 |---|---|
 | `ScanProgress` | Indeterminate progress for text scan + per-attachment progress bars |
-| `EntityChip` | Masked entity badge (e.g. `Aadhaar ••••5678`) with hover for offset context |
+| `EntityChip` | Masked entity badge (e.g. `Aadhaar ----5678`) with hover for offset context |
 | `RecipientPill` | Email + recipient class badge (Internal / Partner / External / Public / Unknown) |
 | `WarningBanner` | Yellow, requires explicit confirm to send |
 | `BlockedDialog` | Red, no send option, only "Edit" |
@@ -522,19 +522,19 @@ export function renderModal(view: ComposeView, props: ModalProps) {
 
 ### 9.1 Constraints recap (MV3)
 - Worker is terminated after 30 s idle; max 5 min per request.
-- No module-scope mutable state — persist to `chrome.storage`.
+- No module-scope mutable state - persist to `chrome.storage`.
 - Use `chrome.alarms`, never `setInterval`.
 
 ### 9.2 Responsibilities
 
-1. **Auth** — `chrome.identity.getAuthToken({ interactive })` → POST `id_token` to `/api/v1/auth/google/exchange` → receive short-lived JWT (15 min) + refresh cookie (handled automatically by browser for `api.aurodlpv2.io`).
-2. **API client** — typed fetch with:
+1. **Auth** - `chrome.identity.getAuthToken({ interactive })` -> POST `id_token` to `/api/v1/auth/google/exchange` -> receive short-lived JWT (15 min) + refresh cookie (handled automatically by browser for `api.aurodlpv2.io`).
+2. **API client** - typed fetch with:
    - Auto-retry on `401` (refresh JWT), `429` (backoff), `5xx` (exponential backoff + jitter, up to 3 attempts).
    - Per-request `AbortController` exposed to content script for cancel-on-modal-close.
-3. **Retry queue** — failed scans are pushed into `chrome.storage.local.scanQueue` and replayed on `chrome.alarms` `every 1m`. Each item has `{ id, payloadHash, attempts, nextAt }`. After 24 h we drop and surface in popup.
-4. **Message router** — typed `chrome.runtime.onMessage` switch (`SCAN_REQUEST`, `FINALIZE_SCAN`, `GET_AUTH_STATUS`, `OPEN_DASHBOARD`).
-5. **Managed config** — read `chrome.storage.managed` on `onInstalled` and `onStartup`; cache merged config in `chrome.storage.local`.
-6. **Telemetry** — opt-in only; batch send to backend `/api/v1/telemetry`.
+3. **Retry queue** - failed scans are pushed into `chrome.storage.local.scanQueue` and replayed on `chrome.alarms` `every 1m`. Each item has `{ id, payloadHash, attempts, nextAt }`. After 24 h we drop and surface in popup.
+4. **Message router** - typed `chrome.runtime.onMessage` switch (`SCAN_REQUEST`, `FINALIZE_SCAN`, `GET_AUTH_STATUS`, `OPEN_DASHBOARD`).
+5. **Managed config** - read `chrome.storage.managed` on `onInstalled` and `onStartup`; cache merged config in `chrome.storage.local`.
+6. **Telemetry** - opt-in only; batch send to backend `/api/v1/telemetry`.
 
 ### 9.3 Failure modes & UX
 
@@ -548,7 +548,7 @@ export function renderModal(view: ComposeView, props: ModalProps) {
 
 ### 9.4 Why fail-closed by default
 
-PRD success metric is ">90 % PHI leak reduction" — allowing sends on backend outage breaks that guarantee. Admins can flip `allow_offline_override` via `chrome.storage.managed` for low-risk groups.
+PRD success metric is ">90 % PHI leak reduction" - allowing sends on backend outage breaks that guarantee. Admins can flip `allow_offline_override` via `chrome.storage.managed` for low-risk groups.
 
 ---
 
@@ -563,23 +563,23 @@ PRD success metric is ">90 % PHI leak reduction" — allowing sends on backend o
 
 ```
 /
-├── /dashboard        — KPI cards, daily trend, top violations (default)
-├── /audit            — virtualised table, filters, drawer w/ entity timeline
+├── /dashboard        - KPI cards, daily trend, top violations (default)
+├── /audit            - virtualised table, filters, drawer w/ entity timeline
 ├── /quarantine
 │   ├── /pending
 │   ├── /released
-│   └── /:id          — detail with original masked payload, decision panel
+│   └── /:id          - detail with original masked payload, decision panel
 ├── /policies
-│   ├── /              — list, last-modified, enabled toggle
+│   ├── /              - list, last-modified, enabled toggle
 │   ├── /new
-│   ├── /:id/edit     — visual rule builder + raw JSON view + dry-run
+│   ├── /:id/edit     - visual rule builder + raw JSON view + dry-run
 │   └── /:id/history
-├── /domains          — internal / partner / blocked / unknown tabs
-├── /users            — invite, role change, force-install status
+├── /domains          - internal / partner / blocked / unknown tabs
+├── /users            - invite, role change, force-install status
 ├── /settings
 │   ├── /workspace
 │   ├── /retention
-│   ├── /integrations  — Slack/PagerDuty webhooks
+│   ├── /integrations  - Slack/PagerDuty webhooks
 │   └── /api-keys
 └── /sign-in
 ```
@@ -590,7 +590,7 @@ PRD success metric is ">90 % PHI leak reduction" — allowing sends on backend o
 - Long-running streams (live quarantine queue, live scan throughput) use **EventSource (SSE)** wrapped in a `useEventSource` hook with auto-reconnect.
 - All API calls share a generated TS client from backend OpenAPI (`openapi-typescript` + `openapi-fetch`).
 
-### 10.4 Critical pages — UX notes
+### 10.4 Critical pages - UX notes
 
 | Page | Notes |
 |---|---|
@@ -598,7 +598,7 @@ PRD success metric is ">90 % PHI leak reduction" — allowing sends on backend o
 | Quarantine | Cards grouped by severity; bulk approve/reject; release triggers SSE event back to user's extension; each decision captures analyst justification (required by PRD audit log). |
 | Policy editor | Visual builder for conditions (`entity.type == 'AADHAAR' AND recipient.class == 'PUBLIC_EMAIL'`); raw JSON tab; **dry-run** button replays the last 10 000 audit events and shows diff (would-block now / was-blocked). |
 | Domain manager | Inline edit; bulk CSV import; live MX/SPF status from backend; explanation of how class is detected. |
-| Settings → Retention | Sliders for audit (default 6 y), quarantine (7 d), telemetry (90 d). |
+| Settings -> Retention | Sliders for audit (default 6 y), quarantine (7 d), telemetry (90 d). |
 
 ### 10.5 Visual style
 
@@ -619,7 +619,7 @@ PRD success metric is ">90 % PHI leak reduction" — allowing sends on backend o
 1. **Manual chunks** in Vite (`react-vendor`, `inboxsdk`, `icons`, `vendor`).
 2. **Dynamic `import()`** in SW for rarely used modules (export utils, debug tooling).
 3. **Tree-shake** lucide-react via per-icon imports.
-4. **Avoid moment.js** → use `date-fns` per-function import.
+4. **Avoid moment.js** -> use `date-fns` per-function import.
 5. **PostCSS purge** Tailwind on production build.
 6. **`rollup-plugin-visualizer`** report uploaded as CI artifact every PR.
 7. **`size-limit`** CI gate failing if any artifact exceeds budget.
@@ -661,10 +661,10 @@ const test = base.extend<{ context: BrowserContext; extensionId: string }>({
 ```
 
 Scenarios:
-1. Compose with Aadhaar in body → modal renders, send blocked, "Edit" returns user to compose.
-2. Compose with PAN in PDF attachment → progress bar, verdict shows entity, masked.
-3. Backend 503 → fail-closed modal; reconnect → resumes.
-4. Quarantine release approved via dashboard → SSE event → extension shows "Approved" banner → user clicks send → mail leaves.
+1. Compose with Aadhaar in body -> modal renders, send blocked, "Edit" returns user to compose.
+2. Compose with PAN in PDF attachment -> progress bar, verdict shows entity, masked.
+3. Backend 503 -> fail-closed modal; reconnect -> resumes.
+4. Quarantine release approved via dashboard -> SSE event -> extension shows "Approved" banner -> user clicks send -> mail leaves.
 5. User override blocked unless `allow_offline_override == true`.
 
 ### 12.4 Visual regression
@@ -683,13 +683,13 @@ Scenarios:
 ## 13. Build, Release & Publish Pipeline
 
 ### 13.1 CI (GitHub Actions)
-1. `lint` → ESLint + Prettier + tsc --noEmit.
-2. `unit` → Vitest.
-3. `build-ext` → `pnpm -F extension build` + `size-limit`.
-4. `build-dash` → `pnpm -F dashboard build` + `size-limit`.
-5. `e2e` → Playwright (parallel shards, persistent context).
-6. `bundle-report` → upload visualizer html.
-7. `package` (tags only) → `tools/build-cws-zip.ts` writes `aurodlpv2-ext-<sha>.zip`, sha-256 sum, source-map archive (private).
+1. `lint` -> ESLint + Prettier + tsc --noEmit.
+2. `unit` -> Vitest.
+3. `build-ext` -> `pnpm -F extension build` + `size-limit`.
+4. `build-dash` -> `pnpm -F dashboard build` + `size-limit`.
+5. `e2e` -> Playwright (parallel shards, persistent context).
+6. `bundle-report` -> upload visualizer html.
+7. `package` (tags only) -> `tools/build-cws-zip.ts` writes `aurodlpv2-ext-<sha>.zip`, sha-256 sum, source-map archive (private).
 
 ### 13.2 Chrome Web Store / Workspace Marketplace
 - Two listings:
@@ -743,20 +743,20 @@ Scenarios:
 
 | Phase | Deliverable | Est. |
 |---|---|---|
-| **P0 — Scaffolding** | pnpm workspace, Vite ext + dashboard, Tailwind, ESLint, Vitest, Playwright skeleton, CI baseline. | 2 d |
-| **P1 — MV3 skeleton + auth** | Manifest, SW boot, `chrome.identity` flow, backend exchange stub, popup w/ auth status. | 3 d |
-| **P2 — Compose interception MVP** | InboxSDK bootstrap, `presending` hook, basic ScanModal in Shadow DOM, no real backend (mock verdict). | 4 d |
-| **P3 — Body & recipient extraction** | Subject + body (HTML + text) + recipients with quoted-reply slicing; zod schemas. | 2 d |
-| **P4 — Attachment capture** | `drop` + `change` + `paste` taps; cross-check with InboxSDK; multipart upload to SW → backend. | 4 d |
-| **P5 — Real backend wiring** | Replace mock with `/api/v1/scan/*`; verdict-driven UI states (warn/block/quarantine); SSE for quarantine approval. | 3 d |
-| **P6 — Retry queue + offline UX** | Workbox-style queue, `chrome.alarms`, fail-closed modal, override audit flow. | 3 d |
-| **P7 — Options + managed config** | `chrome.storage.managed` schema, options page, force-install docs. | 2 d |
-| **P8 — Dashboard shell + auth** | Vite SPA, router, shadcn/ui shell, Google SSO landing, role-gated routes. | 3 d |
-| **P9 — Audit log + quarantine UI** | Virtualised table, filter chips, drawer, quarantine queue with bulk actions, SSE. | 5 d |
-| **P10 — Policy editor + dry-run** | Visual builder, raw JSON tab, dry-run replay UI. | 5 d |
-| **P11 — Domains, users, settings** | Domain manager, role mgmt, retention sliders, integrations. | 4 d |
-| **P12 — i18n, a11y, visual regression** | react-intl, axe-core CI, Playwright snapshots. | 3 d |
-| **P13 — Hardening & store prep** | Bundle-size gates, CSP review, privacy policy, store assets, private CWS upload, force-install policy docs. | 4 d |
+| **P0 - Scaffolding** | pnpm workspace, Vite ext + dashboard, Tailwind, ESLint, Vitest, Playwright skeleton, CI baseline. | 2 d |
+| **P1 - MV3 skeleton + auth** | Manifest, SW boot, `chrome.identity` flow, backend exchange stub, popup w/ auth status. | 3 d |
+| **P2 - Compose interception MVP** | InboxSDK bootstrap, `presending` hook, basic ScanModal in Shadow DOM, no real backend (mock verdict). | 4 d |
+| **P3 - Body & recipient extraction** | Subject + body (HTML + text) + recipients with quoted-reply slicing; zod schemas. | 2 d |
+| **P4 - Attachment capture** | `drop` + `change` + `paste` taps; cross-check with InboxSDK; multipart upload to SW -> backend. | 4 d |
+| **P5 - Real backend wiring** | Replace mock with `/api/v1/scan/*`; verdict-driven UI states (warn/block/quarantine); SSE for quarantine approval. | 3 d |
+| **P6 - Retry queue + offline UX** | Workbox-style queue, `chrome.alarms`, fail-closed modal, override audit flow. | 3 d |
+| **P7 - Options + managed config** | `chrome.storage.managed` schema, options page, force-install docs. | 2 d |
+| **P8 - Dashboard shell + auth** | Vite SPA, router, shadcn/ui shell, Google SSO landing, role-gated routes. | 3 d |
+| **P9 - Audit log + quarantine UI** | Virtualised table, filter chips, drawer, quarantine queue with bulk actions, SSE. | 5 d |
+| **P10 - Policy editor + dry-run** | Visual builder, raw JSON tab, dry-run replay UI. | 5 d |
+| **P11 - Domains, users, settings** | Domain manager, role mgmt, retention sliders, integrations. | 4 d |
+| **P12 - i18n, a11y, visual regression** | react-intl, axe-core CI, Playwright snapshots. | 3 d |
+| **P13 - Hardening & store prep** | Bundle-size gates, CSP review, privacy policy, store assets, private CWS upload, force-install policy docs. | 4 d |
 
 **Total ≈ 47 dev-days** (~9.5 weeks for one engineer).
 
@@ -781,16 +781,16 @@ Scenarios:
 
 `docs/srs.md` is currently empty. Before scaffolding the frontend we need:
 
-1. **Compose modes supported on day 1** — popup only? popout? inline reply? full-screen? mobile-on-desktop?
-2. **Multiple Gmail accounts in same Chrome profile** — must SW maintain per-account JWT, or is workspace-scoped enough?
-3. **Default verdict action when backend is down** — fail-closed (block all) or fail-open with audit (allow + log)? PRD success metric implies fail-closed.
-4. **Drive-attached files** — out of scope for v1, but do we need a hard block, soft warn, or silent log?
-5. **Admin dashboard hosting** — same vendor domain (`admin.aurodlpv2.io`) for all tenants, or per-tenant subdomain (`<tenant>.aurodlpv2.io`)?
-6. **Branding** — single Auro Healthcare DLP brand, or whitelabel per hospital network?
-7. **Localisation** — English-only for v1, or Hindi at launch given Indian healthcare focus?
-8. **Telemetry default** — opt-in or opt-out? (legal preference is opt-in for healthcare deployments.)
-9. **User override of block** — allowed at all? If yes, which roles, which severities, with what justification UX?
-10. **Compose-window throttling** — should we rate-limit how often the modal pops if user keeps clicking Send rapidly?
+1. **Compose modes supported on day 1** - popup only? popout? inline reply? full-screen? mobile-on-desktop?
+2. **Multiple Gmail accounts in same Chrome profile** - must SW maintain per-account JWT, or is workspace-scoped enough?
+3. **Default verdict action when backend is down** - fail-closed (block all) or fail-open with audit (allow + log)? PRD success metric implies fail-closed.
+4. **Drive-attached files** - out of scope for v1, but do we need a hard block, soft warn, or silent log?
+5. **Admin dashboard hosting** - same vendor domain (`admin.aurodlpv2.io`) for all tenants, or per-tenant subdomain (`<tenant>.aurodlpv2.io`)?
+6. **Branding** - single Auro Healthcare DLP brand, or whitelabel per hospital network?
+7. **Localisation** - English-only for v1, or Hindi at launch given Indian healthcare focus?
+8. **Telemetry default** - opt-in or opt-out? (legal preference is opt-in for healthcare deployments.)
+9. **User override of block** - allowed at all? If yes, which roles, which severities, with what justification UX?
+10. **Compose-window throttling** - should we rate-limit how often the modal pops if user keeps clicking Send rapidly?
 
 ---
 

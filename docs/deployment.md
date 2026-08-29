@@ -65,13 +65,13 @@ Files:
 | --- | --- |
 | `infra/docker/api.Dockerfile` | FastAPI image |
 | `infra/docker/worker.Dockerfile` | Celery worker image (same deps, different CMD) |
-| `infra/docker/dashboard.Dockerfile` | Vite build → nginx |
+| `infra/docker/dashboard.Dockerfile` | Vite build -> nginx |
 | `infra/docker/nginx/` | nginx config for the dashboard image |
 | `infra/docker/entrypoint-api.sh` | shared entrypoint (`WAIT_FOR_DB`, `RUN_MIGRATIONS`) |
 | `infra/docker/run-migrations.py` | `alembic upgrade head` under a Postgres advisory lock |
 | `infra/docker-compose.prod.yml` | the production stack |
-| `infra/.env.prod.example` | compose-level config → copy to `infra/.env` |
-| `backend/.env.example` | every application setting → copy to `infra/api.env` |
+| `infra/.env.prod.example` | compose-level config -> copy to `infra/.env` |
+| `backend/.env.example` | every application setting -> copy to `infra/api.env` |
 | `infra/docker-compose.yml` | **unrelated**: local dev backing services (`make dev-up`) |
 
 ---
@@ -88,7 +88,7 @@ Files:
   Tesseract install into every worker process; the compose file's default limits
   are 2 CPU / 2 GB for the API and 4 CPU / 4 GB for the worker.
 - ~10 GB disk for images, plus whatever Postgres and MinIO need.
-- A TLS-terminating reverse proxy. Not optional — see below.
+- A TLS-terminating reverse proxy. Not optional - see below.
 - An SMTP relay. The app refuses to boot in production without one, because
   invites, password resets and email verification are all undeliverable without
   it.
@@ -106,8 +106,8 @@ chmod 600 infra/.env infra/api.env
 ```
 
 - **`infra/.env`** holds everything Compose has to hand to *both* a backing
-  service and the backend — the Postgres password, the Redis password, the MinIO
-  credentials — plus image tags, published ports and the public URLs. Compose
+  service and the backend - the Postgres password, the Redis password, the MinIO
+  credentials - plus image tags, published ports and the public URLs. Compose
   derives `DATABASE_URL`, `REDIS_URL` and the S3 credentials from these and
   injects them into the API and worker containers.
 - **`infra/api.env`** holds the rest: token lifetimes, rate limits, scan
@@ -127,7 +127,7 @@ openssl rand -base64 32 | tr -d '/+='  # REDIS_PASSWORD
 openssl rand -base64 32 | tr -d '/+='  # MINIO_ROOT_PASSWORD
 ```
 
-Compose refuses to start if any required value is missing — every one is
+Compose refuses to start if any required value is missing - every one is
 declared as `${VAR:?message}`, so you get a named error rather than a stack
 silently running on a default.
 
@@ -156,7 +156,7 @@ CORS_ORIGINS=                                     # also crashes
 ```
 
 `cors_origins` is a `list[str]`, and pydantic-settings 2.14 JSON-decodes list
-fields straight out of the environment — *before* the comma-splitting validator
+fields straight out of the environment - *before* the comma-splitting validator
 in `settings.py` ever runs. Same applies to `API_RATE_LIMIT_EXEMPT_PATHS`. Use
 `[]` for an empty list. (Verified against pydantic-settings 2.14.1.)
 
@@ -202,14 +202,14 @@ the dashboard loading but every API call being blocked by the browser.
 
 `detection/ocr/__init__.py` routes to `hin ben pan guj ori tam tel kan mal mar`
 for Indic scripts. A language pack that is not installed does not degrade
-gracefully — Tesseract exits non-zero for the whole page and the scan returns no
+gracefully - Tesseract exits non-zero for the whole page and the scan returns no
 text. Indian hospital discharge summaries and lab reports are routinely bilingual,
 so this is a correctness requirement, not a nice-to-have.
 
 ### What is deliberately *not* in the images
 
 `detection[ocr]` (PaddleOCR, PaddlePaddle, OpenCV) and `detection[medical-ner]`
-(PyTorch, transformers) are **not installed** — they add multiple gigabytes. The
+(PyTorch, transformers) are **not installed** - they add multiple gigabytes. The
 code imports them opportunistically and logs a warning when they are absent, so
 `paddle_backend.run()` returns empty and the Indic fallback in
 `ocr/extract_image_text()` never improves on the Tesseract result. Tesseract
@@ -218,7 +218,7 @@ itself handles all ten Indic scripts, so this is a quality ceiling, not an outag
 **One package from that extra is installed on its own: `pytesseract`.** It is the
 Python binding that actually invokes the Tesseract binaries, it is 15 KB of pure
 Python, and without it `tesseract_backend.run()` logs `"pytesseract is not
-installed"` and returns `""` — a scanned discharge summary would pass the DLP
+installed"` and returns `""` - a scanned discharge summary would pass the DLP
 scan clean, which is a false negative on PHI rather than a missing feature. The
 Dockerfiles install it pinned to the version already resolved in
 `detection/uv.lock`:
@@ -276,7 +276,7 @@ docker compose -f infra/docker-compose.prod.yml run --rm migrate
 
 For deploy targets with nowhere to put an init container (a single Docker host,
 a PaaS with one process type), the same image can migrate from its own
-entrypoint — still under the advisory lock:
+entrypoint - still under the advisory lock:
 
 ```bash
 docker run -e RUN_MIGRATIONS=true -e WAIT_FOR_DB=true ... aurodlp/api:$TAG
@@ -305,7 +305,7 @@ Published ports bind to `127.0.0.1` only:
 Postgres, Redis and MinIO publish **nothing**. Reach them with
 `docker compose exec`, or an SSH tunnel.
 
-Scale the worker — the only service worth scaling horizontally, since detection
+Scale the worker - the only service worth scaling horizontally, since detection
 is CPU-bound:
 
 ```bash
@@ -332,7 +332,7 @@ docker compose -f infra/docker-compose.prod.yml ps
 ```
 
 The worker has no HTTP endpoint; its healthcheck is
-`celery inspect ping -d celery@$HOSTNAME`, which goes broker → worker → broker.
+`celery inspect ping -d celery@$HOSTNAME`, which goes broker -> worker -> broker.
 It fails when Redis is down, which is correct: a worker that cannot reach the
 broker is not healthy.
 
@@ -345,7 +345,7 @@ broker is not healthy.
 
 **You must put one in front.** Nothing in this stack terminates TLS, and the app
 requires `REFRESH_COOKIE_SECURE=true` in production, so the refresh cookie is
-never sent over plain HTTP — the dashboard will log you out on every reload if
+never sent over plain HTTP - the dashboard will log you out on every reload if
 you skip this.
 
 Minimum requirements:
@@ -392,7 +392,7 @@ the schema. If the release included a destructive migration, restore the dump.
 | Secret | Blast radius | How |
 | --- | --- | --- |
 | `JWT_SECRET` | every user logged out immediately; refresh tokens rejected | edit `infra/.env`, `make prod-up` |
-| `MFA_ENCRYPTION_KEY` | **every TOTP enrolment becomes undecryptable** — users must re-enrol | do not rotate without a re-enrolment plan |
+| `MFA_ENCRYPTION_KEY` | **every TOTP enrolment becomes undecryptable** - users must re-enrol | do not rotate without a re-enrolment plan |
 | `POSTGRES_PASSWORD` | brief downtime | `ALTER ROLE` (below), then edit and restart |
 | `REDIS_PASSWORD` | queued tasks survive (AOF), in-flight ones retry | edit `infra/.env`, `make prod-up` |
 | `MINIO_ROOT_PASSWORD` | in-flight queued attachments unreadable until restart | edit `infra/.env`, `make prod-up` |
@@ -423,7 +423,7 @@ time rather than editing it by hand.
 ## Backup and restore
 
 The database is the only irreplaceable state. MinIO holds queued attachments
-that are deleted after each scan — losing it loses in-flight scans, nothing more.
+that are deleted after each scan - losing it loses in-flight scans, nothing more.
 Redis holds the queue; its AOF makes a restart survivable.
 
 ### Back up
@@ -441,7 +441,7 @@ docker compose -f infra/docker-compose.prod.yml exec -T postgres \
 
 Custom format (`-Fc`) so you can restore selectively with `pg_restore`.
 
-Automate it. A daily cron on the host, with the dump copied **off the host** —
+Automate it. A daily cron on the host, with the dump copied **off the host** -
 a backup on the same disk as the database is not a backup:
 
 ```cron
@@ -456,7 +456,7 @@ them to an external store as well.
 
 ### Restore
 
-Destructive — it drops and recreates every object in the dump.
+Destructive - it drops and recreates every object in the dump.
 
 ```bash
 C="docker compose -f infra/docker-compose.prod.yml"
@@ -488,7 +488,7 @@ Before the first real send goes through this stack:
 - [ ] `CORS_ORIGINS` is a **JSON array** containing exactly the dashboard origin
 - [ ] `APP_BASE_URL` is the dashboard's public https URL (mail links use it)
 - [ ] `VITE_API_BASE_URL` was passed at **build** time and matches the API's
-      public URL — check with
+      public URL - check with
       `curl -sI http://127.0.0.1:8081/ | grep -i content-security-policy`
 - [ ] `TRUSTED_PROXY_COUNT` matches the actual number of proxies
 - [ ] `ALLOW_OPEN_SIGNUP=false`
@@ -508,9 +508,9 @@ Before the first real send goes through this stack:
 - [ ] `make prod-backup` runs from cron and copies the dump off the host
 - [ ] A restore has been tested end to end at least once
 - [ ] Disk alerting on the Postgres and MinIO volumes
-- [ ] Log shipping — container logs cap at 50 MB per service (`10m` × 5) and
+- [ ] Log shipping - container logs cap at 50 MB per service (`10m` × 5) and
       then roll away
-- [ ] `SENTRY_DSN` set, **with scrubbing verified** — these events can carry
+- [ ] `SENTRY_DSN` set, **with scrubbing verified** - these events can carry
       patient data
 - [ ] `/readyz` monitored, not just `/healthz`
 - [ ] Image tag is an immutable git sha, and the sha is recorded somewhere you
@@ -583,8 +583,8 @@ Being explicit so nobody mistakes this for more than it is.
 
 - **TLS.** No certificates, no ACME, no proxy config. You provide the proxy.
 - **Kubernetes.** No manifests, no Helm chart. The images are ordinary
-  non-root OCI images and will run there — `/healthz` for liveness, `/readyz`
-  for readiness, the `migrate` command as an init container or a Job — but none
+  non-root OCI images and will run there - `/healthz` for liveness, `/readyz`
+  for readiness, the `migrate` command as an init container or a Job - but none
   of that is written down or tested.
 - **High availability.** One Postgres, one Redis, one MinIO, each a single
   container with a local volume. No replication, no failover, no quorum. The API

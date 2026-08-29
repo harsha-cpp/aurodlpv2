@@ -1,4 +1,4 @@
-# Auro Healthcare DLP Detection Engine — Build Plan
+# Auro Healthcare DLP Detection Engine - Build Plan
 
 > Scope: Python detection pipeline that ingests email content + attachments and emits a structured `ScanResult` (entities, confidences, severity, decision-input score). This plan covers identifier detection, OCR, NER, scoring, and packaging. Auth, queuing, audit logs, dashboard APIs live in `backend.md`.
 
@@ -8,7 +8,7 @@
 
 | PRD requirement | Detection-engine implication |
 |---|---|
-| Detect Aadhaar, PAN, ABHA, MRN/UHID, ICD-10, patient info, healthcare reports | Layered detection: regex+checksum → NER → dictionary → clinical-NER context |
+| Detect Aadhaar, PAN, ABHA, MRN/UHID, ICD-10, patient info, healthcare reports | Layered detection: regex+checksum -> NER -> dictionary -> clinical-NER context |
 | Scan subject, body, recipients, attachments (PDF, DOCX, XLSX, images, scans) | Unified `Document` abstraction; per-MIME extractor; OCR fallback |
 | Latency budget: <2s for normal emails, <10s for 10MB PDFs | Sync fast path (regex/NER) + async deep path (OCR + heavy parsing) |
 | FP rate <10%, accuracy >95% | Verhoeff/structural validators, context windows, confidence tuning |
@@ -103,7 +103,7 @@ class ScanResult(BaseModel):
     requires_deep_scan: bool   # true if engine punted OCR/large PDF to async
 ```
 
-Mask example: `Aadhaar 1234 5678 9012` → `XXXX XXXX 9012` for storage; raw value lives in memory only during the request and is never logged.
+Mask example: `Aadhaar 1234 5678 9012` -> `XXXX XXXX 9012` for storage; raw value lives in memory only during the request and is never logged.
 
 ---
 
@@ -124,7 +124,7 @@ We register these via `AnalyzerEngine` and tune their confidence thresholds in `
 ### 4.2 Custom recognizers we must write
 
 #### ABHA (Ayushman Bharat Health Account)
-- Format: 14 digits, displayed as `XX-XXXX-XXXX-XXXX`. First digit 1–9.
+- Format: 14 digits, displayed as `XX-XXXX-XXXX-XXXX`. First digit 1-9.
 - No public checksum algorithm exists ([ABDM official docs](https://docs.coronasafe.network/abdm-documentation/implementers-guide/abha-mobile-phr-application)). Validation is structural + context-based.
 
 ```python
@@ -137,7 +137,7 @@ class AbhaRecognizer(PatternRecognizer):
 ```
 
 #### MRN / UHID (Medical Record Number)
-Hospital-prefixed; PRD example `HSP-2026-0012`. Highly variable across hospitals → we use a config-driven pattern list seeded with common templates plus a per-tenant override loaded from DB.
+Hospital-prefixed; PRD example `HSP-2026-0012`. Highly variable across hospitals -> we use a config-driven pattern list seeded with common templates plus a per-tenant override loaded from DB.
 
 ```python
 class MrnRecognizer(PatternRecognizer):
@@ -170,24 +170,24 @@ Validated codes get confidence boost to ~0.9.
 ### 4.3 Verhoeff source of truth
 
 Either:
-- (A) Use [`python-stdnum`](https://github.com/arthurdejong/python-stdnum) (LGPL-2.1) — also handles other ID standards we may need later. Recommended.
+- (A) Use [`python-stdnum`](https://github.com/arthurdejong/python-stdnum) (LGPL-2.1) - also handles other ID standards we may need later. Recommended.
 - (B) Embed Presidio's in-line Verhoeff tables (zero extra dep).
 
-Decision: **use python-stdnum** — gives us the canonical `stdnum.in_.aadhaar` and also gives us PAN structural validation and PAN masking helpers, plus future-proof for other identifier types.
+Decision: **use python-stdnum** - gives us the canonical `stdnum.in_.aadhaar` and also gives us PAN structural validation and PAN masking helpers, plus future-proof for other identifier types.
 
 ---
 
 ## 5. NLP / NER Stack
 
-### 5.1 General NER — for PERSON, ORG, GPE, DATE
+### 5.1 General NER - for PERSON, ORG, GPE, DATE
 - **Default**: `en_core_web_lg` (~750MB, ships F1 ~0.86, CPU-only friendly)
-- **Optional opt-in for higher accuracy**: `en_core_web_trf` (transformer, ~430MB + torch, slower) — gated by config flag, used when tenant requests "high accuracy mode"
+- **Optional opt-in for higher accuracy**: `en_core_web_trf` (transformer, ~430MB + torch, slower) - gated by config flag, used when tenant requests "high accuracy mode"
 
-### 5.2 Clinical NER — for context boost only
+### 5.2 Clinical NER - for context boost only
 
-We don't use medical NER as a primary PHI detector (Med7 / scispaCy detect drugs, diseases, procedures — not patient identifiers). Instead we use them as a **context booster**:
+We don't use medical NER as a primary PHI detector (Med7 / scispaCy detect drugs, diseases, procedures - not patient identifiers). Instead we use them as a **context booster**:
 
-If `MedicalNERRecognizer` (using [`blaze999/Medical-NER`](https://huggingface.co/blaze999/Medical-NER) via Presidio's transformers extra) fires `MEDICAL_DISEASE_DISORDER` or `MEDICAL_MEDICATION` in the same document as a PERSON/MRN/ABHA, we boost the entity confidence — because the combination is far more likely to be real PHI than either signal alone.
+If `MedicalNERRecognizer` (using [`blaze999/Medical-NER`](https://huggingface.co/blaze999/Medical-NER) via Presidio's transformers extra) fires `MEDICAL_DISEASE_DISORDER` or `MEDICAL_MEDICATION` in the same document as a PERSON/MRN/ABHA, we boost the entity confidence - because the combination is far more likely to be real PHI than either signal alone.
 
 Implementation:
 ```python
@@ -201,7 +201,7 @@ def boost_with_medical_context(entities: list[Entity], doc_text: str) -> list[En
     return entities
 ```
 
-Med7 (`en_core_med7_lg`) is **not** added to the default stack — F1 0.957 on medication NER is great but it doesn't help us detect patient identifiers in emails. We add it later as a tenant-opt-in if we ever need DRUG/DOSAGE specifically.
+Med7 (`en_core_med7_lg`) is **not** added to the default stack - F1 0.957 on medication NER is great but it doesn't help us detect patient identifiers in emails. We add it later as a tenant-opt-in if we ever need DRUG/DOSAGE specifically.
 
 ---
 
@@ -209,21 +209,21 @@ Med7 (`en_core_med7_lg`) is **not** added to the default stack — F1 0.957 on m
 
 | MIME | Extractor | Library | Notes |
 |---|---|---|---|
-| `application/pdf` | `pdf.py` | [`PyMuPDF`](https://pymupdf.readthedocs.io/) | Text PDFs in <100ms; if `page.get_text()` returns empty/low char count → route page to OCR |
+| `application/pdf` | `pdf.py` | [`PyMuPDF`](https://pymupdf.readthedocs.io/) | Text PDFs in <100ms; if `page.get_text()` returns empty/low char count -> route page to OCR |
 | `application/vnd.openxmlformats-officedocument.wordprocessingml.document` | `docx.py` | `python-docx` | Walk paragraphs + tables + headers/footers |
 | `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` | `xlsx.py` | `openpyxl` (read-only mode) | Iterate cell values, skip formulas |
-| `image/png`, `image/jpeg`, `image/tiff` | `image.py` → OCR | — | Always OCR |
-| `application/msword`, `application/vnd.ms-excel` | Convert via `libreoffice --headless` (Celery task) | — | Async deep path only |
+| `image/png`, `image/jpeg`, `image/tiff` | `image.py` -> OCR | - | Always OCR |
+| `application/msword`, `application/vnd.ms-excel` | Convert via `libreoffice --headless` (Celery task) | - | Async deep path only |
 
 All extractors return a `Document` dataclass with `pages: list[PageText]` where each page tracks (text, ocr_confidence, language_hint).
 
 ---
 
-## 7. OCR Strategy — Hybrid Router
+## 7. OCR Strategy - Hybrid Router
 
 Research finding (2026 benchmarks):
-- Tesseract 5: 95–99% on clean print, 1.5–3.5s/page CPU, **<10%** on cursive handwriting, CER **18.2%** on Gujarati script.
-- PaddleOCR: 85% on handwritten prescriptions, **CER 4.5%** on Gujarati, ~0.8–1.2s/page on GPU but heavier dependencies.
+- Tesseract 5: 95-99% on clean print, 1.5-3.5s/page CPU, **<10%** on cursive handwriting, CER **18.2%** on Gujarati script.
+- PaddleOCR: 85% on handwritten prescriptions, **CER 4.5%** on Gujarati, ~0.8-1.2s/page on GPU but heavier dependencies.
 - EasyOCR: best for handwriting (~88%) but largest binary footprint.
 
 ### 7.1 Router algorithm
@@ -242,17 +242,17 @@ def extract_text(page_image) -> PageText:
 ### 7.2 Latency budget enforcement
 - Per-page OCR timeout: 4s (kill subprocess, mark page `ocr_failed`)
 - Per-document OCR cap: 60s in deep-scan mode
-- If sync request and document needs OCR → engine returns `requires_deep_scan=True` with whatever entities were detected from text-only extraction; backend queues a Celery follow-up
+- If sync request and document needs OCR -> engine returns `requires_deep_scan=True` with whatever entities were detected from text-only extraction; backend queues a Celery follow-up
 
 ### 7.3 Packaging
 - Tesseract: system binary + `pytesseract`. Dockerfile installs `tesseract-ocr tesseract-ocr-eng tesseract-ocr-hin` etc.
-- PaddleOCR: optional extra (`pip install aurodlpv2-detection[paddle]`). The router degrades gracefully if PaddleOCR is not importable — logs a warning and skips fallback. This keeps the lean Tesseract-only image small for tenants who don't need Indic/handwriting.
+- PaddleOCR: optional extra (`pip install aurodlpv2-detection[paddle]`). The router degrades gracefully if PaddleOCR is not importable - logs a warning and skips fallback. This keeps the lean Tesseract-only image small for tenants who don't need Indic/handwriting.
 
 ---
 
 ## 8. Risk Scoring
 
-The detection engine produces a **raw entity score** (0–100). The backend's policy engine combines this with recipient class, attachment count, and approved-domain status to produce the final severity and action.
+The detection engine produces a **raw entity score** (0-100). The backend's policy engine combines this with recipient class, attachment count, and approved-domain status to produce the final severity and action.
 
 ### 8.1 Entity weights (`scoring/weights.py`)
 
@@ -276,7 +276,7 @@ SENSITIVITY_WEIGHTS = {
 ```python
 def entity_contribution(e: Entity) -> float:
     base       = SENSITIVITY_WEIGHTS.get(e.type, 1.0)
-    conf_mult  = 0.5 + e.confidence              # 0.65 → 1.15; 0.90 → 1.40
+    conf_mult  = 0.5 + e.confidence              # 0.65 -> 1.15; 0.90 -> 1.40
     chk_mult   = 1.3 if e.has_checksum else 1.0
     return base * conf_mult * chk_mult
 ```
@@ -301,9 +301,9 @@ def aggregate(entities: list[Entity]) -> float:
 | Entity score | Severity |
 |---|---|
 | 0 | `NONE` |
-| 1–9 | `LOW` |
-| 10–29 | `MEDIUM` |
-| 30–59 | `HIGH` |
+| 1-9 | `LOW` |
+| 10-29 | `MEDIUM` |
+| 30-59 | `HIGH` |
 | ≥60 | `CRITICAL` |
 
 Reasoning: a single validated Aadhaar (10 × 1.4 × 1.3 = 18.2) lands in `MEDIUM` on its own; combined with a PERSON + MRN it crosses into `HIGH`, which feels right.
@@ -348,43 +348,43 @@ Backend loads tenant config from PostgreSQL and constructs a `DetectionEngine(co
 
 ## 11. Build Phases
 
-### Phase 0 — Scaffolding (Day 1)
+### Phase 0 - Scaffolding (Day 1)
 - `aurodlpv2_detection` package, `pyproject.toml`, ruff + mypy + pytest baseline.
 - Pydantic models, public `scan_email` stub.
 - Pin: `presidio-analyzer`, `spacy`, `pydantic`, `pymupdf`, `python-docx`, `openpyxl`, `python-stdnum`, `simple_icd_10_cm`.
 
-### Phase 1 — Text path (Days 2–3)
+### Phase 1 - Text path (Days 2-3)
 - AnalyzerEngine wired with Presidio built-ins + spaCy `en_core_web_lg`.
 - Subject + body scanning.
 - Custom recognizers: ABHA, MRN, ICD-10.
 - Scoring + severity bucketing.
 - Golden-set tests with 50+ hand-crafted emails covering Aadhaar variants, PAN, ABHA, MRN, ICD-10, false-positive bait (random 12-digit numbers, non-existent ICD codes).
 
-### Phase 2 — Attachment text extraction (Days 4–5)
+### Phase 2 - Attachment text extraction (Days 4-5)
 - PDF (PyMuPDF), DOCX, XLSX extractors.
 - Sync inline scan if total text <50KB and PDF has extractable text.
 - Otherwise mark `requires_deep_scan=True`.
 
-### Phase 3 — OCR (Days 6–8)
+### Phase 3 - OCR (Days 6-8)
 - Tesseract extractor with confidence threshold gating.
 - PaddleOCR optional extra + router.
 - Page-level timeouts and partial-result handling.
 - Indic-language test corpus (Hindi, Tamil, Telugu printed text + handwritten prescriptions).
 
-### Phase 4 — Medical context (Day 9)
+### Phase 4 - Medical context (Day 9)
 - Wire Presidio `MedicalNERRecognizer`.
 - Implement confidence boost for co-occurrence with PHI identifiers.
 - Tenant flag to disable (adds latency + ~500MB model).
 
-### Phase 5 — Tuning (Days 10–12)
+### Phase 5 - Tuning (Days 10-12)
 - Collect FP/FN samples from internal pilot.
 - Adjust confidence thresholds per tenant.
 - Add allowlists (e.g. test data, internal mock patient IDs).
 - Bench against PRD targets; profile with `py-spy`.
 
-### Phase 6 — Hardening
+### Phase 6 - Hardening
 - Memory caps per scan (kill child OCR procs if >2GB RSS).
-- Fuzz extractors (malformed PDF, password-protected DOCX) — expect graceful `extraction_warnings`, never a crash.
+- Fuzz extractors (malformed PDF, password-protected DOCX) - expect graceful `extraction_warnings`, never a crash.
 - Snapshot tests with `syrupy` for stable golden outputs.
 
 ---
@@ -392,7 +392,7 @@ Backend loads tenant config from PostgreSQL and constructs a `DetectionEngine(co
 ## 12. Test Strategy
 
 - **Unit**: each recognizer (positive + negative cases). Verhoeff validator with known valid/invalid Aadhaar samples.
-- **Golden corpus**: `tests/corpus/*.json` — email + expected entities. Tracked in git.
+- **Golden corpus**: `tests/corpus/*.json` - email + expected entities. Tracked in git.
 - **Property-based** (`hypothesis`): generate random strings, ensure they don't match high-confidence patterns.
 - **Benchmark**: `pytest-benchmark` per recognizer; CI gate at ±20% drift.
 - **OCR**: scanned-document fixtures with hand-labeled ground truth, CER reported per OCR engine.
@@ -403,11 +403,11 @@ Backend loads tenant config from PostgreSQL and constructs a `DetectionEngine(co
 
 | Risk | Mitigation |
 |---|---|
-| Presidio's `IN_AADHAAR` raw 12-digit pattern is "Very Weak" (0.01) — generates noise | Rely on Verhoeff + context boost; suppress entities under tenant `entity_thresholds` |
+| Presidio's `IN_AADHAAR` raw 12-digit pattern is "Very Weak" (0.01) - generates noise | Rely on Verhoeff + context boost; suppress entities under tenant `entity_thresholds` |
 | OCR misreads `MRN-HSP-2024-0012` as `MRN-HSP-2O24-OO12` | Add post-OCR digit/letter confusables fix-up (O↔0, l↔1) before pattern matching |
 | `simple_icd_10_cm` updates change valid codes between versions | Pin version; expose `icd_version` in config; re-test golden corpus on bump |
 | Med7 / blaze999 models inject 500MB+ memory per worker | Lazy-load only when `medical_context_boost=True`; share singleton across requests |
-| Per-tenant MRN patterns are user-provided → injection of catastrophic regex | Compile patterns with `re2` (linear time) or pre-validate complexity bound; reject runtime patterns >200 chars |
+| Per-tenant MRN patterns are user-provided -> injection of catastrophic regex | Compile patterns with `re2` (linear time) or pre-validate complexity bound; reject runtime patterns >200 chars |
 
 ---
 
@@ -422,15 +422,15 @@ Backend loads tenant config from PostgreSQL and constructs a `DetectionEngine(co
 
 ## 15. References
 
-1. Presidio IN_AADHAAR — https://github.com/microsoft/presidio/blob/main/presidio-analyzer/presidio_analyzer/predefined_recognizers/country_specific/india/in_aadhaar_recognizer.py
-2. Presidio IN_PAN — https://github.com/microsoft/presidio/blob/main/presidio-analyzer/presidio_analyzer/predefined_recognizers/country_specific/india/in_pan_recognizer.py
-3. python-stdnum (Verhoeff, Aadhaar, PAN) — https://github.com/arthurdejong/python-stdnum
-4. simple_icd_10_cm — https://github.com/StefanoTrv/simple_icd_10_CM
-5. ABDM ABHA spec — https://docs.coronasafe.network/abdm-documentation/implementers-guide/abha-mobile-phr-application
-6. Tesseract vs PaddleOCR 2026 benchmark — https://tildalice.io/ocr-tesseract-easyocr-paddleocr-benchmark/
-7. PaddleOCR Gujarati study — https://ijrpr.com/uploads/V6ISSUE10/IJRPR53627.pdf
-8. Presidio MedicalNERRecognizer — https://github.com/microsoft/presidio/blob/main/docs/supported_entities.md
-9. Med7 — https://github.com/kormilitzin/med7
-10. phi-redactor (architecture reference) — https://github.com/DilawarShafiq/phi-redactor
-11. Phileas (Java, 30+ entity types, policy-driven) — https://github.com/philterd/phileas
-12. Indpy (Indian ID generators for tests) — https://github.com/harshgupta2125/Indpy
+1. Presidio IN_AADHAAR - https://github.com/microsoft/presidio/blob/main/presidio-analyzer/presidio_analyzer/predefined_recognizers/country_specific/india/in_aadhaar_recognizer.py
+2. Presidio IN_PAN - https://github.com/microsoft/presidio/blob/main/presidio-analyzer/presidio_analyzer/predefined_recognizers/country_specific/india/in_pan_recognizer.py
+3. python-stdnum (Verhoeff, Aadhaar, PAN) - https://github.com/arthurdejong/python-stdnum
+4. simple_icd_10_cm - https://github.com/StefanoTrv/simple_icd_10_CM
+5. ABDM ABHA spec - https://docs.coronasafe.network/abdm-documentation/implementers-guide/abha-mobile-phr-application
+6. Tesseract vs PaddleOCR 2026 benchmark - https://tildalice.io/ocr-tesseract-easyocr-paddleocr-benchmark/
+7. PaddleOCR Gujarati study - https://ijrpr.com/uploads/V6ISSUE10/IJRPR53627.pdf
+8. Presidio MedicalNERRecognizer - https://github.com/microsoft/presidio/blob/main/docs/supported_entities.md
+9. Med7 - https://github.com/kormilitzin/med7
+10. phi-redactor (architecture reference) - https://github.com/DilawarShafiq/phi-redactor
+11. Phileas (Java, 30+ entity types, policy-driven) - https://github.com/philterd/phileas
+12. Indpy (Indian ID generators for tests) - https://github.com/harshgupta2125/Indpy

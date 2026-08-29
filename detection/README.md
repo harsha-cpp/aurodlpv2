@@ -2,28 +2,41 @@
 
 Pure-Python PHI/PII detection engine for the Auro Healthcare DLP platform.
 
+This is a library, not a service. The backend imports it in-process through a
+path dependency; nothing deploys it on its own.
+
 Authoritative build spec: [`docs/plans/detection-engine.md`](../docs/plans/detection-engine.md).
 
 ## What it does
 
-- Extracts text from PDF / DOCX / XLSX / images.
-- Runs Presidio + custom recognizers for Aadhaar, PAN, ABHA, MRN, ICD-10.
-- Hybrid OCR router: Tesseract first, PaddleOCR fallback for low-conf / Indic / handwritten pages.
-- Returns scored `ScanResult` with masked entity values - never the raw PHI.
+- Extracts text from PDF, DOCX, XLSX and legacy XLS, CSV, PPTX, RTF, EML, ZIP
+  and images, classified by content signature rather than by file extension.
+- Runs a declarative rule pack of 21 entity types, with checksum validators where
+  one exists, context gating, and overlap resolution.
+- Runs spaCy for person names.
+- Hybrid OCR router: Tesseract first, PaddleOCR fallback for low-confidence,
+  Indic and handwritten pages.
+- Returns a scored `ScanResult` with masked entity values, never the raw PHI.
+
+Presidio was removed. Its pattern layer produced unusable matches, and it is not
+a dependency. The rule pack in `rules/` replaced it, and
+`python -m aurodlpv2_detection.rules` exports the same pack to the extension as
+JSON so the browser and the server cannot drift apart.
 
 ## Layout
 
 ```
 aurodlpv2_detection/
-├── api.py            # public entry: detect_email(EmailPayload) -> ScanResult
-├── models.py         # EmailPayload, Attachment, Entity, ScanResult
-├── recognizers/      # Aadhaar (built-in), PAN, ABHA (custom), MRN, ICD-10
-├── extractors/       # pdf, docx, xlsx, image
-├── ocr/              # router + tesseract + paddle backends
-├── nlp/              # spaCy + Presidio analyzer factory
-├── scoring/          # SENSITIVITY_WEIGHTS + severity buckets
-├── evaluation/       # labelled-corpus accuracy harness + baseline ratchet
-└── config.py         # DetectionConfig (per-tenant tuning)
+  api.py            public entry: detect_email(EmailPayload) -> ScanResult
+  models.py         EmailPayload, Attachment, Entity, ScanResult
+  rules/            the declarative rule pack, its schema, and the JSON exporter
+  recognition/      pattern matching, validators, spaCy NER, overlap resolution
+  extractors/       text, pdf, docx, xlsx, tabular, pptx, image
+  ocr/              preprocessing, tesseract and paddle backends
+  masking.py        masked entity values
+  scoring/          entity weights and severity buckets
+  evaluation/       labelled-corpus accuracy harness and baseline ratchet
+  config.py         DetectionConfig, per-tenant tuning
 ```
 
 ## Install
@@ -106,4 +119,11 @@ exists to prevent.
 
 ## Status
 
-Phased build plan: [`docs/plans/detection-engine.md`](../docs/plans/detection-engine.md) §13.
+Current baseline, recorded 2026-08-28 against 119 documents and 175 labelled
+entity spans: entity F1 0.9826, document F1 0.9936, false-alarm rate 0.0 on the
+40 clean samples.
+
+Phased build plan:
+[`docs/plans/detection-engine.md`](../docs/plans/detection-engine.md), section
+13. Production hardening:
+[`docs/plans/hardening.md`](../docs/plans/hardening.md).

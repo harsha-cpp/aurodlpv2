@@ -1,4 +1,4 @@
-# Auro Healthcare DLP Backend — Build Plan
+# Auro Healthcare DLP Backend - Build Plan
 
 > Scope: Python FastAPI + Celery + Redis + PostgreSQL backend that the Chrome extension and admin dashboard talk to. Owns auth, scan orchestration, policy evaluation, quarantine, audit log, and admin APIs. Detection logic lives in the separate `aurodlpv2_detection` package (see `detection-engine.md`).
 
@@ -16,7 +16,7 @@
 | Admin dashboard (blocked logs, risk reports, top violations, policy config) | REST APIs with pagination + aggregations; SSE for live quarantine alerts |
 | <2s scan latency normal, <10s for 10MB PDFs | FastAPI inline for text, Celery for OCR/PDFs; structured timeouts |
 | Multi-hospital concurrent users | Per-tenant isolation via `workspace_id` on every table |
-| TLS, secure auth, encrypted temp files | OAuth Google Workspace → short-lived JWT; temp files in restricted dir with `fs.protected` |
+| TLS, secure auth, encrypted temp files | OAuth Google Workspace -> short-lived JWT; temp files in restricted dir with `fs.protected` |
 
 ---
 
@@ -78,11 +78,11 @@ backend/
 │   │   ├── repository.py      # CRUD against PostgreSQL
 │   │   └── api.py
 │   ├── recipients/
-│   │   ├── classifier.py      # domain → recipient class
+│   │   ├── classifier.py      # domain -> recipient class
 │   │   └── repository.py
 │   ├── quarantine/
 │   │   ├── api.py
-│   │   ├── service.py         # state machine: pending→approved/rejected/expired
+│   │   ├── service.py         # state machine: pending->approved/rejected/expired
 │   │   └── tasks.py           # daily expiry sweep
 │   ├── audit/
 │   │   ├── writer.py          # append + hash-chain logic
@@ -114,7 +114,7 @@ All endpoints scoped under `/v1`. JSON only. Errors use [RFC 7807 Problem Detail
 ### 3.1 Auth (called by both extension and dashboard)
 | Method | Path | Purpose |
 |---|---|---|
-| `POST` | `/v1/auth/google` | Exchange Google ID token → Auro Healthcare DLP access JWT + refresh cookie. Enforces `hd` claim against tenant's allowed Workspace domains |
+| `POST` | `/v1/auth/google` | Exchange Google ID token -> Auro Healthcare DLP access JWT + refresh cookie. Enforces `hd` claim against tenant's allowed Workspace domains |
 | `POST` | `/v1/auth/refresh` | Refresh access token using refresh cookie |
 | `POST` | `/v1/auth/logout` | Revoke refresh token |
 | `GET` | `/v1/auth/me` | Current user profile + role |
@@ -161,7 +161,7 @@ Verdict response:
 | `POST` | `/v1/admin/quarantine/{id}/approve` | Release; emits event to sender's extension to resume send |
 | `POST` | `/v1/admin/quarantine/{id}/reject` | Block permanently |
 | `POST` | `/v1/admin/quarantine/{id}/escalate` | Forward to security team |
-| `GET` | `/v1/admin/quarantine/stream` | SSE — live new items |
+| `GET` | `/v1/admin/quarantine/stream` | SSE - live new items |
 
 ### 3.6 Audit (admin)
 | `GET` | `/v1/admin/audit` | Cursor-paginated; filters on actor, action, severity, date range |
@@ -183,7 +183,7 @@ Verdict response:
 | Small text attachment (<200KB extracted text) | **Inline FastAPI** | Sub-second |
 | Standard PDF/DOCX/XLSX, text-extractable | **Inline FastAPI** with timeout 1.5s | Most pass within budget |
 | Scanned PDF, image, large PDF (>2MB), OCR-needed | **Celery worker** | OCR is unbounded |
-| Audit write | **Inline** | Sync write is fast (single insert), but never block the verdict on it — use `BackgroundTasks` after sending response |
+| Audit write | **Inline** | Sync write is fast (single insert), but never block the verdict on it - use `BackgroundTasks` after sending response |
 | Quarantine expiry, partition rollover, retention | **Celery beat** | Daily/hourly schedules |
 | Dashboard CSV export | **Celery** | Can take minutes |
 
@@ -223,7 +223,7 @@ task = await asyncio.to_thread(deep_scan_attachment.apply_async,
 - Issues:
   - Access JWT (HS256, 15-minute TTL, signed with per-workspace secret rotated quarterly).
   - Refresh token (opaque, 30-day TTL, stored hashed in `refresh_tokens` table, set as `HttpOnly; Secure; SameSite=Strict` cookie).
-- Extension stores access JWT in `chrome.storage.session` only — never `chrome.storage.local` (survives uninstall).
+- Extension stores access JWT in `chrome.storage.session` only - never `chrome.storage.local` (survives uninstall).
 
 ### 5.3 Admin dashboard auth
 Same Google OAuth flow, but role gated by DB. Access JWT 5-minute TTL because dashboard is web-visible.
@@ -244,7 +244,7 @@ Same Google OAuth flow, but role gated by DB. Access JWT 5-minute TTL because da
 
 Rationale:
 - Sub-millisecond evaluation inline in request (no sidecar hop).
-- Dashboard can render/edit policies as forms — JSON DSL maps trivially.
+- Dashboard can render/edit policies as forms - JSON DSL maps trivially.
 - We only have one consumer (this backend); OPA's distribution model is overkill.
 - Migration path to OPA is open if we ever add gateway-layer enforcement.
 
@@ -292,14 +292,14 @@ def evaluate(scan: ScanResult, recipients: list[ClassifiedRecipient],
     return Decision(action=winner.then, matched=matched, message=winner.warning_message)
 ```
 
-`ACTION_RANK = {'allow':0, 'warn':1, 'quarantine':2, 'block':3, 'escalate':4}` — most restrictive wins on tie.
+`ACTION_RANK = {'allow':0, 'warn':1, 'quarantine':2, 'block':3, 'escalate':4}` - most restrictive wins on tie.
 
 ### 6.4 Default seed policies (per new workspace)
-1. `IN_AADHAAR` count≥1 + recipient.class `public_email` → **block**
-2. `IN_AADHAAR` count≥1 + recipient.class `external` → **warn**
-3. `severity = CRITICAL` → **quarantine**
-4. `ABHA` count≥1 + recipient.class `external` → **quarantine**
-5. `MEDICAL_DISEASE_DISORDER` + `PERSON` + recipient.class `public_email` → **warn**
+1. `IN_AADHAAR` count≥1 + recipient.class `public_email` -> **block**
+2. `IN_AADHAAR` count≥1 + recipient.class `external` -> **warn**
+3. `severity = CRITICAL` -> **quarantine**
+4. `ABHA` count≥1 + recipient.class `external` -> **quarantine**
+5. `MEDICAL_DISEASE_DISORDER` + `PERSON` + recipient.class `public_email` -> **warn**
 
 Admin can edit/disable any of these.
 
@@ -422,7 +422,7 @@ CREATE INDEX idx_q_ws_status ON quarantine_queue(workspace_id, status, created_a
 CREATE INDEX idx_q_expiry    ON quarantine_queue(expires_at) WHERE status = 'pending';
 ```
 
-### 8.2 Audit log — immutable, hash-chained, partitioned
+### 8.2 Audit log - immutable, hash-chained, partitioned
 
 ```sql
 CREATE TABLE audit_events (
@@ -519,10 +519,10 @@ multipart upload  ─►  size check (≤10MB sync, ≤50MB async)
 - Dedicated mount with `noexec,nosuid,nodev`.
 - Ownership `aurodlpv2:aurodlpv2`, mode `0700`.
 - Lifecycle TTL 1 hour; reaper Celery job sweeps orphans.
-- Filenames are random UUIDs — never use client-supplied name on disk.
+- Filenames are random UUIDs - never use client-supplied name on disk.
 
 ### 9.3 Dedup
-SHA-256 cache in Redis 24h. If hash already scanned for the same workspace with same engine config version → reuse verdict, mark audit `cached: true`.
+SHA-256 cache in Redis 24h. If hash already scanned for the same workspace with same engine config version -> reuse verdict, mark audit `cached: true`.
 
 ### 9.4 Quarantined attachment storage
 Quarantined emails' attachments are moved to a separate restricted-access S3 bucket (or local dir) with server-side encryption. Audit row references the storage URI; only `analyst+` role can fetch with time-limited signed URL.
@@ -546,14 +546,14 @@ Quarantined emails' attachments are moved to a separate restricted-access S3 buc
   └────────┘ └────────┘  └─────────┘  └─────────┘
 ```
 
-### 10.2 Approve → release
+### 10.2 Approve -> release
 - Admin clicks approve in dashboard.
 - Backend marks `status='approved'`, writes audit, fires pub/sub event on Redis channel `q:approved:{workspace_id}`.
 - Extension's service worker subscribes via SSE `/v1/quarantine/stream` for the sender; receives event, prompts user to retry send (or we offer "auto-resume" feature later).
 - Sender's extension re-issues `POST /v1/scan/finalize` with `override_quarantine=<id>` and original payload; backend verifies the quarantine ID matches and approved within last 5 minutes, then returns `allow` decision.
 
 ### 10.3 Expiry
-Celery beat daily: any `pending` past `expires_at` → `expired`, audit logged.
+Celery beat daily: any `pending` past `expires_at` -> `expired`, audit logged.
 
 ### 10.4 Escalate
 Forwards a notification to the configured `escalation_email` (workspace setting) including masked context; never the raw email body.
@@ -566,7 +566,7 @@ Forwards a notification to the configured `escalation_email` (workspace setting)
 |---|---|---|
 | Structured logs | `structlog` JSON | Required fields: `request_id`, `workspace_id`, `user_id`, `scan_id` |
 | Metrics | Prometheus | `scan_latency_seconds{decision}`, `entities_detected_total{type}`, `quarantine_depth`, `celery_queue_depth` |
-| Traces | OpenTelemetry → OTLP | Span per request; child spans per detection stage |
+| Traces | OpenTelemetry -> OTLP | Span per request; child spans per detection stage |
 | Errors | Sentry | All exceptions; PII scrubbing filter ON |
 | Audit verification | Custom Celery job | Daily chain integrity check; alert on mismatch |
 
@@ -583,7 +583,7 @@ Latency SLOs (golden signals):
 - All secrets in env / cloud KMS; no secrets in repo. `pydantic-settings` + dotenv for local only.
 - DB at rest: encrypted volume + `pgcrypto` for selected JSONB fields containing partial PHI.
 - Outbound: no third-party APIs from worker except OpenTelemetry collector.
-- Rate limits: `slowapi` — 60 scans/min per user, 1000/min per workspace, 5 auth/min per IP.
+- Rate limits: `slowapi` - 60 scans/min per user, 1000/min per workspace, 5 auth/min per IP.
 - CORS: extension uses Bearer JWT (no cookies in scan path), so we can restrict CORS to dashboard origin only.
 - CSP on dashboard: `default-src 'self'; frame-ancestors 'none'`.
 - Dependency scanning: `pip-audit` in CI; renovate weekly.
@@ -594,15 +594,15 @@ Latency SLOs (golden signals):
 ## 13. Deployment
 
 ### 13.1 Containers
-- `web` — uvicorn with `--workers=$(nproc)` behind nginx/ingress; rolling deploys.
-- `celery-worker` — prefork `--concurrency=4` per pod; HPA on `celery_queue_depth`.
-- `celery-beat` — singleton.
-- `redis` — managed (Elasticache / Memorystore / Upstash) with persistence.
-- `postgres` — managed (RDS / Cloud SQL) with PITR and read replica.
+- `web` - uvicorn with `--workers=$(nproc)` behind nginx/ingress; rolling deploys.
+- `celery-worker` - prefork `--concurrency=4` per pod; HPA on `celery_queue_depth`.
+- `celery-beat` - singleton.
+- `redis` - managed (Elasticache / Memorystore / Upstash) with persistence.
+- `postgres` - managed (RDS / Cloud SQL) with PITR and read replica.
 
 ### 13.2 Migrations
 - `alembic upgrade head` runs on web startup behind an advisory lock to prevent concurrent migrations.
-- Zero-downtime expand → migrate → contract pattern.
+- Zero-downtime expand -> migrate -> contract pattern.
 
 ### 13.3 Local dev
 - `docker-compose.yml` brings up web + worker + beat + redis + postgres + minio (S3) + jaeger (traces).
@@ -612,71 +612,71 @@ Latency SLOs (golden signals):
 
 ## 14. Build Phases
 
-### Phase 0 — Skeleton (Days 1–2)
+### Phase 0 - Skeleton (Days 1-2)
 - Repo + pyproject + ruff/mypy/pytest baseline + docker-compose.
 - FastAPI app factory, settings, healthcheck, structlog.
 - Alembic baseline.
 
-### Phase 1 — Auth + workspaces (Days 3–5)
+### Phase 1 - Auth + workspaces (Days 3-5)
 - Google OAuth verification, JWT issue/refresh.
 - `workspaces`, `users`, `refresh_tokens` tables + APIs.
 - `get_current_user` / `get_current_workspace` deps.
 - Tests: token expiry, hd-claim mismatch, role escalation rejection.
 
-### Phase 2 — Scan endpoints with stubbed engine (Days 6–8)
+### Phase 2 - Scan endpoints with stubbed engine (Days 6-8)
 - `POST /v1/scan/email`, `POST /v1/scan/attachment`, `GET /v1/scan/{id}`, `POST /v1/scan/finalize`.
 - Detection engine called via in-process import; stubbed result first.
 - Audit writer with hash chain.
 - Tests: latency budget enforced, audit rows immutable.
 
-### Phase 3 — Detection engine integration (Days 9–11)
+### Phase 3 - Detection engine integration (Days 9-11)
 - Wire `aurodlpv2_detection` package.
 - Per-tenant config loading.
 - Temp file lifecycle.
 - Sync vs async decision logic.
 
-### Phase 4 — Celery deep scan (Days 12–14)
+### Phase 4 - Celery deep scan (Days 12-14)
 - Celery app + redis broker.
 - Deep-scan task, status tracking in `scans` table.
 - Polling endpoint.
 - Workers exit cleanly on SIGTERM.
 
-### Phase 5 — Policy + recipients (Days 15–17)
+### Phase 5 - Policy + recipients (Days 15-17)
 - `policies` CRUD, evaluator, dry-run endpoint.
 - Domain classification + Redis DNS cache.
 - Seed default policies on workspace create.
 
-### Phase 6 — Quarantine (Days 18–20)
+### Phase 6 - Quarantine (Days 18-20)
 - Queue + state machine + admin APIs + SSE.
 - Beat job for expiry.
-- Approve→resume flow with extension.
+- Approve->resume flow with extension.
 
-### Phase 7 — Dashboard APIs (Days 21–22)
+### Phase 7 - Dashboard APIs (Days 21-22)
 - Aggregations, pagination, CSV export job.
 - Cursor pagination for audit.
 
-### Phase 8 — Hardening (Days 23–25)
+### Phase 8 - Hardening (Days 23-25)
 - Rate limiting, security headers, dependency scan, SBOM.
-- Load test: 200 concurrent scan/email at 95% allow → confirm p95 budget.
+- Load test: 200 concurrent scan/email at 95% allow -> confirm p95 budget.
 - Audit chain verification CI test.
 
 ---
 
 ## 15. Reference OSS to study
 
-- [AkesoDLP](https://github.com/derekxmartin/AkesoDLP) — FastAPI DLP server with policy evaluator, gRPC agents, JWT auth, audit. **Closest architectural match to ours.**
-- [lumen-argus](https://github.com/lumen-argus/lumen-argus) — Dashboard API patterns, rules engine with live reload, SSE alerts.
-- [Nightfall Python SDK](https://github.com/nightfallai/nightfall-python-sdk) — Reference for scan API shape and webhook patterns.
+- [AkesoDLP](https://github.com/derekxmartin/AkesoDLP) - FastAPI DLP server with policy evaluator, gRPC agents, JWT auth, audit. **Closest architectural match to ours.**
+- [lumen-argus](https://github.com/lumen-argus/lumen-argus) - Dashboard API patterns, rules engine with live reload, SSE alerts.
+- [Nightfall Python SDK](https://github.com/nightfallai/nightfall-python-sdk) - Reference for scan API shape and webhook patterns.
 
 ---
 
 ## 16. Open Questions for SRS
 
 1. Is the deployment target self-hosted-per-hospital, multi-tenant SaaS, or both?
-2. What's the regulatory regime — HIPAA-equivalent or India DPDP — for audit retention and data residency?
+2. What's the regulatory regime - HIPAA-equivalent or India DPDP - for audit retention and data residency?
 3. Where do quarantined attachments live (S3, on-prem object store, encrypted DB blobs)?
 4. Should "block" actually prevent send, or is this advisory? (PRD says "block" but Gmail can't be hard-blocked from a Chrome extension without enterprise policy.)
-5. What's the escalation channel — email, Slack/Teams webhook, SIEM forwarder?
+5. What's the escalation channel - email, Slack/Teams webhook, SIEM forwarder?
 6. Concurrent-user target per workspace? Drives sizing.
 7. Do tenants share one Postgres (logical isolation by `workspace_id`) or get isolated DBs?
 
@@ -684,14 +684,14 @@ Latency SLOs (golden signals):
 
 ## 17. References
 
-1. Hemantapkh — FastAPI + Celery production patterns — https://hemantapkh.com/posts/celery-tasks-in-fastapi/
-2. OneUptime — FastAPI + Postgres + Celery stack — https://oneuptime.com/blog/post/2026-02-08-how-to-set-up-a-fastapi-postgresql-celery-stack-with-docker-compose/view
-3. AppMaster — Hash-chained audit trails in PostgreSQL — https://appmaster.io/blog/tamper-evident-audit-trails-postgresql
-4. Viprasol — SaaS audit trail schema — https://viprasol.com/blog/saas-audit-trail/
-5. Styra — OPA/Rego vs Cedar vs Zanzibar comparison — https://www.styra.com/blog/comparing-opa-rego-to-aws-cedar-and-google-zanzibar
-6. Teleport — Policy languages benchmark — https://goteleport.com/blog/benchmarking-policy-languages/
-7. Greeden — Secure file uploads in FastAPI — https://blog.greeden.me/en/2026/03/03/implementing-secure-file-uploads-in-fastapi-practical-patterns-for-uploadfile-size-limits-virus-scanning-s3-compatible-storage-and-presigned-urls/
-8. fastapi-secure-file-upload — https://github.com/noone-m/fastapi-secure-file-upload
-9. Chrome extension OAuth guide — https://developer.chrome.com/docs/extensions/how-to/integrate/oauth
-10. AkesoDLP — https://github.com/derekxmartin/AkesoDLP
-11. lumen-argus — https://github.com/lumen-argus/lumen-argus
+1. Hemantapkh - FastAPI + Celery production patterns - https://hemantapkh.com/posts/celery-tasks-in-fastapi/
+2. OneUptime - FastAPI + Postgres + Celery stack - https://oneuptime.com/blog/post/2026-02-08-how-to-set-up-a-fastapi-postgresql-celery-stack-with-docker-compose/view
+3. AppMaster - Hash-chained audit trails in PostgreSQL - https://appmaster.io/blog/tamper-evident-audit-trails-postgresql
+4. Viprasol - SaaS audit trail schema - https://viprasol.com/blog/saas-audit-trail/
+5. Styra - OPA/Rego vs Cedar vs Zanzibar comparison - https://www.styra.com/blog/comparing-opa-rego-to-aws-cedar-and-google-zanzibar
+6. Teleport - Policy languages benchmark - https://goteleport.com/blog/benchmarking-policy-languages/
+7. Greeden - Secure file uploads in FastAPI - https://blog.greeden.me/en/2026/03/03/implementing-secure-file-uploads-in-fastapi-practical-patterns-for-uploadfile-size-limits-virus-scanning-s3-compatible-storage-and-presigned-urls/
+8. fastapi-secure-file-upload - https://github.com/noone-m/fastapi-secure-file-upload
+9. Chrome extension OAuth guide - https://developer.chrome.com/docs/extensions/how-to/integrate/oauth
+10. AkesoDLP - https://github.com/derekxmartin/AkesoDLP
+11. lumen-argus - https://github.com/lumen-argus/lumen-argus
