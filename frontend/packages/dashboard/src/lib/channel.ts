@@ -60,5 +60,5 @@ export function channelSplitLabel(
   if (!by) return null;
   const { email, web } = channelCounts(by);
   if (email === 0 && web === 0) return null;
-  return `${email.toLocaleString()} email - ${web.toLocaleString()} web`;
+  return `${email.toLocaleString()} email, ${web.toLocaleString()} web`;
 }

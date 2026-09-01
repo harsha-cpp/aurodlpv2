@@ -101,12 +101,12 @@ describe("channelCounts", () => {
 describe("channelSplitLabel", () => {
   it("reads as a stat sub-line", () => {
     expect(channelSplitLabel({ email: 142, web: 18 })).toBe(
-      "142 email - 18 web",
+      "142 email, 18 web",
     );
   });
 
   it("still names a channel that saw nothing, so the split stays legible", () => {
-    expect(channelSplitLabel({ email: 142, web: 0 })).toBe("142 email - 0 web");
+    expect(channelSplitLabel({ email: 142, web: 0 })).toBe("142 email, 0 web");
   });
 
   it("is null when there is nothing to split", () => {
