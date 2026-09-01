@@ -69,7 +69,7 @@ export default function DevicesRoute() {
         <div className="token-reveal" style={{ marginBottom: 20 }}>
           <strong>Copy this token now. You will not see it again.</strong>
           <p className="muted" style={{ marginTop: 6, marginBottom: 0 }}>
-            Auro stores only a hash of it. If it is lost, revoke{" "}
+            Blade stores only a hash of it. If it is lost, revoke{" "}
             <strong>{issuedLabel}</strong> and enrol the device again.
           </p>
           <code className="token-value">{issuedToken}</code>

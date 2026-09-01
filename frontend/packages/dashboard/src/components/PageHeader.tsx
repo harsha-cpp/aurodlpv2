@@ -12,9 +12,8 @@ export default function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <header className="page-header">
+    <header className="page-header" aria-label={section}>
       <div className="page-header-text">
-        <span className="eyebrow">{section}</span>
         <h1 className="h1">{title}</h1>
         {lede ? <p className="lede">{lede}</p> : null}
       </div>

@@ -75,7 +75,7 @@ export default function PolicyRoute() {
 
   const lede = (
     <>
-      What Auro does when it finds patient data in an outgoing message.{" "}
+      What Blade does when it finds patient data in an outgoing message.{" "}
       {data ? <span className="mono subtle">{data.version}</span> : null}
     </>
   );
@@ -162,7 +162,7 @@ export default function PolicyRoute() {
           <div className="first-match-banner">
             <strong>First match wins.</strong>
             <span>
-              Auro walks this list top to bottom and stops at the first enabled
+              Blade walks this list top to bottom and stops at the first enabled
               rule that matches. Moving a rule up can silence every rule below
               it.
             </span>

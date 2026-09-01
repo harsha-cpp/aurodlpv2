@@ -28,7 +28,7 @@ export default function ForgotPasswordRoute() {
     return (
       <AuthShell title="Check your inbox">
         <p className="muted">
-          If <strong>{email}</strong> belongs to an Auro account, a reset link
+          If <strong>{email}</strong> belongs to an Blade account, a reset link
           is on its way. It expires shortly, so use it when it arrives.
         </p>
         <div className="auth-footer">

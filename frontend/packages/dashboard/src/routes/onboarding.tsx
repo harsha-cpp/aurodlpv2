@@ -66,12 +66,12 @@ export default function OnboardingRoute() {
           <span className="mono">frontend/packages/extension/dist</span>.
         </OnboardStep>
         <OnboardStep n={2} title="Link the install">
-          Click the Auro icon and paste{" "}
+          Click the Blade icon and paste{" "}
           {orgCode ? "the code above" : "the credential an admin gives you"}.
           Scanning starts immediately.
         </OnboardStep>
         <OnboardStep n={3} title="Add approved domains">
-          Tell Auro who your team is allowed to email. Recipients outside that
+          Tell Blade who your team is allowed to email. Recipients outside that
           list are what the policy rules react to.
         </OnboardStep>
       </div>

@@ -14,6 +14,7 @@ import {
 import { downloadCsv, formatTime, shortHash } from "../lib/format";
 import { errorMessage } from "../lib/errors";
 import PageHeader from "../components/PageHeader";
+import { SkeletonRows } from "../components/Skeletons";
 
 export default function AuditRoute() {
   const [search, setSearch] = useState("");
@@ -71,7 +72,7 @@ export default function AuditRoute() {
             type="button"
             className="btn btn-sm"
             disabled={rows.length === 0}
-            onClick={() => downloadCsv("auro-audit.csv", auditCsv(rows))}
+            onClick={() => downloadCsv("blade-audit.csv", auditCsv(rows))}
           >
             <Download />
             Export {rows.length} row{rows.length === 1 ? "" : "s"}
@@ -180,7 +181,25 @@ export default function AuditRoute() {
       </div>
 
       <div className="card card-tight">
-        {rows.length > 0 ? (
+        {isLoading && rows.length === 0 ? (
+          <div className="table-scroll">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>When</th>
+                  <th>Category</th>
+                  <th>Action</th>
+                  <th>Actor</th>
+                  <th>Chain</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                <SkeletonRows rows={6} cols={6} />
+              </tbody>
+            </table>
+          </div>
+        ) : rows.length > 0 ? (
           <div className="table-scroll">
             <table className="table">
               <thead>
@@ -210,14 +229,8 @@ export default function AuditRoute() {
           </div>
         ) : (
           <div className="empty">
-            {isLoading ? (
-              <span>Loading...</span>
-            ) : (
-              <>
-                <strong>No audit events match.</strong>
-                <span>Try clearing the filters.</span>
-              </>
-            )}
+            <strong>No audit events match.</strong>
+            <span>Try clearing the filters.</span>
           </div>
         )}
       </div>

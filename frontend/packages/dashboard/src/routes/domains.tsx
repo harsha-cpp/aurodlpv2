@@ -9,6 +9,7 @@ import {
 import { errorMessage } from "../lib/errors";
 import { useAuth } from "../lib/auth";
 import PageHeader from "../components/PageHeader";
+import { SkeletonLines } from "../components/Skeletons";
 
 const DIRECTIONS: DomainDirection[] = ["both", "sender", "recipient"];
 const CLASSES: DomainClass[] = ["partner", "internal", "blocked"];
@@ -208,7 +209,7 @@ export default function DomainsRoute() {
           <h2 className="h2">Configured domains</h2>
           <span className="subtle">{domainRows.length} total</span>
         </div>
-        {isLoading && <div className="skeleton skeleton-text" />}
+        {isLoading && <SkeletonLines count={4} />}
         {!isLoading && domainRows.length === 0 && (
           <div className="empty">
             <strong>No domains yet.</strong>

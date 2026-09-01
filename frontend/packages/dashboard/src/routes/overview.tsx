@@ -25,6 +25,7 @@ import ActionPill from "../components/ActionPill";
 import SeverityPill from "../components/SeverityPill";
 import RiskMeter from "../components/RiskMeter";
 import HBarList from "../components/HBarList";
+import { SkeletonChart, SkeletonLines } from "../components/Skeletons";
 import TrendChart from "../components/TrendChart";
 
 const RANGES = [
@@ -82,7 +83,7 @@ export default function OverviewRoute() {
               onClick={() => {
                 if (data)
                   downloadCsv(
-                    `auro-analytics-${days}d.csv`,
+                    `blade-analytics-${days}d.csv`,
                     analyticsCsv(data, days),
                   );
               }}
@@ -114,7 +115,7 @@ export default function OverviewRoute() {
           value={stopped}
           sub={
             data
-              ? `${data.total_blocks} blocked - ${data.total_quarantines} held - ${data.total_escalations} escalated`
+              ? `${data.total_blocks} blocked, ${data.total_quarantines} held, ${data.total_escalations} escalated`
               : undefined
           }
           loading={isLoading}
@@ -136,14 +137,14 @@ export default function OverviewRoute() {
           i={4}
           label="Intervention rate"
           value={rate === null ? "-" : `${rate.toFixed(1)}%`}
-          sub="Share of scans Auro interrupted"
+          sub="Share of scans Blade interrupted"
           loading={isLoading}
         />
         <Stat
           i={5}
           label="Average risk"
           value={formatRisk(data?.avg_risk_score)}
-          sub={data ? `of 100 - ${severityLabel(avgSeverity)}` : "of 100"}
+          sub={data ? `of 100, ${severityLabel(avgSeverity)}` : "of 100"}
           loading={isLoading}
         />
       </div>
@@ -153,15 +154,11 @@ export default function OverviewRoute() {
           <div>
             <h2 className="h2">Daily outcomes</h2>
             <span className="card-hint">
-              Every scanned message, stacked by what Auro did with it.
+              Every scanned message, stacked by what Blade did with it.
             </span>
           </div>
         </div>
-        {isLoading ? (
-          <div className="skeleton" style={{ height: 260 }} />
-        ) : (
-          <TrendChart data={trend} />
-        )}
+        {isLoading ? <SkeletonChart /> : <TrendChart data={trend} />}
       </div>
 
       <div
@@ -171,14 +168,14 @@ export default function OverviewRoute() {
         <div className="card grow" style={{ minWidth: 320 }}>
           <div className="card-head">
             <div>
-              <h2 className="h2">What Auro is finding</h2>
+              <h2 className="h2">What Blade is finding</h2>
               <span className="card-hint">
                 Detections by type across all scans.
               </span>
             </div>
           </div>
           {isLoading ? (
-            <div className="skeleton skeleton-text" />
+            <SkeletonLines count={3} />
           ) : (
             <HBarList
               color={SERIES.allowed}
@@ -202,7 +199,7 @@ export default function OverviewRoute() {
             </div>
           </div>
           {isLoading ? (
-            <div className="skeleton skeleton-text" />
+            <SkeletonLines count={3} />
           ) : (
             <HBarList
               color={SERIES.stopped}
@@ -228,7 +225,7 @@ export default function OverviewRoute() {
             </div>
           </div>
           {isLoading ? (
-            <div className="skeleton skeleton-text" />
+            <SkeletonLines count={3} />
           ) : (
             <HBarList
               color="var(--accent)"
@@ -250,7 +247,7 @@ export default function OverviewRoute() {
             <span className="card-hint">The last 25 scans, newest first.</span>
           </div>
         </div>
-        {isLoading && <div className="skeleton skeleton-text" />}
+        {isLoading && <SkeletonLines count={3} />}
         {data && data.recent_events.length > 0 ? (
           <RecentTable events={data.recent_events} />
         ) : (
@@ -269,7 +266,7 @@ export default function OverviewRoute() {
 function scannedSub(data: Analytics): string {
   const senders = `from ${data.unique_users} ${data.unique_users === 1 ? "sender" : "senders"}`;
   const split = channelSplitLabel(data.by_channel);
-  return split ? `${senders} - ${split}` : senders;
+  return split ? `${senders}, ${split}` : senders;
 }
 
 function Stat({
@@ -328,7 +325,7 @@ function RecentTable({ events }: { events: RecentEvent[] }) {
                   {isUnattributed(e.user_email) ? (
                     <span
                       className="subtle"
-                      title="Auro could not attribute this send to a mailbox"
+                      title="Blade could not attribute this send to a mailbox"
                     >
                       {senderLabel(e.user_email)}
                     </span>

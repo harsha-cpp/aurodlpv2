@@ -36,7 +36,7 @@ export default class ErrorBoundary extends Component<Props, State> {
           This page failed to render
         </h1>
         <p className="muted">
-          Something in the data Auro received did not match what this screen
+          Something in the data Blade received did not match what this screen
           expected. Your session is still valid - the rest of the dashboard
           works.
         </p>

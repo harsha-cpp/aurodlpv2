@@ -12,6 +12,7 @@ import { entityLabel } from "../lib/entities";
 import { durationSince, formatTime, senderLabel } from "../lib/format";
 import { errorMessage } from "../lib/errors";
 import PageHeader from "../components/PageHeader";
+import { SkeletonRows } from "../components/Skeletons";
 import RiskMeter from "../components/RiskMeter";
 import SeverityPill from "../components/SeverityPill";
 
@@ -79,7 +80,7 @@ export default function QuarantineRoute() {
       <PageHeader
         section="Monitor"
         title="Quarantine"
-        lede="Messages Auro held rather than blocked outright. Nothing leaves until someone decides."
+        lede="Messages Blade held rather than blocked outright. Nothing leaves until someone decides."
         actions={
           <div className="segmented" role="group" aria-label="Filter by status">
             {FILTERS.map((f) => (
@@ -108,11 +109,27 @@ export default function QuarantineRoute() {
             <h2 className="h2">Queue</h2>
             <span className="subtle">
               {isLoading
-                ? "Loading..."
+                ? ""
                 : `${data.length} item${data.length === 1 ? "" : "s"}${status === "all" && pendingCount > 0 ? ` - ${pendingCount} awaiting a decision` : ""}`}
             </span>
           </div>
-          {data.length > 0 ? (
+          {isLoading && data.length === 0 ? (
+            <div className="table-scroll">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Sender</th>
+                    <th>Risk</th>
+                    <th>Waiting</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <SkeletonRows rows={5} cols={4} />
+                </tbody>
+              </table>
+            </div>
+          ) : data.length > 0 ? (
             <div className="table-scroll">
               <table className="table">
                 <thead>

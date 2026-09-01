@@ -3,7 +3,7 @@ import { useCallback, useSyncExternalStore } from "react";
 export type ThemePreference = "system" | "light" | "dark";
 export type ResolvedTheme = "light" | "dark";
 
-export const THEME_STORAGE_KEY = "auro.theme";
+export const THEME_STORAGE_KEY = "blade.theme";
 
 const PREFERENCES: readonly ThemePreference[] = ["system", "light", "dark"];
 
@@ -11,12 +11,14 @@ function isPreference(value: unknown): value is ThemePreference {
   return PREFERENCES.includes(value as ThemePreference);
 }
 
+export const DEFAULT_PREFERENCE: ThemePreference = "dark";
+
 export function readPreference(): ThemePreference {
   try {
     const stored = localStorage.getItem(THEME_STORAGE_KEY);
-    return isPreference(stored) ? stored : "system";
+    return isPreference(stored) ? stored : DEFAULT_PREFERENCE;
   } catch {
-    return "system";
+    return DEFAULT_PREFERENCE;
   }
 }
 
@@ -44,8 +46,7 @@ function notify(): void {
 
 export function writePreference(pref: ThemePreference): void {
   try {
-    if (pref === "system") localStorage.removeItem(THEME_STORAGE_KEY);
-    else localStorage.setItem(THEME_STORAGE_KEY, pref);
+    localStorage.setItem(THEME_STORAGE_KEY, pref);
   } catch {
     void 0;
   }
@@ -78,7 +79,11 @@ export function useTheme(): {
   resolved: ResolvedTheme;
   setPreference: (pref: ThemePreference) => void;
 } {
-  const key = useSyncExternalStore(subscribe, snapshot, () => "system:light");
+  const key = useSyncExternalStore(
+    subscribe,
+    snapshot,
+    () => `${DEFAULT_PREFERENCE}:${DEFAULT_PREFERENCE}`,
+  );
   const [preference, resolved] = key.split(":") as [
     ThemePreference,
     ResolvedTheme,

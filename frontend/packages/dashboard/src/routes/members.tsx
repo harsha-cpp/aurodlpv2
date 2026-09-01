@@ -160,8 +160,8 @@ export default function MembersRoute() {
             >
               {invited.emailSent ? (
                 <>
-                  Invite emailed to <strong>{invited.email}</strong>. Auro never
-                  shows the token here; it goes only to that mailbox.
+                  Invite emailed to <strong>{invited.email}</strong>. Blade
+                  never shows the token here; it goes only to that mailbox.
                 </>
               ) : (
                 <>

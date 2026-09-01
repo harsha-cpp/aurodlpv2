@@ -8,8 +8,8 @@ import {
   RequireCapability,
 } from "../lib/auth";
 import ErrorBoundary from "../components/ErrorBoundary";
+import Layout from "../components/Layout";
 
-const Layout = lazy(() => import("../components/Layout"));
 const Login = lazy(() => import("./login"));
 const Signup = lazy(() => import("./signup"));
 const AcceptInvite = lazy(() => import("./accept-invite"));
