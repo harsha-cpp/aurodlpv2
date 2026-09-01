@@ -5,7 +5,7 @@ from uuid import uuid4
 
 import pytest
 
-from aurodlpv2_backend.audit.service import build_event_hash
+from blade_backend.audit.service import build_event_hash
 
 
 @pytest.mark.unit

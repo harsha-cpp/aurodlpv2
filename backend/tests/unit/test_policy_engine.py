@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from aurodlpv2_backend.policy import (
+from blade_backend.policy import (
     BUILTIN_POLICY_SET,
     PolicyRule,
     PolicySet,
@@ -10,7 +10,7 @@ from aurodlpv2_backend.policy import (
     build_facts,
     evaluate,
 )
-from aurodlpv2_backend.policy.models import RecipientClass, SenderClass, Severity
+from blade_backend.policy.models import RecipientClass, SenderClass, Severity
 
 
 def _decide(

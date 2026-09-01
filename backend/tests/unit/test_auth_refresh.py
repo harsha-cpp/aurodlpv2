@@ -7,9 +7,9 @@ import pytest
 from fastapi import HTTPException, Response
 from starlette.requests import Request
 
-from aurodlpv2_backend.auth.api import refresh
-from aurodlpv2_backend.auth.jwt import issue_refresh_token
-from aurodlpv2_backend.db.models import RefreshToken
+from blade_backend.auth.api import refresh
+from blade_backend.auth.jwt import issue_refresh_token
+from blade_backend.db.models import RefreshToken
 
 
 class _FakeSession:
@@ -37,7 +37,7 @@ def _request_with_refresh_cookie(raw_token: str) -> Request:
             "method": "POST",
             "path": "/api/v1/auth/refresh",
             "query_string": b"",
-            "headers": [(b"cookie", f"aurodlpv2_refresh={raw_token}".encode())],
+            "headers": [(b"cookie", f"blade_refresh={raw_token}".encode())],
             "client": ("testclient", 123),
             "server": ("testserver", 80),
             "scheme": "http",

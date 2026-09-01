@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from aurodlpv2_backend.auth.tokens import (
+from blade_backend.auth.tokens import (
     DEVICE_TOKEN_PREFIX,
     PASSWORD_RESET_PREFIX,
     TokenFormatError,
@@ -28,7 +28,7 @@ def test_issued_token_parses_back_to_its_id_and_secret() -> None:
 def test_raw_token_is_prefixed_and_the_hash_does_not_contain_it() -> None:
     issued = issue_token(DEVICE_TOKEN_PREFIX, ttl=timedelta(days=1))
 
-    assert issued.raw_token.startswith("aurodev_")
+    assert issued.raw_token.startswith("bladedev_")
     assert issued.raw_token.encode("utf-8") not in issued.token_hash
 
 
@@ -41,7 +41,7 @@ def test_token_of_one_kind_is_not_accepted_as_another() -> None:
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("raw", ["aurodev_", "aurodev_notauuid.secret", "aurodev_abc"])
+@pytest.mark.parametrize("raw", ["bladedev_", "bladedev_notauuid.secret", "bladedev_abc"])
 def test_malformed_tokens_are_rejected(raw: str) -> None:
     with pytest.raises(TokenFormatError):
         parse_token(DEVICE_TOKEN_PREFIX, raw)

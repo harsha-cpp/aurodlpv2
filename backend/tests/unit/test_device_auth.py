@@ -8,9 +8,9 @@ import pytest
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from aurodlpv2_backend.auth.tokens import DEVICE_TOKEN_PREFIX, issue_token
-from aurodlpv2_backend.db.models import DeviceToken
-from aurodlpv2_backend.deps import current_device
+from blade_backend.auth.tokens import DEVICE_TOKEN_PREFIX, issue_token
+from blade_backend.db.models import DeviceToken
+from blade_backend.deps import current_device
 
 
 class _FakeSession:
@@ -96,7 +96,7 @@ async def test_token_secret_must_match_the_stored_hash() -> None:
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("header", [None, "", "Bearer abc", "auroreset_x.y"])
+@pytest.mark.parametrize("header", [None, "", "Bearer abc", "bladereset_x.y"])
 async def test_non_device_credentials_are_refused(header: str | None) -> None:
     with pytest.raises(HTTPException) as exc_info:
         await current_device(_as_session(_FakeSession(None)), header)

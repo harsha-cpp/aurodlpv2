@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from aurodlpv2_detection.rules import export_json, export_pack, to_javascript_pattern
+from blade_detection.rules import export_json, export_pack, to_javascript_pattern
 
 CLIENT_PACK = (
     Path(__file__).parents[3]

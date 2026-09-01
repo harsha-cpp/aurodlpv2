@@ -7,8 +7,8 @@ import pyotp
 import pytest
 from pydantic import SecretStr
 
-from aurodlpv2_backend.auth.jwt import issue_access_token
-from aurodlpv2_backend.auth.mfa import (
+from blade_backend.auth.jwt import issue_access_token
+from blade_backend.auth.mfa import (
     CHALLENGE_TTL_SECONDS,
     MfaError,
     consume_backup_code,
@@ -22,7 +22,7 @@ from aurodlpv2_backend.auth.mfa import (
     provisioning_uri,
     verify_totp,
 )
-from aurodlpv2_backend.settings import Settings
+from blade_backend.settings import Settings
 
 _KEY_A = Settings(mfa_encryption_key=SecretStr("key-a-key-a-key-a-key-a-key-a-32"))
 _KEY_B = Settings(mfa_encryption_key=SecretStr("key-b-key-b-key-b-key-b-key-b-32"))
@@ -70,10 +70,10 @@ def test_current_totp_code_verifies_and_a_wrong_one_does_not() -> None:
 
 @pytest.mark.unit
 def test_provisioning_uri_carries_the_issuer_and_account() -> None:
-    uri = provisioning_uri(generate_secret(), email="dr@hospital.in", issuer="Auro")
+    uri = provisioning_uri(generate_secret(), email="dr@hospital.in", issuer="Blade")
 
     assert uri.startswith("otpauth://totp/")
-    assert "issuer=Auro" in uri
+    assert "issuer=Blade" in uri
 
 
 @pytest.mark.unit

@@ -9,11 +9,11 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-DEFAULT_TEST_DATABASE_URL = "postgresql+asyncpg://aurodlpv2:aurodlpv2@localhost:5433/aurodlpv2_test"
+DEFAULT_TEST_DATABASE_URL = "postgresql+asyncpg://blade:blade@localhost:5433/blade_test"
 
 
 def _database_url() -> str:
-    return os.environ.get("AURO_TEST_DATABASE_URL", DEFAULT_TEST_DATABASE_URL)
+    return os.environ.get("BLADE_TEST_DATABASE_URL", DEFAULT_TEST_DATABASE_URL)
 
 
 def _reachable(url: str) -> bool:
@@ -52,8 +52,8 @@ def point_settings_at_test_database(
     monkeypatch.setenv("STORAGE_BACKEND", "local")
     monkeypatch.setenv("APP_ENV", "test")
 
-    from aurodlpv2_backend.db import session as session_module  # noqa: PLC0415
-    from aurodlpv2_backend.settings import get_settings  # noqa: PLC0415
+    from blade_backend.db import session as session_module  # noqa: PLC0415
+    from blade_backend.settings import get_settings  # noqa: PLC0415
 
     get_settings.cache_clear()
     session_module.get_engine.cache_clear()
@@ -75,7 +75,7 @@ async def db_session(database_url: str) -> AsyncIterator[AsyncSession]:
 
 @pytest.fixture
 async def api_client() -> AsyncIterator[AsyncClient]:
-    from aurodlpv2_backend.main import create_app  # noqa: PLC0415
+    from blade_backend.main import create_app  # noqa: PLC0415
 
     app = create_app()
     transport = ASGITransport(app=app)

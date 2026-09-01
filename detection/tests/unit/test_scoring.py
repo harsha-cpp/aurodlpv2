@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import pytest
 
-from aurodlpv2_detection.models import Entity
-from aurodlpv2_detection.scoring import score
-from aurodlpv2_detection.scoring.weights import bucket
+from blade_detection.models import Entity
+from blade_detection.scoring import score
+from blade_detection.scoring.weights import bucket
 
 
 def _entity(entity_type: str, value: str, confidence: float = 1.0) -> Entity:

@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import pytest
 
-from aurodlpv2_detection.api import detect_email
-from aurodlpv2_detection.models import EmailPayload
-from aurodlpv2_detection.recognition.validators import (
+from blade_detection.api import detect_email
+from blade_detection.models import EmailPayload
+from blade_detection.recognition.validators import (
     validate_aadhaar,
     validate_driving_license,
     validate_gstin,

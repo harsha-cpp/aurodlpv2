@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from aurodlpv2_backend.scan.api import (
+from blade_backend.scan.api import (
     EntityHit,
     RecipientHit,
     _is_deep_scan_candidate,

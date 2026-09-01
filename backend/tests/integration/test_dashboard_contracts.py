@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 from httpx import AsyncClient
 
-from aurodlpv2_backend.main import create_app
+from blade_backend.main import create_app
 from tests.integration.conftest import requires_database
 
 pytestmark = [pytest.mark.integration, requires_database]

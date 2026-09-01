@@ -5,9 +5,9 @@ from __future__ import annotations
 import pytest
 from starlette.requests import Request
 
-from aurodlpv2_backend.observability import security as security_module
-from aurodlpv2_backend.observability.security import RateLimitMiddleware, resolve_client_ip
-from aurodlpv2_backend.settings import Settings
+from blade_backend.observability import security as security_module
+from blade_backend.observability.security import RateLimitMiddleware, resolve_client_ip
+from blade_backend.settings import Settings
 
 
 def _request(
@@ -103,7 +103,7 @@ def test_authenticated_and_device_callers_key_separately() -> None:
     middleware = _middleware()
 
     bearer = middleware._key(_request(headers=[(b"authorization", b"Bearer abc")]))
-    device = middleware._key(_request(headers=[(b"x-auro-device-token", b"aurodev_x.y")]))
+    device = middleware._key(_request(headers=[(b"x-blade-device-token", b"bladedev_x.y")]))
     anonymous = middleware._key(_request())
 
     assert bearer.startswith("auth:")

@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from starlette.requests import Request
 
-from aurodlpv2_backend.auth.rate_limit import LoginRateLimiter
+from blade_backend.auth.rate_limit import LoginRateLimiter
 
 
 def _request() -> Request:

@@ -7,7 +7,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from aurodlpv2_backend.db.models import AuditEvent, Organization, ScanEvent
+from blade_backend.db.models import AuditEvent, Organization, ScanEvent
 from tests.integration.conftest import requires_database
 
 pytestmark = [pytest.mark.integration, requires_database]
@@ -151,7 +151,7 @@ async def test_device_token_attributes_the_web_event_to_its_member(
 
     response = await api_client.post(
         "/api/v1/events",
-        headers={"X-Auro-Device-Token": device_token},
+        headers={"X-Blade-Device-Token": device_token},
         json=_web_event(),
     )
     assert response.status_code == 202, response.text

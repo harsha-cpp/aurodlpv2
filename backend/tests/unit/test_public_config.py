@@ -5,9 +5,9 @@ from uuid import uuid4
 
 import pytest
 
-from aurodlpv2_backend.db.models import ApprovedDomain, Organization
-from aurodlpv2_backend.public.api import get_public_config
-from aurodlpv2_backend.settings import Settings
+from blade_backend.db.models import ApprovedDomain, Organization
+from blade_backend.public.api import get_public_config
+from blade_backend.settings import Settings
 
 
 class _ScalarRows:
@@ -43,7 +43,7 @@ def _domain(domain: str, direction: str, classification: str) -> ApprovedDomain:
 
 @pytest.mark.unit
 async def test_public_config_never_returns_blocked_or_sender_only_domains_as_allowlist() -> None:
-    org = Organization(id=uuid4(), name="Auro", slug="auro", org_code="AUR-ABC123")
+    org = Organization(id=uuid4(), name="Blade", slug="blade", org_code="BLD-ABC123")
     session = _FakeSession(
         org,
         [
@@ -53,7 +53,7 @@ async def test_public_config_never_returns_blocked_or_sender_only_domains_as_all
         ],
     )
 
-    config = await get_public_config("aur-abc123", session)  # type: ignore[arg-type]
+    config = await get_public_config("bld-abc123", session)  # type: ignore[arg-type]
 
     assert [domain.domain for domain in config.domains] == ["allowed.example"]
     assert [domain.domain for domain in config.blocked_domains] == ["blocked.example"]

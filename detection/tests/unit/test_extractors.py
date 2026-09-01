@@ -10,9 +10,9 @@ from docx import Document
 from openpyxl import Workbook
 from PIL import Image
 
-from aurodlpv2_detection.api import detect_email
-from aurodlpv2_detection.extractors import extract_bytes
-from aurodlpv2_detection.models import Attachment, EmailPayload
+from blade_detection.api import detect_email
+from blade_detection.extractors import extract_bytes
+from blade_detection.models import Attachment, EmailPayload
 
 PHI_LINE = "Patient Ramesh Kumar Iyer, UHID 0024518, diagnosis E11.9"
 
@@ -151,8 +151,8 @@ def test_images_are_queued_for_ocr(tmp_path: Path, extension: str) -> None:
 def test_ocr_unavailability_is_reported_not_silently_empty() -> None:
     from PIL import Image
 
-    from aurodlpv2_detection.config import DetectionConfig
-    from aurodlpv2_detection.ocr import extract_text, tesseract_backend
+    from blade_detection.config import DetectionConfig
+    from blade_detection.ocr import extract_text, tesseract_backend
 
     def _unavailable(*_args: object, **_kwargs: object) -> tuple[str, float]:
         raise tesseract_backend.OcrUnavailableError("pytesseract is not installed")
@@ -172,8 +172,8 @@ def test_ocr_unavailability_is_reported_not_silently_empty() -> None:
 def test_missing_tesseract_binary_is_reported_not_raised() -> None:
     from PIL import Image
 
-    from aurodlpv2_detection.config import DetectionConfig
-    from aurodlpv2_detection.ocr import extract_text, tesseract_backend
+    from blade_detection.config import DetectionConfig
+    from blade_detection.ocr import extract_text, tesseract_backend
 
     def _no_binary(*_args: object, **_kwargs: object) -> tuple[str, float]:
         raise OSError("tesseract is not installed or it's not in your PATH")

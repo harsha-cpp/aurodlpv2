@@ -6,8 +6,8 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from aurodlpv2_backend.audit.service import write_audit_event
-from aurodlpv2_backend.db.models import AuditEvent
+from blade_backend.audit.service import write_audit_event
+from blade_backend.db.models import AuditEvent
 
 
 class _FakeSession:

@@ -5,8 +5,8 @@ from pathlib import Path
 
 from docx import Document
 
-from aurodlpv2_detection.api import detect_email
-from aurodlpv2_detection.models import Attachment, EmailPayload
+from blade_detection.api import detect_email
+from blade_detection.models import Attachment, EmailPayload
 
 
 def test_detect_email_finds_abha() -> None:

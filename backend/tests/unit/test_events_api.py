@@ -7,8 +7,8 @@ import pytest
 from fastapi import HTTPException
 from pydantic import ValidationError
 
-from aurodlpv2_backend.db.models import AuditEvent, Organization, ScanEvent
-from aurodlpv2_backend.events.api import EventPayload, ingest_event
+from blade_backend.db.models import AuditEvent, Organization, ScanEvent
+from blade_backend.events.api import EventPayload, ingest_event
 
 
 class _FakeSession:
@@ -40,7 +40,7 @@ def _session(org_id: UUID, *, duplicate: bool = False) -> _FakeSession:
 
 def _payload(**overrides: object) -> EventPayload:
     data: dict[str, object] = {
-        "org_code": " aur-abc123 ",
+        "org_code": " bld-abc123 ",
         "client_event_id": "evt-123456789",
         "user_email": "Sender@Example.COM",
         "action": "block",

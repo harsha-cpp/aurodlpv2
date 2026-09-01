@@ -7,8 +7,8 @@ from uuid import UUID, uuid4
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from aurodlpv2_backend.audit.service import build_event_hash, verify_chain
-from aurodlpv2_backend.db.models import AuditEvent
+from blade_backend.audit.service import build_event_hash, verify_chain
+from blade_backend.db.models import AuditEvent
 
 
 class _Scalars:

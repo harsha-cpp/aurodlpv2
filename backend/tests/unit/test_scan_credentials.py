@@ -5,9 +5,9 @@ from uuid import uuid4
 
 import pytest
 
-from aurodlpv2_backend.policy.store import parse_policy_set
-from aurodlpv2_backend.scan.credentials import ScanPrincipal
-from aurodlpv2_backend.scan.limits import MAX_TRACKED_KEYS, CredentialRateLimiter
+from blade_backend.policy.store import parse_policy_set
+from blade_backend.scan.credentials import ScanPrincipal
+from blade_backend.scan.limits import MAX_TRACKED_KEYS, CredentialRateLimiter
 
 
 def _device(email: str = "doctor@hospital.in") -> ScanPrincipal:

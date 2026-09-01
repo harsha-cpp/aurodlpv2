@@ -7,7 +7,7 @@ from httpx import AsyncClient
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from aurodlpv2_backend.db.models import AuditEvent, Organization, QuarantineItem, ScanEvent
+from blade_backend.db.models import AuditEvent, Organization, QuarantineItem, ScanEvent
 from tests.integration.conftest import requires_database
 
 pytestmark = [pytest.mark.integration, requires_database]
@@ -265,7 +265,7 @@ async def test_unknown_org_code_is_rejected(api_client: AsyncClient) -> None:
     response = await api_client.post(
         "/api/v1/scan/email",
         json={
-            "org_code": "AUR-DOESNOTEXIST",
+            "org_code": "BLD-DOESNOTEXIST",
             "client_scan_id": uuid.uuid4().hex,
             "subject": "",
             "body": "hello",

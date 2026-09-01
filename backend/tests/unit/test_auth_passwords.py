@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from aurodlpv2_backend.auth.passwords import (
+from blade_backend.auth.passwords import (
     MIN_PASSWORD_LENGTH,
     PasswordPolicyError,
     hash_password,

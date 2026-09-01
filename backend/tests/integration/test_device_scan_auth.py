@@ -7,7 +7,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from aurodlpv2_backend.db.models import Organization, ScanEvent
+from blade_backend.db.models import Organization, ScanEvent
 from tests.integration.conftest import requires_database
 
 pytestmark = [pytest.mark.integration, requires_database]
@@ -53,7 +53,7 @@ async def test_scan_authenticated_by_device_token_without_an_org_code(
 
     response = await api_client.post(
         "/api/v1/scan/email",
-        headers={"X-Auro-Device-Token": device_token},
+        headers={"X-Blade-Device-Token": device_token},
         json={
             "client_scan_id": uuid.uuid4().hex,
             "subject": "Clean",
@@ -74,7 +74,7 @@ async def test_device_token_supplies_the_sender_the_client_could_not_scrape(
 
     response = await api_client.post(
         "/api/v1/scan/email",
-        headers={"X-Auro-Device-Token": device_token},
+        headers={"X-Blade-Device-Token": device_token},
         json={
             "client_scan_id": uuid.uuid4().hex,
             "subject": "Discharge summary",
@@ -134,7 +134,7 @@ async def test_revoked_device_token_is_rejected(api_client: AsyncClient) -> None
 
     response = await api_client.post(
         "/api/v1/scan/email",
-        headers={"X-Auro-Device-Token": device_token},
+        headers={"X-Blade-Device-Token": device_token},
         json={
             "client_scan_id": uuid.uuid4().hex,
             "subject": "",
@@ -161,7 +161,7 @@ async def test_scan_without_any_credential_is_rejected(api_client: AsyncClient) 
 async def test_garbage_device_token_is_rejected(api_client: AsyncClient) -> None:
     response = await api_client.post(
         "/api/v1/scan/email",
-        headers={"X-Auro-Device-Token": "aurodev_not-a-real-token.nope"},
+        headers={"X-Blade-Device-Token": "bladedev_not-a-real-token.nope"},
         json={
             "client_scan_id": uuid.uuid4().hex,
             "subject": "",

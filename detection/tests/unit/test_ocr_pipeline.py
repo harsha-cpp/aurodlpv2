@@ -7,8 +7,8 @@ from pathlib import Path
 import pytest
 from PIL import Image, ImageDraw, ImageFont
 
-from aurodlpv2_detection.api import detect_email
-from aurodlpv2_detection.models import Attachment, EmailPayload
+from blade_detection.api import detect_email
+from blade_detection.models import Attachment, EmailPayload
 
 requires_tesseract = pytest.mark.skipif(
     shutil.which("tesseract") is None,

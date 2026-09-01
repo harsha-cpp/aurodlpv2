@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from aurodlpv2_detection.evaluation import (
+from blade_detection.evaluation import (
     EvaluationReport,
     compare,
     evaluate_corpus,

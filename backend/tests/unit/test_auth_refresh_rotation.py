@@ -9,11 +9,11 @@ from fastapi import HTTPException, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 
-from aurodlpv2_backend.auth.api import refresh
-from aurodlpv2_backend.auth.jwt import issue_refresh_token
-from aurodlpv2_backend.db.models import Organization, OrgMember, RefreshToken
-from aurodlpv2_backend.settings import get_settings
-from aurodlpv2_backend.utils.uuid import uuid7
+from blade_backend.auth.api import refresh
+from blade_backend.auth.jwt import issue_refresh_token
+from blade_backend.db.models import Organization, OrgMember, RefreshToken
+from blade_backend.settings import get_settings
+from blade_backend.utils.uuid import uuid7
 
 
 class _FakeSession:
@@ -60,7 +60,7 @@ def _member(org_id: UUID) -> OrgMember:
 
 def _org() -> Organization:
     return Organization(
-        id=uuid4(), name="City Hospital", slug="city-hospital", org_code="AUR-X", plan="free"
+        id=uuid4(), name="City Hospital", slug="city-hospital", org_code="BLD-X", plan="free"
     )
 
 
@@ -72,7 +72,7 @@ def _request(raw_token: str) -> Request:
             "path": "/api/v1/auth/refresh",
             "query_string": b"",
             "headers": [
-                (b"cookie", f"aurodlpv2_refresh={raw_token}".encode()),
+                (b"cookie", f"blade_refresh={raw_token}".encode()),
                 (b"user-agent", b"Chrome/131"),
             ],
             "client": ("203.0.113.10", 123),

@@ -3,19 +3,19 @@ from __future__ import annotations
 import pytest
 from pydantic import SecretStr
 
-from aurodlpv2_backend.email.mailer import (
+from blade_backend.email.mailer import (
     ConsoleMailer,
     MailerError,
     SmtpMailer,
     build_mailer,
     send_quietly,
 )
-from aurodlpv2_backend.email.templates import (
+from blade_backend.email.templates import (
     email_verification_email,
     invite_email,
     password_reset_email,
 )
-from aurodlpv2_backend.settings import Settings
+from blade_backend.settings import Settings
 
 
 class _ExplodingMailer:

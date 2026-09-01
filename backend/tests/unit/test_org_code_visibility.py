@@ -6,9 +6,9 @@ from uuid import uuid4
 
 import pytest
 
-from aurodlpv2_backend.auth.session import serialize_org
-from aurodlpv2_backend.db.models import MemberRole, Organization
-from aurodlpv2_backend.orgs.api import _serialize as serialize_org_out
+from blade_backend.auth.session import serialize_org
+from blade_backend.db.models import MemberRole, Organization
+from blade_backend.orgs.api import _serialize as serialize_org_out
 
 
 def _org() -> Organization:
@@ -16,7 +16,7 @@ def _org() -> Organization:
         id=uuid4(),
         name="City Hospital",
         slug="city-hospital",
-        org_code="AUR-SECRET",
+        org_code="BLD-SECRET",
         plan="free",
     )
 
@@ -24,8 +24,8 @@ def _org() -> Organization:
 @pytest.mark.unit
 @pytest.mark.parametrize("role", ["owner", "admin"])
 def test_admins_can_read_the_org_code(role: MemberRole) -> None:
-    assert serialize_org_out(_org(), role).org_code == "AUR-SECRET"
-    assert serialize_org(_org(), viewer_role=role).org_code == "AUR-SECRET"
+    assert serialize_org_out(_org(), role).org_code == "BLD-SECRET"
+    assert serialize_org(_org(), viewer_role=role).org_code == "BLD-SECRET"
 
 
 @pytest.mark.unit

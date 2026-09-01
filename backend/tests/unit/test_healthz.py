@@ -4,8 +4,8 @@ import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from aurodlpv2_backend.health import ComponentStatus, ReadinessStatus
-from aurodlpv2_backend.main import create_app
+from blade_backend.health import ComponentStatus, ReadinessStatus
+from blade_backend.main import create_app
 
 
 @pytest.mark.unit
