@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import BladeWordmark from "./BladeWordmark";
 
 export default function AuthShell({
   title,
@@ -13,8 +14,8 @@ export default function AuthShell({
     <div className="auth-split">
       <aside className="auth-panel" aria-hidden="true">
         <div className="auth-panel-brand">
-          <span className="sidebar-brand-word">Auro</span>
-          <span className="sidebar-brand-tag">DLP</span>
+          <BladeWordmark height={38} className="sidebar-brand-lockup" />
+          <span className="brand-tm">DLP</span>
         </div>
         <div className="col gap-6">
           <h2 className="auth-panel-claim">
@@ -28,7 +29,7 @@ export default function AuthShell({
             <li>Rules you set. Decisions you can audit, hash by hash.</li>
           </ul>
         </div>
-        <div className="auth-panel-foot">Auro Healthcare DLP</div>
+        <div className="auth-panel-foot">Blade Healthcare DLP</div>
       </aside>
       <main className="auth-main">
         <div className={`auth-form${wide ? " is-wide" : ""}`}>

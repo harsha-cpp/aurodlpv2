@@ -3,29 +3,47 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f4f3" />
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0e1315" />
-    <title>Auro</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap"
+    <meta name="color-scheme" content="dark light" />
+    <meta
+      name="theme-color"
+      media="(prefers-color-scheme: light)"
+      content="#f4f2ea"
     />
+    <meta
+      name="theme-color"
+      media="(prefers-color-scheme: dark)"
+      content="#272727"
+    />
+    <title>Blade</title>
+    <link
+      rel="icon"
+      type="image/png"
+      href="/favicon-light.png"
+      media="(prefers-color-scheme: light)"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      href="/favicon-dark.png"
+      media="(prefers-color-scheme: dark)"
+    />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <script>
-      // Applied before first paint: a dark-mode user must never see the light
-      // palette flash in while the bundle loads. Mirrors src/lib/theme.ts.
       (function () {
+        var root = document.documentElement;
         try {
-          var pref = localStorage.getItem('auro.theme');
-          if (pref === 'light' || pref === 'dark') {
-            document.documentElement.setAttribute('data-theme', pref);
+          var pref = localStorage.getItem("blade.theme");
+          if (pref === "light" || pref === "dark") {
+            root.setAttribute("data-theme", pref);
+          } else if (pref !== "system") {
+            root.setAttribute("data-theme", "dark");
           }
-        } catch (e) {}
+        } catch (e) {
+          root.setAttribute("data-theme", "dark");
+        }
       })();
     </script>
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="/fonts/montserrat-var.woff2" />
   </head>
   <body>
     <div id="root"></div>
