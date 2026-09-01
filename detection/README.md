@@ -1,4 +1,4 @@
-# aurodlpv2-detection
+# blade-detection
 
 Pure-Python PHI/PII detection engine for the Auro Healthcare DLP platform.
 
@@ -20,13 +20,13 @@ Authoritative build spec: [`docs/plans/detection-engine.md`](../docs/plans/detec
 
 Presidio was removed. Its pattern layer produced unusable matches, and it is not
 a dependency. The rule pack in `rules/` replaced it, and
-`python -m aurodlpv2_detection.rules` exports the same pack to the extension as
+`python -m blade_detection.rules` exports the same pack to the extension as
 JSON so the browser and the server cannot drift apart.
 
 ## Layout
 
 ```
-aurodlpv2_detection/
+blade_detection/
   api.py            public entry: detect_email(EmailPayload) -> ScanResult
   models.py         EmailPayload, Attachment, Entity, ScanResult
   rules/            the declarative rule pack, its schema, and the JSON exporter
@@ -61,7 +61,7 @@ Detection quality is measured against a labelled corpus, not asserted. Run it:
 
 ```bash
 make accuracy                 # from the repo root
-uv run python -m aurodlpv2_detection.evaluation --failures
+uv run python -m blade_detection.evaluation --failures
 ```
 
 The report gives per-entity precision / recall / F1, a document-level score, the

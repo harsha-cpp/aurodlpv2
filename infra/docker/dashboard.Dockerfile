@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1.9
 #
-# Auro Healthcare DLP — admin dashboard (React + Vite SPA) served by nginx.
+# Blade DLP - admin dashboard (React + Vite SPA) served by nginx.
 #
 # BUILD CONTEXT MUST BE THE REPO ROOT (same as the other two images, so one
 # .dockerignore and one `docker build ... .` invocation covers all of them):
 #   docker build -f infra/docker/dashboard.Dockerfile \
 #       --build-arg VITE_API_BASE_URL=https://api.example.org \
-#       -t aurodlp/dashboard:dev .
+#       -t blade/dashboard:dev .
 #
 # !! VITE_API_BASE_URL IS A BUILD-TIME VALUE !!
 # Vite performs a literal text substitution of import.meta.env.* at build time
@@ -42,16 +42,16 @@ COPY frontend/packages/shared/package.json    ./packages/shared/package.json
 COPY frontend/packages/dashboard/package.json ./packages/dashboard/package.json
 COPY frontend/packages/extension/package.json ./packages/extension/package.json
 
-# Filtered install: `@aurodlpv2/dashboard...` resolves to the dashboard plus its
-# workspace dependencies (@aurodlpv2/shared) and skips the extension entirely.
+# Filtered install: `@bladedlp/dashboard...` resolves to the dashboard plus its
+# workspace dependencies (@bladedlp/shared) and skips the extension entirely.
 # That avoids installing @playwright/test and pdfjs-dist for an image that will
 # never run them, and skips Playwright's browser download.
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store,sharing=locked \
-    pnpm install --frozen-lockfile --filter "@aurodlpv2/dashboard..."
+    pnpm install --frozen-lockfile --filter "@bladedlp/dashboard..."
 
 # --- Source layer -----------------------------------------------------------
 COPY frontend/tsconfig*.json ./
-# @aurodlpv2/shared has no build step: its package.json exports raw .ts, which
+# @bladedlp/shared has no build step: its package.json exports raw .ts, which
 # Vite compiles as part of the dashboard bundle. So the source has to be here.
 COPY frontend/packages/shared    ./packages/shared
 COPY frontend/packages/dashboard ./packages/dashboard
@@ -59,7 +59,7 @@ COPY frontend/packages/dashboard ./packages/dashboard
 ARG VITE_API_BASE_URL=http://localhost:8000
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 
-RUN pnpm --filter @aurodlpv2/dashboard build \
+RUN pnpm --filter @bladedlp/dashboard build \
     && test -f packages/dashboard/dist/index.html
 
 # ===========================================================================

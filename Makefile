@@ -9,12 +9,12 @@ COMPOSE ?= docker compose -f infra/docker-compose.yml
 PROD_COMPOSE ?= docker compose -f infra/docker-compose.prod.yml
 # Deployment images. The build context is always the repo root: backend/pyproject.toml
 # has a path dependency on ../detection that a backend-only context cannot see.
-IMAGE_PREFIX ?= aurodlp
+IMAGE_PREFIX ?= blade
 IMAGE_TAG ?= dev
 # Baked into the dashboard bundle AND its CSP at build time; not overridable at run time.
 VITE_API_BASE_URL ?= http://localhost:8000
-TEST_DB_ASYNC ?= postgresql+asyncpg://aurodlpv2:aurodlpv2@localhost:5433/aurodlpv2_test
-TEST_DB_SYNC ?= postgresql+psycopg://aurodlpv2:aurodlpv2@localhost:5433/aurodlpv2_test
+TEST_DB_ASYNC ?= postgresql+asyncpg://blade:blade@localhost:5433/blade_test
+TEST_DB_SYNC ?= postgresql+psycopg://blade:blade@localhost:5433/blade_test
 
 help:
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -34,14 +34,14 @@ dev-logs: ## Tail infra logs
 	$(COMPOSE) logs -f
 
 backend-dev: ## Run FastAPI with reload
-	cd backend && $(UV) run uvicorn aurodlpv2_backend.main:app --reload --host 0.0.0.0 --port 8000
+	cd backend && $(UV) run uvicorn blade_backend.main:app --reload --host 0.0.0.0 --port 8000
 
 worker-dev: ## Run the Celery worker (queued attachment scans)
-	cd backend && $(UV) run celery -A aurodlpv2_backend.tasks.celery_app worker \
+	cd backend && $(UV) run celery -A blade_backend.tasks.celery_app worker \
 		--loglevel=info --concurrency=2
 
 beat-dev: ## Run Celery beat (no periodic tasks are scheduled yet)
-	cd backend && $(UV) run celery -A aurodlpv2_backend.tasks.celery_app beat --loglevel=info
+	cd backend && $(UV) run celery -A blade_backend.tasks.celery_app beat --loglevel=info
 
 dashboard-dev: ## Run admin dashboard
 	cd frontend && $(PNPM) dev:dashboard
@@ -61,25 +61,25 @@ test: ## Run all tests
 	cd frontend && $(PNPM) test
 
 accuracy: ## Detection accuracy report against the labelled corpus
-	cd detection && $(UV) run python -m aurodlpv2_detection.evaluation --failures
+	cd detection && $(UV) run python -m blade_detection.evaluation --failures
 
 accuracy-update: ## Re-record the accuracy baseline after a deliberate improvement
-	cd detection && $(UV) run python -m aurodlpv2_detection.evaluation --update-baseline
+	cd detection && $(UV) run python -m blade_detection.evaluation --update-baseline
 
 test-integration: ## Backend integration tests against the dev Postgres
 	$(COMPOSE) up -d postgres redis
 	@echo "waiting for postgres..."
-	@until docker exec aurodlpv2-dev-postgres-1 pg_isready -U aurodlpv2 -q; do sleep 1; done
-	@docker exec aurodlpv2-dev-postgres-1 psql -U aurodlpv2 -d aurodlpv2 -tAc \
-		"SELECT 1 FROM pg_database WHERE datname='aurodlpv2_test'" | grep -q 1 || \
-		docker exec aurodlpv2-dev-postgres-1 psql -U aurodlpv2 -d aurodlpv2 \
-			-c "CREATE DATABASE aurodlpv2_test"
+	@until docker exec blade-dev-postgres-1 pg_isready -U blade -q; do sleep 1; done
+	@docker exec blade-dev-postgres-1 psql -U blade -d blade -tAc \
+		"SELECT 1 FROM pg_database WHERE datname='blade_test'" | grep -q 1 || \
+		docker exec blade-dev-postgres-1 psql -U blade -d blade \
+			-c "CREATE DATABASE blade_test"
 	cd backend && DATABASE_URL=$(TEST_DB_ASYNC) DATABASE_SYNC_URL=$(TEST_DB_SYNC) \
 		$(UV) run alembic upgrade head
 	cd backend && $(UV) run pytest tests/integration -q --no-cov
 
 rulepack: ## Regenerate the client rule pack from the Python engine
-	cd detection && $(UV) run python -m aurodlpv2_detection.rules \
+	cd detection && $(UV) run python -m blade_detection.rules \
 		--out ../frontend/packages/shared/src/detection/rulepack.json
 
 lint: ## Lint backend + frontend
@@ -138,11 +138,11 @@ prod-migrate: ## Run alembic upgrade head against the production stack
 
 prod-backup: ## Dump the production database into backups/
 	@mkdir -p backups
-	$(PROD_COMPOSE) exec -T postgres pg_dump -U "$${POSTGRES_USER:-aurodlp}" -Fc "$${POSTGRES_DB:-aurodlp}" \
-		> backups/aurodlp-$$(date -u +%Y%m%dT%H%M%SZ).dump
+	$(PROD_COMPOSE) exec -T postgres pg_dump -U "$${POSTGRES_USER:-blade}" -Fc "$${POSTGRES_DB:-blade}" \
+		> backups/blade-$$(date -u +%Y%m%dT%H%M%SZ).dump
 	@ls -lh backups | tail -1
 
 prod-restore: ## Restore FILE=backups/x.dump into the production database (DESTRUCTIVE)
-	@test -n "$(FILE)" || { echo "usage: make prod-restore FILE=backups/aurodlp-....dump"; exit 1; }
-	$(PROD_COMPOSE) exec -T postgres pg_restore -U "$${POSTGRES_USER:-aurodlp}" \
-		-d "$${POSTGRES_DB:-aurodlp}" --clean --if-exists --no-owner < "$(FILE)"
+	@test -n "$(FILE)" || { echo "usage: make prod-restore FILE=backups/blade-....dump"; exit 1; }
+	$(PROD_COMPOSE) exec -T postgres pg_restore -U "$${POSTGRES_USER:-blade}" \
+		-d "$${POSTGRES_DB:-blade}" --clean --if-exists --no-owner < "$(FILE)"

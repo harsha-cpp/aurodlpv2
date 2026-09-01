@@ -1,4 +1,4 @@
-# Auro Healthcare DLP - production stack.
+# Blade DLP - production stack.
 #
 #   docker compose -f infra/docker-compose.prod.yml up -d
 #
@@ -16,7 +16,7 @@
 # reverse proxy (nginx/Caddy/an ALB) in front terminating HTTPS. REFRESH_COOKIE_SECURE
 # is required in production, so the app is unusable over plain HTTP anyway.
 
-name: aurodlp-prod
+name: blade-prod
 
 # ---------------------------------------------------------------------------
 # Anchors
@@ -40,7 +40,7 @@ x-backend-env: &backend-env
   STORAGE_BACKEND: s3
   # MinIO here; drop S3_ENDPOINT_URL and set S3_REGION for real AWS S3.
   S3_ENDPOINT_URL: ${S3_ENDPOINT_URL:-http://minio:9000}
-  S3_BUCKET: ${S3_BUCKET:-aurodlp-attachments}
+  S3_BUCKET: ${S3_BUCKET:-blade-attachments}
   S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER}
   S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD}
   S3_REGION: ${S3_REGION:-ap-south-1}
@@ -58,7 +58,7 @@ x-backend-env: &backend-env
   SMTP_PORT: ${SMTP_PORT:-587}
   SMTP_USER: ${SMTP_USER:-}
   SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-  SMTP_FROM: ${SMTP_FROM:?set SMTP_FROM, e.g. Auro DLP <no-reply@hospital.example>}
+  SMTP_FROM: ${SMTP_FROM:?set SMTP_FROM, e.g. Blade DLP <no-reply@hospital.example>}
   SMTP_TLS: ${SMTP_TLS:-true}
   # TOTP secrets are encrypted with this. It defaults to JWT_SECRET, which means
   # rotating the JWT secret would lock every user out of MFA - keep them separate
@@ -213,18 +213,18 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-      S3_BUCKET: ${S3_BUCKET:-aurodlp-attachments}
+      S3_BUCKET: ${S3_BUCKET:-blade-attachments}
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
         set -eu
-        mc alias set auro http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"
-        mc mb --ignore-existing "auro/$$S3_BUCKET"
-        mc anonymous set none "auro/$$S3_BUCKET"
+        mc alias set blade http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"
+        mc mb --ignore-existing "blade/$$S3_BUCKET"
+        mc anonymous set none "blade/$$S3_BUCKET"
         # Attachments are transient: the worker deletes each blob after the scan,
         # but a crashed worker leaves one behind. Expire them so patient data does
         # not accumulate in object storage indefinitely.
-        mc ilm rule add --expire-days 7 "auro/$$S3_BUCKET" 2>/dev/null || \
+        mc ilm rule add --expire-days 7 "blade/$$S3_BUCKET" 2>/dev/null || \
           echo "lifecycle rule already present or unsupported; set retention manually"
         echo "bucket $$S3_BUCKET ready"
     logging: *logging
@@ -236,7 +236,7 @@ services:
   # advisory lock - see infra/docker/run-migrations.py - for deploy targets that
   # have no place to put an init container.)
   migrate:
-    image: ${IMAGE_PREFIX:-aurodlp}/api:${IMAGE_TAG:-latest}
+    image: ${IMAGE_PREFIX:-blade}/api:${IMAGE_TAG:-latest}
     build:
       <<: *backend-build
       dockerfile: docker/api.Dockerfile
@@ -256,7 +256,7 @@ services:
     <<: *hardening
 
   api:
-    image: ${IMAGE_PREFIX:-aurodlp}/api:${IMAGE_TAG:-latest}
+    image: ${IMAGE_PREFIX:-blade}/api:${IMAGE_TAG:-latest}
     build:
       <<: *backend-build
       dockerfile: docker/api.Dockerfile
@@ -291,7 +291,7 @@ services:
     volumes:
       # STORAGE_BACKEND=s3 keeps attachments in MinIO, but main.py still creates
       # these directories at startup and the quarantine module writes here.
-      - api-state:/var/lib/aurodlp
+      - api-state:/var/lib/blade
     logging: *logging
     <<: *hardening
     deploy:
@@ -300,7 +300,7 @@ services:
         reservations: { memory: 512m }
 
   worker:
-    image: ${IMAGE_PREFIX:-aurodlp}/worker:${IMAGE_TAG:-latest}
+    image: ${IMAGE_PREFIX:-blade}/worker:${IMAGE_TAG:-latest}
     build:
       <<: *backend-build
       dockerfile: docker/worker.Dockerfile
@@ -324,7 +324,7 @@ services:
     command:
       - celery
       - -A
-      - aurodlpv2_backend.tasks.celery_app
+      - blade_backend.tasks.celery_app
       - worker
       - --loglevel=info
       - --concurrency=${WORKER_CONCURRENCY:-4}
@@ -335,7 +335,7 @@ services:
     # large PDF can take tens of seconds; killing it loses the ScanEvent result.
     stop_grace_period: 120s
     volumes:
-      - worker-state:/var/lib/aurodlp
+      - worker-state:/var/lib/blade
     logging: *logging
     <<: *hardening
     deploy:
@@ -346,7 +346,7 @@ services:
         reservations: { memory: 1g }
 
   dashboard:
-    image: ${IMAGE_PREFIX:-aurodlp}/dashboard:${IMAGE_TAG:-latest}
+    image: ${IMAGE_PREFIX:-blade}/dashboard:${IMAGE_TAG:-latest}
     build:
       <<: *backend-build
       dockerfile: docker/dashboard.Dockerfile

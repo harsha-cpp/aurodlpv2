@@ -1,10 +1,10 @@
 # syntax=docker/dockerfile:1.9
 #
-# Auro Healthcare DLP — Celery worker image.
+# Blade DLP - Celery worker image.
 #
 # BUILD CONTEXT MUST BE THE REPO ROOT:
-#   docker build -f infra/docker/worker.Dockerfile -t aurodlp/worker:dev .
-# backend/pyproject.toml declares `aurodlpv2-detection = { path = "../detection" }`,
+#   docker build -f infra/docker/worker.Dockerfile -t blade/worker:dev .
+# backend/pyproject.toml declares `blade-detection = { path = "../detection" }`,
 # so a backend/-only context cannot resolve the dependency.
 #
 # The worker runs the SAME detection code as the API — extractors, OCR, spaCy —
@@ -81,14 +81,14 @@ RUN touch /app/backend/README.md /app/detection/README.md
 # detection/pyproject.toml), so it lands here via uv sync. Do not add a
 # `spacy download` step; it would fetch a second, unpinned copy.
 RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked \
-    uv sync --no-dev --no-install-project --no-install-package aurodlpv2-detection
+    uv sync --no-dev --no-install-project --no-install-package blade-detection
 
 # --- Application layer ------------------------------------------------------
 COPY detection/pyproject.toml detection/README.md /app/detection/
-COPY detection/aurodlpv2_detection /app/detection/aurodlpv2_detection
+COPY detection/blade_detection /app/detection/blade_detection
 COPY backend/pyproject.toml backend/README.md backend/alembic.ini /app/backend/
 COPY backend/uv.lock* /app/backend/
-COPY backend/aurodlpv2_backend /app/backend/aurodlpv2_backend
+COPY backend/blade_backend /app/backend/blade_backend
 
 # Non-editable so the runtime image carries real packages in site-packages
 # rather than .pth files pointing at a source tree we would then have to ship.
@@ -154,15 +154,15 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     && rm -rf /var/lib/apt/lists/*
 
 # Fixed uid/gid so bind-mounted volumes have predictable ownership on the host.
-RUN groupadd --system --gid 10001 auro \
-    && useradd --system --uid 10001 --gid auro --home-dir /app --shell /usr/sbin/nologin auro
+RUN groupadd --system --gid 10001 blade \
+    && useradd --system --uid 10001 --gid blade --home-dir /app --shell /usr/sbin/nologin blade
 
 WORKDIR /app/backend
 
 COPY --from=builder --chown=root:root /app/.venv /app/.venv
 COPY --chown=root:root backend/alembic.ini /app/backend/alembic.ini
 # Migrations are not part of the installed wheel (alembic loads them from disk).
-COPY --chown=root:root backend/aurodlpv2_backend/db/migrations /app/backend/aurodlpv2_backend/db/migrations
+COPY --chown=root:root backend/blade_backend/db/migrations /app/backend/blade_backend/db/migrations
 COPY --chown=root:root infra/docker/entrypoint-api.sh /usr/local/bin/entrypoint-api.sh
 COPY --chown=root:root infra/docker/run-migrations.py /usr/local/bin/run-migrations.py
 RUN chmod 0755 /usr/local/bin/entrypoint-api.sh
@@ -170,13 +170,13 @@ RUN chmod 0755 /usr/local/bin/entrypoint-api.sh
 # ATTACHMENT_TEMP_DIR / QUARANTINE_STORAGE_DIR default to /tmp paths and
 # main.py chmods them to 0700 at startup — they must be owned by the runtime
 # user or lifespan raises before the first request.
-RUN mkdir -p /var/lib/aurodlp/attachments /var/lib/aurodlp/quarantine \
-    && chown -R auro:auro /var/lib/aurodlp \
-    && chmod 0700 /var/lib/aurodlp/attachments /var/lib/aurodlp/quarantine
-ENV ATTACHMENT_TEMP_DIR=/var/lib/aurodlp/attachments \
-    QUARANTINE_STORAGE_DIR=/var/lib/aurodlp/quarantine
+RUN mkdir -p /var/lib/blade/attachments /var/lib/blade/quarantine \
+    && chown -R blade:blade /var/lib/blade \
+    && chmod 0700 /var/lib/blade/attachments /var/lib/blade/quarantine
+ENV ATTACHMENT_TEMP_DIR=/var/lib/blade/attachments \
+    QUARANTINE_STORAGE_DIR=/var/lib/blade/quarantine
 
-USER auro:auro
+USER blade:blade
 
 # No EXPOSE: the worker takes work off Redis and never listens on a port.
 
@@ -187,13 +187,13 @@ USER auro:auro
 # otherwise the ping is answered by any worker on the broker and a wedged
 # container reports healthy forever.
 HEALTHCHECK --interval=60s --timeout=20s --start-period=60s --retries=3 \
-    CMD celery -A aurodlpv2_backend.tasks.celery_app inspect ping -d "celery@${HOSTNAME}" --timeout 15 || exit 1
+    CMD celery -A blade_backend.tasks.celery_app inspect ping -d "celery@${HOSTNAME}" --timeout 15 || exit 1
 
 ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/entrypoint-api.sh"]
 # --concurrency should track SCAN_MAX_CONCURRENCY and the CPU limit on the
 # container: detection is CPU-bound, so oversubscribing just adds latency.
 # Override in compose/k8s rather than editing this file.
-CMD ["celery", "-A", "aurodlpv2_backend.tasks.celery_app", "worker", \
+CMD ["celery", "-A", "blade_backend.tasks.celery_app", "worker", \
      "--loglevel=info", \
      "--concurrency=4", \
      "--max-tasks-per-child=100", \

@@ -142,11 +142,11 @@ Implemented today:
   channel and by site.
 
 Not implemented, despite the code that looks like it is:
-`backend/aurodlpv2_backend/observability/metrics.py` declares five Prometheus
+`backend/blade_backend/observability/metrics.py` declares five Prometheus
 collectors, but nothing increments them and no `/metrics` endpoint is mounted.
 Treat the backend as having structured logs only. The `jaeger` container in the
 dev stack is likewise unused: no OpenTelemetry exporter is configured in
-`backend/aurodlpv2_backend/`.
+`backend/blade_backend/`.
 
 The production hardening plan and the findings behind it are in
 [`docs/plans/hardening.md`](docs/plans/hardening.md).

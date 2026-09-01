@@ -25,10 +25,10 @@ from pathlib import Path
 
 import psycopg
 
-from aurodlpv2_backend.settings import get_settings
+from blade_backend.settings import get_settings
 
 # Arbitrary but fixed: any 64-bit int works as long as every deployer of this
-# application uses the same one. Derived from "aurodlpv2-alembic".
+# application uses the same one.
 ADVISORY_LOCK_KEY = 0x4155524F_444C5001
 
 BACKEND_DIR = Path("/app/backend")

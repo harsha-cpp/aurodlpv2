@@ -70,7 +70,7 @@ make dashboard-dev   # dashboard on http://localhost:5173
 
 ```bash
 cd frontend
-VITE_BACKEND_URL=http://localhost:8000 pnpm --filter @aurodlpv2/extension build
+VITE_BACKEND_URL=http://localhost:8000 pnpm --filter @bladedlp/extension build
 ```
 
 `VITE_BACKEND_URL` is read at build time and feeds both the runtime backend URL
@@ -116,7 +116,7 @@ password.
 ### Find the organization code
 
 Dashboard -> **Settings** (`/settings`) -> the **Organization code** card. It reads
-`AUR-...`; use the copy button next to it. The card is visible to owners and
+`BLD-...`; use the copy button next to it. The card is visible to owners and
 admins only, and has a **Regenerate code** button that unlinks every existing
 install - leave it alone during a demo. The same code is in the signup response
 above, and on the `/onboarding` page.
@@ -458,7 +458,7 @@ blocks at all is in
 Stop the API (`Ctrl-C` in the `make backend-dev` terminal) and paste the Aadhaar
 line into ChatGPT again. It is still blocked, with the same notice, at the same
 speed. Only the audit row is lost: the service worker's POST fails, logs
-`[AURO] web block report failed` to its console, and gives up. Enforcement never
+`[Blade] web block report failed` to its console, and gives up. Enforcement never
 depended on the backend being reachable.
 
 Contrast that with section 4: with the API down, a Gmail send falls back to the
@@ -571,4 +571,4 @@ down`, delete `infra/data/postgres`, bring it back up and run `make migrate`.
 item to still be `pending`; a second decision returns `409 quarantine already
 decided`. The Gmail tab must still be open on the same draft - if the modal was
 closed, nothing sends, and the extension logs
-`[AURO] cleared control is gone; click again to send`.
+`[Blade] cleared control is gone; click again to send`.

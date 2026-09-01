@@ -33,12 +33,12 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_USER: aurodlpv2
-          POSTGRES_PASSWORD: aurodlpv2
-          POSTGRES_DB: aurodlpv2_test
+          POSTGRES_USER: blade
+          POSTGRES_PASSWORD: blade
+          POSTGRES_DB: blade_test
         ports: ['5433:5432']
         options: >-
-          --health-cmd "pg_isready -U aurodlpv2"
+          --health-cmd "pg_isready -U blade"
           --health-interval 5s --health-timeout 3s --health-retries 10
       redis:
         image: redis:7-alpine
@@ -57,12 +57,12 @@ jobs:
       - name: Migrate
         run: cd backend && uv run --frozen alembic upgrade head
         env:
-          DATABASE_URL: postgresql+asyncpg://aurodlpv2:aurodlpv2@localhost:5433/aurodlpv2_test
-          DATABASE_SYNC_URL: postgresql+psycopg://aurodlpv2:aurodlpv2@localhost:5433/aurodlpv2_test
+          DATABASE_URL: postgresql+asyncpg://blade:blade@localhost:5433/blade_test
+          DATABASE_SYNC_URL: postgresql+psycopg://blade:blade@localhost:5433/blade_test
       - name: Integration tests
         run: cd backend && uv run --frozen pytest tests/integration -q --no-cov
         env:
-          AURO_TEST_DATABASE_URL: postgresql+asyncpg://aurodlpv2:aurodlpv2@localhost:5433/aurodlpv2_test
+          BLADE_TEST_DATABASE_URL: postgresql+asyncpg://blade:blade@localhost:5433/blade_test
 
   detection:
     runs-on: ubuntu-latest
@@ -82,7 +82,7 @@ jobs:
       - run: cd detection && uv run --frozen pyright
       - run: cd detection && uv run --frozen pytest -q
       - name: Detection accuracy (ratchet against committed baseline)
-        run: cd detection && uv run --frozen python -m aurodlpv2_detection.evaluation --check --failures
+        run: cd detection && uv run --frozen python -m blade_detection.evaluation --check --failures
       - run: cd detection && uv run --frozen pip-audit
       - run: cd detection && uvx --from cyclonedx-bom cyclonedx-py environment -o cyclonedx.json
 
@@ -142,7 +142,7 @@ jobs:
           file: infra/docker/api.Dockerfile
           push: false
           load: true
-          tags: aurodlp/api:ci
+          tags: blade/api:ci
           cache-from: type=gha,scope=api
           cache-to: type=gha,scope=api,mode=max
 
@@ -153,7 +153,7 @@ jobs:
           file: infra/docker/worker.Dockerfile
           push: false
           load: true
-          tags: aurodlp/worker:ci
+          tags: blade/worker:ci
           cache-from: type=gha,scope=api
           cache-to: type=gha,scope=worker,mode=max
 
@@ -164,7 +164,7 @@ jobs:
           file: infra/docker/dashboard.Dockerfile
           push: false
           load: true
-          tags: aurodlp/dashboard:ci
+          tags: blade/dashboard:ci
           build-args: |
             VITE_API_BASE_URL=https://api.ci.invalid
           cache-from: type=gha,scope=dashboard
@@ -177,31 +177,31 @@ jobs:
           set -euxo pipefail
 
           # Non-root everywhere.
-          test "$(docker run --rm --entrypoint id aurodlp/api:ci -u)" = "10001"
-          test "$(docker run --rm --entrypoint id aurodlp/worker:ci -u)" = "10001"
-          test "$(docker run --rm --entrypoint id aurodlp/dashboard:ci -u)" = "101"
+          test "$(docker run --rm --entrypoint id blade/api:ci -u)" = "10001"
+          test "$(docker run --rm --entrypoint id blade/worker:ci -u)" = "10001"
+          test "$(docker run --rm --entrypoint id blade/dashboard:ci -u)" = "101"
 
           # The detection engine's native dependencies are present and loadable.
-          docker run --rm --entrypoint python aurodlp/api:ci -c \
+          docker run --rm --entrypoint python blade/api:ci -c \
             'import magic; assert magic.from_buffer(b"%PDF-1.4", mime=True) == "application/pdf"'
-          docker run --rm --entrypoint python aurodlp/api:ci -c \
+          docker run --rm --entrypoint python blade/api:ci -c \
             'import en_core_web_sm; en_core_web_sm.load()'
-          docker run --rm --entrypoint sh aurodlp/api:ci -c \
+          docker run --rm --entrypoint sh blade/api:ci -c \
             'for l in eng hin mar tam tel ben kan mal guj pan ori; do tesseract --list-langs 2>&1 | grep -qx "$l" || { echo "missing tesseract lang: $l"; exit 1; }; done'
-          docker run --rm --entrypoint pdftoppm aurodlp/api:ci -v
+          docker run --rm --entrypoint pdftoppm blade/api:ci -v
 
           # OCR end to end: the binary, a language pack and the Python binding.
           # Without pytesseract this returns "" and a scanned attachment would
           # scan clean, so assert on real extracted text, not on the import.
-          docker run --rm --entrypoint python aurodlp/api:ci -c \
-            'from PIL import Image, ImageDraw; from aurodlpv2_detection.config import DetectionConfig; from aurodlpv2_detection.ocr import extract_image_text; i=Image.new("RGB",(900,200),"white"); ImageDraw.Draw(i).text((20,80),"MRN 4471902",fill="black"); t,c=extract_image_text(i,DetectionConfig()); print(repr(t),c); assert "4471902" in t, "OCR produced no text"'
+          docker run --rm --entrypoint python blade/api:ci -c \
+            'from PIL import Image, ImageDraw; from blade_detection.config import DetectionConfig; from blade_detection.ocr import extract_image_text; i=Image.new("RGB",(900,200),"white"); ImageDraw.Draw(i).text((20,80),"MRN 4471902",fill="black"); t,c=extract_image_text(i,DetectionConfig()); print(repr(t),c); assert "4471902" in t, "OCR produced no text"'
 
           # The worker's task actually registers.
-          docker run --rm --entrypoint python aurodlp/worker:ci -c \
-            'from aurodlpv2_backend.tasks.celery_app import celery_app as c; c.finalize(); assert "aurodlpv2.scan.process_attachment" in c.tasks, sorted(c.tasks)'
+          docker run --rm --entrypoint python blade/worker:ci -c \
+            'from blade_backend.tasks.celery_app import celery_app as c; c.finalize(); assert "blade.scan.process_attachment" in c.tasks, sorted(c.tasks)'
 
           # The API answers /healthz.
-          docker run -d --name api-smoke -p 8000:8000 aurodlp/api:ci
+          docker run -d --name api-smoke -p 8000:8000 blade/api:ci
           for i in $(seq 1 40); do
             if curl -fsS http://127.0.0.1:8000/healthz; then break; fi
             sleep 2
@@ -210,7 +210,7 @@ jobs:
           docker rm -f api-smoke
 
           # nginx serves the SPA, falls back to index.html, and sets the CSP.
-          docker run -d --name dash-smoke -p 8080:8080 aurodlp/dashboard:ci
+          docker run -d --name dash-smoke -p 8080:8080 blade/dashboard:ci
           for i in $(seq 1 20); do
             if curl -fsS http://127.0.0.1:8080/healthz; then break; fi
             sleep 1

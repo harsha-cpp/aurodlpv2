@@ -92,3 +92,5 @@ infra/data/
 *.tmp.mjs
 *.tmp.py
 *.tmp.ts
+
+dump.rdb

@@ -32,7 +32,7 @@ Workspace scripts, all defined in the root `package.json`: `build`, `lint`,
 - TypeScript strict everywhere (`tsconfig.base.json`).
 - React 19, function components only.
 - Zod parses every backend response.
-- Shared types live in `@aurodlpv2/shared`. Never duplicate `Verdict` between
+- Shared types live in `@bladedlp/shared`. Never duplicate `Verdict` between
   packages.
 - The detection rule pack is generated, not hand-edited. `make rulepack` exports
   `packages/shared/src/detection/rulepack.json` from the Python engine, and a

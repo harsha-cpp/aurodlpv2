@@ -80,8 +80,8 @@ see the known gaps in [`plans/hardening.md`](plans/hardening.md).
 ## Credentials
 
 The extension stores an organization routing code in `chrome.storage.local` under
-`aurodlp_org_code`, the cached organization config under `aurodlp_config`, and the
-last observed Gmail sender address under `aurodlp_last_user_email`. Websites
+`blade_org_code`, the cached organization config under `blade_config`, and the
+last observed Gmail sender address under `blade_last_user_email`. Websites
 cannot read extension storage.
 
 The backend supports revocable per-device installation tokens, and the dashboard

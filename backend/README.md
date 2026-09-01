@@ -1,10 +1,10 @@
-# aurodlpv2-backend
+# blade-backend
 
 FastAPI service for the Auro Healthcare DLP platform: multi-tenant auth, the
 policy engine, server-side scanning, quarantine, the audit log, and scan-event
 ingestion and analytics.
 
-It imports `aurodlpv2-detection` as a library through a path dependency on
+It imports `blade-detection` as a library through a path dependency on
 `../detection`. Detection is not a separate service, which is why the deployment
 image build context is the repository root.
 
@@ -16,7 +16,7 @@ make dev-up
 cd backend
 uv sync --all-extras
 uv run alembic upgrade head
-uv run uvicorn aurodlpv2_backend.main:app --reload --port 8000
+uv run uvicorn blade_backend.main:app --reload --port 8000
 ```
 
 The service needs Postgres. `make dev-up` also starts redis, minio, jaeger and
@@ -26,7 +26,7 @@ mailhog. Queued attachment scans need redis, minio and a worker
 ## Layout
 
 ```
-aurodlpv2_backend/
+blade_backend/
   main.py            FastAPI app factory, middleware, lifespan
   settings.py        pydantic-settings, env-driven config
   deps.py            DB session, current-member auth, role gates

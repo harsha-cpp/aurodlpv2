@@ -91,7 +91,7 @@ extension UI.
 
 ### 4.2 Detection
 
-The backend shall call `detect_email()` from `aurodlpv2_detection` for subject,
+The backend shall call `detect_email()` from `blade_detection` for subject,
 body, and scannable attachments. Normal attachment scans write bytes to private
 temporary storage only for the duration of extraction and delete the file after
 the scan attempt completes.

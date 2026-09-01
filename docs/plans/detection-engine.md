@@ -29,9 +29,9 @@
                           └────────────────────────────────────────────┘
 ```
 
-### 2.1 Module layout (Python package `aurodlpv2_detection`)
+### 2.1 Module layout (Python package `blade_detection`)
 ```
-aurodlpv2_detection/
+blade_detection/
 ├── __init__.py
 ├── api.py                    # Public entrypoint: scan_email(EmailPayload) -> ScanResult
 ├── models.py                 # Pydantic: EmailPayload, Attachment, Entity, ScanResult
@@ -68,7 +68,7 @@ aurodlpv2_detection/
 ## 3. Data Contracts
 
 ```python
-# aurodlpv2_detection/models.py
+# blade_detection/models.py
 class Attachment(BaseModel):
     filename: str
     content_type: str
@@ -246,7 +246,7 @@ def extract_text(page_image) -> PageText:
 
 ### 7.3 Packaging
 - Tesseract: system binary + `pytesseract`. Dockerfile installs `tesseract-ocr tesseract-ocr-eng tesseract-ocr-hin` etc.
-- PaddleOCR: optional extra (`pip install aurodlpv2-detection[paddle]`). The router degrades gracefully if PaddleOCR is not importable - logs a warning and skips fallback. This keeps the lean Tesseract-only image small for tenants who don't need Indic/handwriting.
+- PaddleOCR: optional extra (`pip install blade-detection[paddle]`). The router degrades gracefully if PaddleOCR is not importable - logs a warning and skips fallback. This keeps the lean Tesseract-only image small for tenants who don't need Indic/handwriting.
 
 ---
 
@@ -349,7 +349,7 @@ Backend loads tenant config from PostgreSQL and constructs a `DetectionEngine(co
 ## 11. Build Phases
 
 ### Phase 0 - Scaffolding (Day 1)
-- `aurodlpv2_detection` package, `pyproject.toml`, ruff + mypy + pytest baseline.
+- `blade_detection` package, `pyproject.toml`, ruff + mypy + pytest baseline.
 - Pydantic models, public `scan_email` stub.
 - Pin: `presidio-analyzer`, `spacy`, `pydantic`, `pymupdf`, `python-docx`, `openpyxl`, `python-stdnum`, `simple_icd_10_cm`.
 

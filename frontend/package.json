@@ -1,8 +1,8 @@
 {
-  "name": "aurodlpv2-frontend",
+  "name": "bladedlp-frontend",
   "version": "0.1.0",
   "private": true,
-  "description": "Auro Healthcare DLP Chrome extension + admin dashboard. See docs/plans/frontend.md.",
+  "description": "Blade Healthcare DLP Chrome extension + admin dashboard. See docs/plans/frontend.md.",
   "license": "MIT",
   "packageManager": "pnpm@9.12.3",
   "engines": {
@@ -10,12 +10,12 @@
     "pnpm": ">=9.0.0"
   },
   "scripts": {
-    "dev:extension": "pnpm --filter @aurodlpv2/extension dev",
-    "dev:dashboard": "pnpm --filter @aurodlpv2/dashboard dev",
+    "dev:extension": "pnpm --filter @bladedlp/extension dev",
+    "dev:dashboard": "pnpm --filter @bladedlp/dashboard dev",
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
-    "test:e2e": "pnpm --filter @aurodlpv2/extension test:e2e",
+    "test:e2e": "pnpm --filter @bladedlp/extension test:e2e",
     "typecheck": "pnpm -r typecheck",
     "format": "prettier --write \"packages/*/src/**/*.{ts,tsx,css}\""
   },

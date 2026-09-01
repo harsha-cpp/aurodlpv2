@@ -9,20 +9,20 @@
 # file pins tag + digest. Data lives in ./data, which is gitignored and safe to
 # delete when a container refuses to start after an image bump.
 
-name: aurodlpv2-dev
+name: blade-dev
 
 services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: aurodlpv2
-      POSTGRES_PASSWORD: aurodlpv2
-      POSTGRES_DB: aurodlpv2
+      POSTGRES_USER: blade
+      POSTGRES_PASSWORD: blade
+      POSTGRES_DB: blade
     ports: ["5433:5432"]
     volumes:
       - ./data/postgres:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U aurodlpv2"]
+      test: ["CMD-SHELL", "pg_isready -U blade"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -41,8 +41,8 @@ services:
     image: minio/minio:latest
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: aurodlpv2
-      MINIO_ROOT_PASSWORD: aurodlpv2-secret
+      MINIO_ROOT_USER: blade
+      MINIO_ROOT_PASSWORD: blade-secret
     ports:
       - "9000:9000"
       - "9001:9001"

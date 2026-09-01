@@ -71,7 +71,7 @@ Four constraints hold the decision in place.
    `WEB_BLOCK_DEDUPE_MS = 60_000`. A user retyping the same Aadhaar number into
    the same chat box produces one row per minute, not one per keystroke. The map
    is in memory, so it resets when Chrome tears the worker down.
-4. **An unlinked install reports nothing.** If `aurodlp_org_code` is absent from
+4. **An unlinked install reports nothing.** If `blade_org_code` is absent from
    `chrome.storage.local`, the worker returns before the fetch. There is no
    anonymous telemetry channel.
 

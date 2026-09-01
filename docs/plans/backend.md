@@ -1,6 +1,6 @@
 # Auro Healthcare DLP Backend - Build Plan
 
-> Scope: Python FastAPI + Celery + Redis + PostgreSQL backend that the Chrome extension and admin dashboard talk to. Owns auth, scan orchestration, policy evaluation, quarantine, audit log, and admin APIs. Detection logic lives in the separate `aurodlpv2_detection` package (see `detection-engine.md`).
+> Scope: Python FastAPI + Celery + Redis + PostgreSQL backend that the Chrome extension and admin dashboard talk to. Owns auth, scan orchestration, policy evaluation, quarantine, audit log, and admin APIs. Detection logic lives in the separate `blade_detection` package (see `detection-engine.md`).
 
 ---
 
@@ -42,7 +42,7 @@
                                                │
                                                ▼
                                        ┌───────────────┐
-                                       │ Celery worker │── invokes ──► aurodlpv2_detection
+                                       │ Celery worker │── invokes ──► blade_detection
                                        │ (prefork x N) │              (OCR / PDF / NER deep scan)
                                        └───────┬───────┘
                                                │
@@ -59,7 +59,7 @@
 backend/
 ├── pyproject.toml
 ├── alembic/                   # migrations
-├── aurodlpv2_backend/
+├── blade_backend/
 │   ├── main.py                # FastAPI app factory
 │   ├── settings.py            # pydantic-settings
 │   ├── deps.py                # DI: db session, current_user, current_workspace
@@ -630,7 +630,7 @@ Latency SLOs (golden signals):
 - Tests: latency budget enforced, audit rows immutable.
 
 ### Phase 3 - Detection engine integration (Days 9-11)
-- Wire `aurodlpv2_detection` package.
+- Wire `blade_detection` package.
 - Per-tenant config loading.
 - Temp file lifecycle.
 - Sync vs async decision logic.
