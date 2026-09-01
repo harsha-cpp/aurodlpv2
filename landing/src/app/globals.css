@@ -1,0 +1,334 @@
+@import "tailwindcss";
+
+/* Breakpoints match the source site exactly:
+   phone < 810 · tablet 810–1199 · desktop 1200–1439 · large ≥ 1440 */
+@theme {
+  --breakpoint-*: initial;
+  --breakpoint-tab: 810px;
+  --breakpoint-desk: 1200px;
+  --breakpoint-lg: 1440px;
+
+  --color-ink: #272727;
+  --color-ink-2: #303030;
+  --color-ink-3: #3f3f3e;
+  --color-ink-4: #202020;
+  --color-ink-5: #262624;
+  --color-cream: #faf9f5;
+  --color-sand: #dcd5ca;
+  --color-stone: #7c7b77;
+  --color-blue: #3e77e8;
+  --color-blue-deep: #2e539c;
+
+  --font-rsm: var(--font-restart-medium), "Restart Soft Medium", sans-serif;
+  --font-rsr: var(--font-restart-regular), "Restart Soft Regular", sans-serif;
+  --font-mono: var(--font-proto-mono), "Proto Mono Semi Bold", monospace;
+  --font-pixel: var(--font-geist-pixel), "Geist Pixel Line", monospace;
+  --font-sysmono: "Proto Mono", monospace;
+  --font-code: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-framer: cubic-bezier(0.44, 0, 0.56, 1);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background: var(--color-ink);
+    color: var(--color-cream);
+    font-family: var(--font-rsm);
+    font-weight: 500;
+    font-feature-settings: "blwf", "cv03", "cv04", "cv09", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Text rendered by the site's custom code components carries no feature settings. */
+  .no-ft {
+    font-feature-settings: normal;
+  }
+
+  ::selection {
+    background: var(--color-blue);
+    color: var(--color-cream);
+  }
+}
+
+@layer components {
+  /* ---------- type presets (values are the source's computed styles) ---------- */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: 16px;
+    line-height: 20.8px;
+    letter-spacing: -0.48px;
+    white-space: pre;
+  }
+  @variant tab {
+    .eyebrow {
+      font-size: 20px;
+      line-height: 20px;
+      letter-spacing: -0.6px;
+    }
+  }
+
+  .mono-16 {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: 12px;
+    line-height: 15.6px;
+    letter-spacing: -0.36px;
+  }
+  @variant tab {
+    .mono-16 {
+      font-size: 16px;
+      line-height: 20.8px;
+      letter-spacing: -0.48px;
+    }
+  }
+
+  /* Section H2 — 40 → 72 */
+  .h2-72 {
+    font-family: var(--font-rsm);
+    font-weight: 500;
+    font-size: 40px;
+    line-height: 36px;
+    letter-spacing: -1.2px;
+  }
+  @variant tab {
+    .h2-72 {
+      font-size: 72px;
+      line-height: 64.8px;
+      letter-spacing: -2.16px;
+    }
+  }
+
+  /* Display — 40 → 72 → 72 → 140 */
+  .display-140 {
+    font-family: var(--font-rsm);
+    font-weight: 500;
+    font-size: 40px;
+    line-height: 36px;
+    letter-spacing: -1.2px;
+  }
+  @variant tab {
+    .display-140 {
+      font-size: 72px;
+      line-height: 64.8px;
+      letter-spacing: -2.16px;
+    }
+  }
+  @variant lg {
+    .display-140 {
+      font-size: 140px;
+      line-height: 126px;
+      letter-spacing: -4.2px;
+    }
+  }
+
+  /* Body — 16 → 24 → 20 → 24 */
+  .body-24 {
+    font-family: var(--font-rsr);
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 24px;
+    letter-spacing: -0.32px;
+  }
+  @variant tab {
+    .body-24 {
+      font-size: 24px;
+      line-height: 36px;
+      letter-spacing: -0.48px;
+    }
+  }
+  @variant desk {
+    .body-24 {
+      font-size: 20px;
+      line-height: 30px;
+      letter-spacing: -0.4px;
+    }
+  }
+  @variant lg {
+    .body-24 {
+      font-size: 24px;
+      line-height: 36px;
+      letter-spacing: -0.48px;
+    }
+  }
+
+  .body-20 {
+    font-family: var(--font-rsr);
+    font-weight: 400;
+    font-size: 20px;
+    line-height: 30px;
+    letter-spacing: -0.4px;
+  }
+
+  /* Geist Pixel display — 56 → 100 */
+  .pixel-100 {
+    font-family: var(--font-pixel);
+    font-weight: 400;
+    font-size: 56px;
+    line-height: 50.4px;
+    letter-spacing: -1.68px;
+    white-space: pre;
+  }
+  @variant tab {
+    .pixel-100 {
+      font-size: 100px;
+      line-height: 90px;
+      letter-spacing: -3px;
+    }
+  }
+
+  .pixel-80 {
+    font-family: var(--font-pixel);
+    font-weight: 400;
+    font-size: 56px;
+    line-height: 50.4px;
+    letter-spacing: -1.68px;
+    white-space: pre;
+  }
+  @variant tab {
+    .pixel-80 {
+      font-size: 80px;
+      line-height: 72px;
+      letter-spacing: -2.4px;
+    }
+  }
+
+  /* ---------- nav ---------- */
+  .navlink {
+    font-family: var(--font-rsm);
+    font-weight: 500;
+    font-size: 16px;
+    line-height: 24px;
+    letter-spacing: -0.32px;
+    color: var(--color-cream);
+    white-space: pre;
+    transition: color 0.25s ease;
+  }
+  .navlink:hover {
+    color: var(--color-blue);
+  }
+
+  /* ---------- buttons ---------- */
+  .btn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    overflow: clip;
+    font-family: var(--font-rsm);
+    font-weight: 500;
+    color: var(--color-cream);
+    text-align: center;
+    white-space: pre;
+    text-decoration: none;
+    cursor: pointer;
+    transition:
+      background-color 0.25s ease,
+      color 0.25s ease;
+  }
+
+  /* lg: 48px tall below 1440, 66px at and above */
+  .btn-lg {
+    height: 48px;
+    padding: 16px 94px;
+    font-size: 20px;
+    line-height: 25px;
+  }
+  @variant lg {
+    .btn-lg {
+      height: 66px;
+      padding: 18px 94px;
+      font-size: 24px;
+      line-height: 30px;
+    }
+  }
+  .btn-sm {
+    height: 44px;
+    padding: 0 26px;
+    font-size: 16px;
+    line-height: 20px;
+  }
+  .btn-md {
+    height: 48px;
+    padding: 16px 94px;
+    font-size: 20px;
+    line-height: 25px;
+  }
+  .btn-nav {
+    height: 40px;
+    padding: 2px 8px 0;
+    font-size: 16px;
+    line-height: 20px;
+  }
+  /* phone nav CTA is a smaller boxed button */
+  .btn-navsm {
+    height: 32px;
+    padding: 9px 14px;
+    font-size: 12px;
+    line-height: 15px;
+  }
+
+  .btn-primary {
+    background-color: var(--color-blue);
+  }
+  .btn-primary:hover {
+    background-color: var(--color-blue-deep);
+  }
+  .btn-outline {
+    background-color: var(--color-ink);
+  }
+  .btn-bare {
+    background-color: transparent;
+  }
+  .btn-outline::after,
+  .btn-bare::after,
+  .btn-navcta::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border: 1px solid var(--color-cream);
+    transition: border-color 0.25s ease;
+  }
+  .btn-outline:hover,
+  .btn-bare:hover {
+    color: var(--color-blue);
+  }
+  .btn-outline:hover::after,
+  .btn-bare:hover::after {
+    border-color: var(--color-blue);
+  }
+  .btn-navcta {
+    background-color: transparent;
+  }
+  .btn-navcta::after {
+    border-color: var(--color-blue);
+  }
+  .btn-navcta:hover {
+    background-color: var(--color-blue);
+  }
+  .btn-ghost {
+    background-color: transparent;
+  }
+  .btn-ghost:hover {
+    color: var(--color-blue);
+  }
+
+  /* ---------- footer ---------- */
+  .footlink {
+    transition: color 0.25s ease;
+  }
+  .footlink:hover {
+    color: var(--color-stone);
+  }
+  .footlink-small:hover {
+    color: var(--color-blue);
+  }
+}
