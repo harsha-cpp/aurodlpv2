@@ -1,5 +1,5 @@
 export const DEV_BACKEND_URL = "http://localhost:8000";
-export const PROD_BACKEND_URL = "https://api.aurodlpv2.io";
+export const PROD_BACKEND_URL = "https://api.bladedlp.io";
 
 export interface BackendTarget {
   url: string;

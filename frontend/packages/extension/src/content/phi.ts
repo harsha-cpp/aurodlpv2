@@ -3,8 +3,8 @@ import {
   scoreEntities,
   type DetectedEntity,
   type EntitySource,
-} from "@aurodlpv2/shared";
-import type { EntityHit, Severity } from "@aurodlpv2/shared";
+} from "@bladedlp/shared";
+import type { EntityHit, Severity } from "@bladedlp/shared";
 
 export type { EntitySource };
 

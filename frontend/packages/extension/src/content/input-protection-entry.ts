@@ -32,5 +32,5 @@ function report(decision: InputProtectionDecision): void {
 
 installInputProtection({ onBlocked: report });
 
-document.documentElement.dataset.auroInputProtection = "on";
-console.info("[Auro] input protection active on", location.hostname);
+document.documentElement.dataset.bladeInputProtection = "on";
+console.info("[Blade] input protection active on", location.hostname);

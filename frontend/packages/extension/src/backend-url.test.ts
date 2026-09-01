@@ -22,10 +22,10 @@ describe("backend target resolution", () => {
       resolveBackendTarget("https://api.hospital.example/", false).url,
     ).toBe("https://api.hospital.example");
     const based = resolveBackendTarget(
-      "https://gw.hospital.example/auro/",
+      "https://gw.hospital.example/blade/",
       false,
     );
-    expect(based.url).toBe("https://gw.hospital.example/auro");
+    expect(based.url).toBe("https://gw.hospital.example/blade");
     expect(based.hostPermission).toBe("https://gw.hospital.example/*");
   });
 

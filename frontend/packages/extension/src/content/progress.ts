@@ -1,6 +1,6 @@
 import { FONT_UI, palette } from "./theme";
 
-const STRIP_ID = "aurodlp-scan-progress";
+const STRIP_ID = "blade-scan-progress";
 
 export interface ScanProgress {
   setStep(text: string): void;
@@ -46,7 +46,7 @@ export function showScanProgress(
     `border:2px solid ${PALETTE.rule}`,
     `border-top-color:${PALETTE.accent}`,
     "border-radius:50%",
-    "animation:aurodlp-spin 640ms linear infinite",
+    "animation:blade-spin 640ms linear infinite",
   ].join(";");
 
   const label = document.createElement("span");
@@ -114,13 +114,13 @@ export function showScanProgress(
   };
 }
 
-const KEYFRAMES_ID = "aurodlp-progress-keyframes";
+const KEYFRAMES_ID = "blade-progress-keyframes";
 
 function ensureKeyframes(): void {
   if (document.getElementById(KEYFRAMES_ID)) return;
   const style = document.createElement("style");
   style.id = KEYFRAMES_ID;
-  style.textContent = "@keyframes aurodlp-spin{to{transform:rotate(360deg)}}";
+  style.textContent = "@keyframes blade-spin{to{transform:rotate(360deg)}}";
   document.head.appendChild(style);
 }
 

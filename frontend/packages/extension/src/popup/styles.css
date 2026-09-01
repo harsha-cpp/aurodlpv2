@@ -1,24 +1,24 @@
 :root {
   color-scheme: light dark;
-  --ground: #f2f4f3;
+  --ground: #f5f6f8;
   --surface: #ffffff;
-  --surface-2: #e9ecea;
-  --rule: #d4dad7;
-  --rule-strong: #b7c0bc;
-  --ink: #121a1f;
-  --ink-2: #3b4850;
-  --ink-3: #69777f;
-  --ink-4: #98a3a9;
-  --accent: #0e5e6d;
+  --surface-2: #eceef2;
+  --rule: #dcdfe6;
+  --rule-strong: #bcc2cc;
+  --ink: #0d1319;
+  --ink-2: #39424d;
+  --ink-3: #667080;
+  --ink-4: #98a1ad;
+  --accent: #16456e;
   --accent-ink: #ffffff;
-  --accent-soft: #e0eef0;
+  --accent-soft: #e4ecf4;
   --accent-ring: rgba(14, 94, 109, 0.22);
-  --allow: #237a4a;
-  --allow-soft: #e2f1e7;
-  --allow-rule: #a9d4b8;
-  --warn: #8f5b00;
-  --warn-soft: #f8ecd2;
-  --warn-rule: #e4c98e;
+  --allow: #17703f;
+  --allow-soft: #e3f0e8;
+  --allow-rule: #a6cfb6;
+  --warn: #8a5a00;
+  --warn-soft: #f7ecd4;
+  --warn-rule: #e2c78e;
   --font-ui:
     "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
   --font-display:
@@ -29,23 +29,23 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --ground: #0e1315;
-    --surface: #151b1e;
-    --surface-2: #1c2427;
-    --rule: #2b353a;
-    --rule-strong: #3d4a50;
-    --ink: #e8edeb;
-    --ink-2: #b6c1bd;
-    --ink-3: #86948f;
+    --ground: #0c1014;
+    --surface: #12181e;
+    --surface-2: #1a222a;
+    --rule: #28323c;
+    --rule-strong: #3a4653;
+    --ink: #e7ecf2;
+    --ink-2: #b3bdc8;
+    --ink-3: #8290a0;
     --ink-4: #5f6c68;
-    --accent: #4fb3c1;
-    --accent-ink: #0a1a1d;
+    --accent: #6aa9e0;
+    --accent-ink: #08121c;
     --accent-soft: #143238;
     --accent-ring: rgba(79, 179, 193, 0.28);
-    --allow: #5ab97f;
+    --allow: #4fb37a;
     --allow-soft: #17311f;
     --allow-rule: #2c5a3c;
-    --warn: #d9a441;
+    --warn: #d3a13f;
     --warn-soft: #3a2b0c;
     --warn-rule: #6a5020;
   }
@@ -88,23 +88,12 @@ body {
 }
 
 .popup-title {
-  font-family: var(--font-display);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-weight: 600;
   font-size: 21px;
   line-height: 1;
-  letter-spacing: -0.015em;
-}
-
-.popup-tag {
-  font-family: var(--font-mono);
-  font-size: 9.5px;
-  letter-spacing: 0.14em;
-  color: var(--accent);
-  border: 1px solid var(--accent);
-  border-radius: 3px;
-  padding: 2px 4px;
-  line-height: 1;
-  transform: translateY(-2px);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .popup-version {

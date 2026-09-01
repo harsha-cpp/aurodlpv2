@@ -1,4 +1,4 @@
-import type { EntityHit } from "@aurodlpv2/shared";
+import type { EntityHit } from "@bladedlp/shared";
 import { entityLabel } from "./entity-labels";
 import { detectPhi } from "./phi";
 import { FONT_MONO, FONT_UI, palette } from "./theme";
@@ -210,7 +210,7 @@ function createNotice(
     if (removalTimer) clearTimeout(removalTimer);
 
     const host = documentRef.createElement("div");
-    host.setAttribute("data-auro-input-protection", "");
+    host.setAttribute("data-blade-input-protection", "");
     host.style.cssText =
       "all:initial;position:fixed;right:24px;bottom:24px;z-index:2147483647";
     const shadow = host.attachShadow({ mode: "closed" });
@@ -247,7 +247,7 @@ function createNotice(
     message.style.cssText = `margin-top:6px;color:${p.ink2}`;
     message.textContent =
       decision.reason === "inspection-limit"
-        ? "Auro could not inspect it safely, so nothing was pasted. Try a smaller selection."
+        ? "Blade could not inspect it safely, so nothing was pasted. Try a smaller selection."
         : `Detected ${decision.labels.length === 1 ? "identifier" : "identifiers"}: ${decision.labels.join(", ")}.`;
 
     const detail = documentRef.createElement("div");

@@ -1,4 +1,4 @@
-import type { Verdict } from "@aurodlpv2/shared";
+import type { Verdict } from "@bladedlp/shared";
 import ReactDOM from "react-dom/client";
 import WarningModal from "./WarningModal";
 import styles from "./styles.css?inline";

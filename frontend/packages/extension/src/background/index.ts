@@ -5,7 +5,7 @@ import {
   type WebBlockReport,
 } from "../web-block";
 
-const REFRESH_ALARM = "aurodlp-config-refresh";
+const REFRESH_ALARM = "blade-config-refresh";
 
 const WEB_BLOCK_DEDUPE_MS = 60_000;
 const WEB_BLOCK_TIMEOUT_MS = 5_000;
@@ -26,16 +26,16 @@ async function reportWebBlock(report: WebBlockReport): Promise<void> {
   if (!shouldReport(report, Date.now())) return;
 
   const stored = await chrome.storage.local.get([
-    "aurodlp_org_code",
-    "aurodlp_last_user_email",
+    "blade_org_code",
+    "blade_last_user_email",
   ]);
-  const orgCode = (stored.aurodlp_org_code as string | undefined)
+  const orgCode = (stored.blade_org_code as string | undefined)
     ?.trim()
     .toUpperCase();
   if (!orgCode) return;
 
   const userEmail =
-    (stored.aurodlp_last_user_email as string | undefined) ?? null;
+    (stored.blade_last_user_email as string | undefined) ?? null;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), WEB_BLOCK_TIMEOUT_MS);
@@ -57,9 +57,9 @@ async function reportWebBlock(report: WebBlockReport): Promise<void> {
         site_host: report.site_host,
       }),
     });
-    if (!res.ok) console.warn("[AURO] web block report rejected:", res.status);
+    if (!res.ok) console.warn("[Blade] web block report rejected:", res.status);
   } catch (err) {
-    console.warn("[AURO] web block report failed", err);
+    console.warn("[Blade] web block report failed", err);
   } finally {
     clearTimeout(timer);
   }
@@ -97,7 +97,7 @@ async function fetchConfig(orgCode: string): Promise<ConfigFetchResult> {
     const url = `${BACKEND_URL}/api/v1/public/orgs/${encodeURIComponent(orgCode)}/config`;
     const res = await fetch(url, { method: "GET" });
     if (!res.ok) {
-      console.warn("[AURO] Config fetch failed:", res.status);
+      console.warn("[Blade] Config fetch failed:", res.status);
       if (res.status === 404) return { status: "not_found" };
       return { status: "transient_error" };
     }
@@ -114,35 +114,35 @@ async function fetchConfig(orgCode: string): Promise<ConfigFetchResult> {
       },
     };
   } catch (err) {
-    console.warn("[AURO] Config fetch error", err);
+    console.warn("[Blade] Config fetch error", err);
     return { status: "transient_error" };
   }
 }
 
 async function refresh(): Promise<void> {
   const stored = await chrome.storage.local.get([
-    "aurodlp_org_code",
-    "aurodlp_config",
+    "blade_org_code",
+    "blade_config",
   ]);
   const orgCode =
-    ((stored.aurodlp_org_code as string | undefined) ?? null)
+    ((stored.blade_org_code as string | undefined) ?? null)
       ?.trim()
       .toUpperCase() ?? null;
   if (!orgCode) {
-    await chrome.storage.local.remove("aurodlp_config");
+    await chrome.storage.local.remove("blade_config");
     return;
   }
 
-  const cached = stored.aurodlp_config as ConfigCache | undefined;
+  const cached = stored.blade_config as ConfigCache | undefined;
   if (cached?.org_code !== orgCode) {
-    await chrome.storage.local.remove("aurodlp_config");
+    await chrome.storage.local.remove("blade_config");
   }
 
   const configResult = await fetchConfig(orgCode);
   if (configResult.status === "ok") {
-    await chrome.storage.local.set({ aurodlp_config: configResult.config });
+    await chrome.storage.local.set({ blade_config: configResult.config });
   } else if (configResult.status === "not_found") {
-    await chrome.storage.local.remove("aurodlp_config");
+    await chrome.storage.local.remove("blade_config");
   }
   // Transient network/server failures keep only same-org cached config.
 }
@@ -168,7 +168,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === "local" && changes.aurodlp_org_code) {
+  if (area === "local" && changes.blade_org_code) {
     void refresh();
   }
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { detectPhi, scorePhi } from "./phi";
-import { validateAadhaar, validatePan, RULE_PACK } from "@aurodlpv2/shared";
+import { validateAadhaar, validatePan, RULE_PACK } from "@bladedlp/shared";
 
 const types = (text: string): string[] =>
   detectPhi(text).map((hit) => hit.type);

@@ -23,7 +23,7 @@ send. Uploads attachments, polls queued attachment scans, calls
 ### Failing closed
 
 The extension decides from the org config the service worker caches in
-`chrome.storage.local` under `aurodlp_config`.
+`chrome.storage.local` under `blade_config`.
 
 When there is no usable config, meaning no org code, or the config fetch has
 never succeeded, or the cached config lists no approved recipient, the extension
@@ -126,10 +126,10 @@ feeds two things that must never disagree:
 
 ```bash
 # local development against a backend on localhost:8000
-pnpm --filter @aurodlpv2/extension dev
+pnpm --filter @bladedlp/extension dev
 
 # packaged build for a specific deployment
-VITE_BACKEND_URL=https://auro-api.hospital.example pnpm --filter @aurodlpv2/extension build
+VITE_BACKEND_URL=https://blade-api.hospital.example pnpm --filter @bladedlp/extension build
 ```
 
 Plain `http://` is rejected for anything but loopback, and a malformed value
@@ -139,8 +139,8 @@ an extension pointed at the wrong host.
 ## Tests
 
 ```bash
-pnpm --filter @aurodlpv2/extension test        # vitest, happy-dom
-pnpm --filter @aurodlpv2/extension test:e2e    # playwright, needs a built dist/
+pnpm --filter @bladedlp/extension test        # vitest, happy-dom
+pnpm --filter @bladedlp/extension test:e2e    # playwright, needs a built dist/
 ```
 
 The send-path predicates (`src/content/send-paths.ts`), the policy decision

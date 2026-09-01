@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Verdict, EntityHit } from "@aurodlpv2/shared";
+import type { Verdict, EntityHit } from "@bladedlp/shared";
 import { entityLabel } from "../content/entity-labels";
 
 interface WarningModalProps {
@@ -73,46 +73,48 @@ export default function WarningModal({
   const count = verdict.entities.length;
 
   return (
-    <div className="auro-overlay">
+    <div className="blade-overlay">
       <div
         ref={modalRef}
         role="alertdialog"
         aria-modal="true"
-        aria-labelledby="auro-title"
-        aria-describedby="auro-desc"
+        aria-labelledby="blade-title"
+        aria-describedby="blade-desc"
         tabIndex={-1}
-        className={`auro-modal is-${copy.tone}`}
+        className={`blade-modal is-${copy.tone}`}
       >
-        <div className="auro-header">
-          <span className={`auro-verdict is-${copy.tone}`}>{copy.verdict}</span>
-          <h2 id="auro-title" className="auro-title">
+        <div className="blade-header">
+          <span className={`blade-verdict is-${copy.tone}`}>
+            {copy.verdict}
+          </span>
+          <h2 id="blade-title" className="blade-title">
             {copy.title}
           </h2>
-          <p className="auro-subtitle">{copy.subtitle}</p>
+          <p className="blade-subtitle">{copy.subtitle}</p>
         </div>
 
-        <p id="auro-desc" className="auro-message">
+        <p id="blade-desc" className="blade-message">
           {verdict.user_message}
         </p>
 
         {verdict.degraded ? (
-          <p className="auro-notice">
-            Auro could not reach the server, so this decision was made locally
+          <p className="blade-notice">
+            Blade could not reach the server, so this decision was made locally
             with a smaller rule set. It may be stricter than usual.
           </p>
         ) : null}
         {verdict.action === "quarantine" && pollError ? (
-          <p className="auro-notice">
+          <p className="blade-notice">
             Approval status is temporarily unavailable. Still checking.
           </p>
         ) : null}
 
         {count > 0 && (
-          <div className="auro-entities">
-            <div className="auro-entities-label">
+          <div className="blade-entities">
+            <div className="blade-entities-label">
               {count} item{count > 1 ? "s" : ""} found
             </div>
-            <div className="auro-entities-list">
+            <div className="blade-entities-list">
               {verdict.entities.map((entity, idx) => (
                 <EntityChip key={idx} entity={entity} />
               ))}
@@ -120,22 +122,22 @@ export default function WarningModal({
           </div>
         )}
 
-        <div className="auro-footer">
-          <p className="auro-footer-hint">{copy.hint}</p>
-          <div className="auro-footer-actions">
+        <div className="blade-footer">
+          <p className="blade-footer-hint">{copy.hint}</p>
+          <div className="blade-footer-actions">
             {verdict.action === "warn" ? (
               <>
                 <button
                   type="button"
                   onClick={onClose}
-                  className="auro-btn auro-btn-secondary"
+                  className="blade-btn blade-btn-secondary"
                 >
                   Edit message
                 </button>
                 <button
                   type="button"
                   onClick={onSend}
-                  className="auro-btn"
+                  className="blade-btn"
                   autoFocus
                 >
                   Send anyway
@@ -147,7 +149,7 @@ export default function WarningModal({
                 <button
                   type="button"
                   onClick={onSend}
-                  className="auro-btn"
+                  className="blade-btn"
                   autoFocus
                 >
                   Send now
@@ -156,18 +158,18 @@ export default function WarningModal({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="auro-btn auro-btn-secondary"
+                  className="blade-btn blade-btn-secondary"
                   autoFocus
                 >
                   Back to draft
                 </button>
               ) : (
                 <>
-                  <span className="auro-spinner" aria-hidden="true" />
+                  <span className="blade-spinner" aria-hidden="true" />
                   <button
                     type="button"
                     onClick={onClose}
-                    className="auro-btn auro-btn-secondary"
+                    className="blade-btn blade-btn-secondary"
                     autoFocus
                   >
                     Back to draft
@@ -179,7 +181,7 @@ export default function WarningModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="auro-btn auro-btn-secondary"
+                className="blade-btn blade-btn-secondary"
                 autoFocus
               >
                 Back to draft
@@ -250,13 +252,13 @@ function modalCopy(
 function EntityChip({ entity }: { entity: EntityHit }) {
   return (
     <div
-      className="auro-chip"
+      className="blade-chip"
       title={
         entity.attachment_id ? "Found in an attachment" : "Found in the message"
       }
     >
-      <span className="auro-chip-type">{entityLabel(entity.type)}</span>
-      <code className="auro-chip-value">{entity.masked_value}</code>
+      <span className="blade-chip-type">{entityLabel(entity.type)}</span>
+      <code className="blade-chip-value">{entity.masked_value}</code>
     </div>
   );
 }

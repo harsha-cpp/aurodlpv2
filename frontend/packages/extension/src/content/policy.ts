@@ -1,4 +1,4 @@
-import type { EntityHit, Severity, Verdict } from "@aurodlpv2/shared";
+import type { EntityHit, Severity, Verdict } from "@bladedlp/shared";
 import { scorePhi } from "./phi";
 
 export interface OrgPolicy {
@@ -90,7 +90,7 @@ export interface LocalVerdictInput {
 }
 
 const NO_CONFIG_MESSAGE =
-  "Auro has no policy configuration for this account, so the recipients could not be checked. " +
+  "Blade has no policy configuration for this account, so the recipients could not be checked. " +
   "Connect the extension to your organization (or reconnect if the dashboard is unreachable) before sending sensitive data.";
 const NO_ALLOWLIST_MESSAGE =
   "This organization has no approved recipient domains configured, so the recipients could not be checked. " +

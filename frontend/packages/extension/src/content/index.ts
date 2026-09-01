@@ -3,7 +3,7 @@ import type {
   AttachmentUploadResult,
   EntityHit,
   Verdict,
-} from "@aurodlpv2/shared";
+} from "@bladedlp/shared";
 import { detectPhi, stripHtml } from "./phi";
 import {
   fetchAttachmentRefs,
@@ -16,7 +16,7 @@ import {
   showScanProgress,
   type ScanProgress,
 } from "./progress";
-import { FONT_MONO, FONT_SERIF, FONT_UI, palette } from "./theme";
+import { FONT_MONO, FONT_UI, palette } from "./theme";
 import {
   buildLocalVerdict,
   degradedVerdict,
@@ -85,31 +85,30 @@ function buildPolicy(
 
 async function loadOrgState(): Promise<void> {
   const result = await chrome.storage.local.get([
-    "aurodlp_org_code",
-    "aurodlp_config",
+    "blade_org_code",
+    "blade_config",
   ]);
   orgCode =
-    (result.aurodlp_org_code as string | undefined)?.trim().toUpperCase() ??
-    null;
+    (result.blade_org_code as string | undefined)?.trim().toUpperCase() ?? null;
   policy = buildPolicy(
     orgCode,
-    result.aurodlp_config as CachedConfig | undefined,
+    result.blade_config as CachedConfig | undefined,
   );
 }
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== "local") return;
-  if (changes.aurodlp_org_code) {
+  if (changes.blade_org_code) {
     orgCode =
-      (changes.aurodlp_org_code.newValue as string | undefined)
+      (changes.blade_org_code.newValue as string | undefined)
         ?.trim()
         .toUpperCase() ?? null;
     policy = emptyPolicy();
   }
-  if (changes.aurodlp_config) {
+  if (changes.blade_config) {
     policy = buildPolicy(
       orgCode,
-      changes.aurodlp_config.newValue as CachedConfig | undefined,
+      changes.blade_config.newValue as CachedConfig | undefined,
     );
   }
 });
@@ -126,14 +125,14 @@ function styled<K extends keyof HTMLElementTagNameMap>(
 }
 
 function showOrgCodeBanner(): void {
-  if (document.getElementById("aurodlp-org-banner")) return;
+  if (document.getElementById("blade-org-banner")) return;
   const p = palette();
 
   const banner = styled(
     "div",
     `position:fixed;bottom:24px;right:24px;z-index:2147483646;background:${p.surface};color:${p.ink};padding:16px 18px 18px;display:flex;flex-direction:column;gap:10px;font-family:${FONT_UI};font-size:13px;line-height:1.45;width:336px;border:1px solid ${p.rule};border-top:3px solid ${p.accent};border-radius:6px;box-shadow:${p.shadow};`,
   );
-  banner.id = "aurodlp-org-banner";
+  banner.id = "blade-org-banner";
   banner.setAttribute("role", "dialog");
   banner.setAttribute("aria-label", "Link this install to your organization");
 
@@ -147,15 +146,10 @@ function showOrgCodeBanner(): void {
   );
   const word = styled(
     "span",
-    `font-family:${FONT_SERIF};font-weight:500;font-size:20px;line-height:1;letter-spacing:-0.01em;color:${p.ink};`,
+    `font-family:${FONT_MONO};font-weight:600;font-size:15px;line-height:1;letter-spacing:0.09em;text-transform:uppercase;color:${p.ink};`,
   );
-  word.textContent = "Auro";
-  const tag = styled(
-    "span",
-    `font-family:${FONT_MONO};font-size:9.5px;letter-spacing:0.14em;color:${p.accent};border:1px solid ${p.accent};border-radius:3px;padding:2px 4px;line-height:1;transform:translateY(-2px);`,
-  );
-  tag.textContent = "DLP";
-  brand.append(word, tag);
+  word.textContent = "Blade";
+  brand.append(word);
   const skip = styled(
     "button",
     `background:transparent;border:none;color:${p.ink3};font-size:18px;cursor:pointer;line-height:1;padding:0 4px;font-family:inherit;`,
@@ -167,14 +161,14 @@ function showOrgCodeBanner(): void {
 
   const description = styled("div", `color:${p.ink2};`);
   description.textContent =
-    "Link this install to your organization so Auro can check recipients. Until then, messages with patient data are held for review.";
+    "Link this install to your organization so Blade can check recipients. Until then, messages with patient data are held for review.";
 
   const input = styled(
     "input",
     `height:34px;padding:0 11px;border-radius:4px;border:1px solid ${p.ruleStrong};background:${p.surface};color:${p.ink};font-size:12.5px;font-family:${FONT_MONO};letter-spacing:0.05em;text-transform:uppercase;outline:none;width:100%;box-sizing:border-box;`,
   );
   input.type = "text";
-  input.placeholder = "AUR-XXXXXX";
+  input.placeholder = "BLD-XXXXXX";
   input.autocomplete = "off";
   input.spellcheck = false;
   input.setAttribute("aria-label", "Organization code");
@@ -204,26 +198,26 @@ function showOrgCodeBanner(): void {
       return;
     }
     void chrome.storage.local
-      .set({ aurodlp_org_code: code, aurodlp_org_skipped: false })
+      .set({ blade_org_code: code, blade_org_skipped: false })
       .then(() => banner.remove());
   });
 
   skip.addEventListener("click", () => {
     void chrome.storage.local
-      .set({ aurodlp_org_skipped: true })
+      .set({ blade_org_skipped: true })
       .then(() => banner.remove());
   });
 }
 
 async function maybeShowOrgBanner(): Promise<void> {
   if (orgCode) return;
-  const result = await chrome.storage.local.get("aurodlp_org_skipped");
-  if (result.aurodlp_org_skipped) return;
+  const result = await chrome.storage.local.get("blade_org_skipped");
+  if (result.blade_org_skipped) return;
   setTimeout(showOrgCodeBanner, 1500);
 }
 
 function rememberUserEmail(email: string | undefined): string | undefined {
-  if (email) void chrome.storage.local.set({ aurodlp_last_user_email: email });
+  if (email) void chrome.storage.local.set({ blade_last_user_email: email });
   return email;
 }
 
@@ -633,7 +627,7 @@ function allowSend(trigger: SendTrigger, compose: Element): void {
       : null;
 
   if (!element) {
-    console.warn("[AURO] cleared control is gone; click again to send");
+    console.warn("[Blade] cleared control is gone; click again to send");
     return;
   }
 
@@ -703,7 +697,7 @@ async function handleSendIntercept(
       verdict = withUnscannedAttachments(verdict, unscanned);
     } catch (err) {
       if (cancelled) return;
-      console.warn("[AURO] backend scan unavailable, deciding locally", err);
+      console.warn("[Blade] backend scan unavailable, deciding locally", err);
       progress.setStep("Server unreachable - checking locally...");
       verdict = await buildLocalFallbackVerdict(data, files, unscanned);
       reportEvent(verdict, data.userEmail, data.recipients);
@@ -738,7 +732,7 @@ async function handleSendIntercept(
 
 function startSendIntercept(compose: Element, trigger: SendTrigger): void {
   void handleSendIntercept(compose, trigger).catch((err: unknown) => {
-    console.error("[AURO] send interception failed; nothing was sent", err);
+    console.error("[Blade] send interception failed; nothing was sent", err);
   });
 }
 
@@ -870,7 +864,7 @@ document.addEventListener(
       ? bound
       : resolveComposeFromContext(input);
     if (!compose) {
-      console.warn("[AURO] file picked with no compose to attribute it to");
+      console.warn("[Blade] file picked with no compose to attribute it to");
       return;
     }
     captureFiles(compose, input.files);

@@ -5,7 +5,7 @@ import pkg from './package.json' with { type: 'json' };
 export function buildManifest(backend: BackendTarget) {
   return defineManifest({
     manifest_version: 3,
-    name: 'Auro Healthcare DLP',
+    name: 'Blade Healthcare DLP',
     version: pkg.version,
     description: 'Checks outgoing Gmail for patient data before it leaves the hospital.',
     minimum_chrome_version: '120',

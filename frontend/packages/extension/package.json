@@ -1,9 +1,9 @@
 {
-  "name": "@aurodlpv2/extension",
+  "name": "@bladedlp/extension",
   "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "Auro Healthcare DLP Chrome MV3 extension. See docs/plans/frontend.md.",
+  "description": "Blade Healthcare DLP Chrome MV3 extension. See docs/plans/frontend.md.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -13,7 +13,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@aurodlpv2/shared": "workspace:*",
+    "@bladedlp/shared": "workspace:*",
     "lucide-react": "^0.460.0",
     "pdfjs-dist": "^5.7.284",
     "react": "^19.0.0",

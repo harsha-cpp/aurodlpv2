@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { EntityHit, Verdict } from "@aurodlpv2/shared";
+import type { EntityHit, Verdict } from "@bladedlp/shared";
 import {
   buildLocalVerdict,
   classifyRecipients,

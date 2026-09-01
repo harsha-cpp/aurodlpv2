@@ -1,5 +1,5 @@
 import { detectPhi } from "./phi";
-import type { EntityHit } from "@aurodlpv2/shared";
+import type { EntityHit } from "@bladedlp/shared";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
 let pdfLib: typeof import("pdfjs-dist") | null = null;
@@ -75,7 +75,7 @@ export async function scanAttachment(
     const entities = detectPhi(text, "attachment", file.name);
     return { filename: file.name, entities };
   } catch (err) {
-    console.error(`[AURO] Attachment scan FAILED for ${file.name}:`, err);
+    console.error(`[Blade] Attachment scan FAILED for ${file.name}:`, err);
     return { filename: file.name, entities: [], error: (err as Error).message };
   }
 }

@@ -15,23 +15,20 @@ function Popup() {
   const [showSaved, setShowSaved] = useState(false);
 
   useEffect(() => {
-    chrome.storage.local.get(
-      ["aurodlp_org_code", "aurodlp_config"],
-      (result) => {
-        const code = (result.aurodlp_org_code as string | undefined) ?? "";
-        setOrgCodeInput(code);
-        setSavedCode(code || null);
-        const config = result.aurodlp_config as CachedConfig | undefined;
-        setOrgName(config?.organization_name ?? null);
-      },
-    );
+    chrome.storage.local.get(["blade_org_code", "blade_config"], (result) => {
+      const code = (result.blade_org_code as string | undefined) ?? "";
+      setOrgCodeInput(code);
+      setSavedCode(code || null);
+      const config = result.blade_config as CachedConfig | undefined;
+      setOrgName(config?.organization_name ?? null);
+    });
     const listener = (
       changes: { [k: string]: chrome.storage.StorageChange },
       area: chrome.storage.AreaName,
     ): void => {
       if (area !== "local") return;
-      if (changes.aurodlp_config) {
-        const cfg = changes.aurodlp_config.newValue as CachedConfig | undefined;
+      if (changes.blade_config) {
+        const cfg = changes.blade_config.newValue as CachedConfig | undefined;
         setOrgName(cfg?.organization_name ?? null);
       }
     };
@@ -43,8 +40,8 @@ function Popup() {
     const trimmed = orgCode.trim().toUpperCase();
     if (trimmed.length < 4 || trimmed === savedCode) return;
     chrome.storage.local.set({
-      aurodlp_org_code: trimmed,
-      aurodlp_org_skipped: false,
+      blade_org_code: trimmed,
+      blade_org_skipped: false,
     });
     setSavedCode(trimmed);
     setShowSaved(true);
@@ -61,8 +58,7 @@ function Popup() {
     <div className="popup">
       <div className="popup-header">
         <div className="popup-brand">
-          <span className="popup-title">Auro</span>
-          <span className="popup-tag">DLP</span>
+          <span className="popup-title">Blade</span>
         </div>
         <span className="popup-version">v0.2.0</span>
       </div>
@@ -98,7 +94,7 @@ function Popup() {
                 id="org-code"
                 className="settings-input"
                 type="text"
-                placeholder="AUR-XXXXXX"
+                placeholder="BLD-XXXXXX"
                 autoComplete="off"
                 spellCheck={false}
                 value={orgCode}
@@ -128,7 +124,7 @@ function Popup() {
         </div>
       </div>
 
-      <div className="popup-footer">Auro Healthcare DLP</div>
+      <div className="popup-footer">Blade Healthcare DLP</div>
     </div>
   );
 }

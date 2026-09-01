@@ -1,4 +1,4 @@
-import type { Severity } from "@aurodlpv2/shared";
+import type { Severity } from "@bladedlp/shared";
 
 export const WEB_BLOCK_MESSAGE = "WEB_BLOCK";
 
