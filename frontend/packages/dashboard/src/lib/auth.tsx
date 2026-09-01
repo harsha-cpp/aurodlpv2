@@ -22,9 +22,10 @@ import {
 } from "../api/auth";
 import { setAccessToken, setOnAuthLost, refreshSession } from "./api";
 import { can, type Capability } from "./roles";
+import { clearShellRole, readShellRole, writeShellRole } from "./shell-cache";
 
 interface AuthState {
-  status: "loading" | "unauthenticated" | "authenticated";
+  status: "loading" | "restoring" | "unauthenticated" | "authenticated";
   member: Member | null;
   organization: Organization | null;
 }
@@ -51,10 +52,13 @@ function applyAuth(res: AuthResponse): {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
-  const [state, setState] = useState<AuthState>({
-    status: "loading",
-    member: null,
-    organization: null,
+  const [state, setState] = useState<AuthState>(() => {
+    const role = readShellRole();
+    return {
+      status: role ? "restoring" : "loading",
+      member: role ? ({ role } as Member) : null,
+      organization: null,
+    };
   });
   const bootstrappedRef = useRef(false);
 
@@ -62,12 +66,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const result = await refreshSession();
     if (result.accessToken && result.data) {
       const data = result.data as AuthResponse;
+      writeShellRole(data.member.role);
       setState({
         status: "authenticated",
         member: data.member,
         organization: data.organization,
       });
     } else {
+      clearShellRole();
       setState({ status: "unauthenticated", member: null, organization: null });
     }
   }, []);
@@ -78,6 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setOnAuthLost(() => {
       setAccessToken(null);
       queryClient.clear();
+      clearShellRole();
       setState({ status: "unauthenticated", member: null, organization: null });
     });
     void bootstrap();
@@ -88,7 +95,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res: LoginResult = await authApi.login(body);
       if (isMfaChallenge(res)) return res;
       queryClient.clear();
-      setState({ status: "authenticated", ...applyAuth(res) });
+      const next = applyAuth(res);
+      writeShellRole(next.member.role);
+      setState({ status: "authenticated", ...next });
       return null;
     },
     [queryClient],
@@ -98,7 +107,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (challengeToken: string, code: string) => {
       const res = await authApi.mfaVerify(challengeToken, code);
       queryClient.clear();
-      setState({ status: "authenticated", ...applyAuth(res) });
+      const next = applyAuth(res);
+      writeShellRole(next.member.role);
+      setState({ status: "authenticated", ...next });
     },
     [queryClient],
   );
@@ -107,7 +118,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (body: SignupBody) => {
       const res = await authApi.signup(body);
       queryClient.clear();
-      setState({ status: "authenticated", ...applyAuth(res) });
+      const next = applyAuth(res);
+      writeShellRole(next.member.role);
+      setState({ status: "authenticated", ...next });
     },
     [queryClient],
   );
@@ -116,6 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await authApi.logout().catch(() => undefined);
     setAccessToken(null);
     queryClient.clear();
+    clearShellRole();
     setState({ status: "unauthenticated", member: null, organization: null });
   }, [queryClient]);
 
@@ -133,7 +147,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (orgId: string) => {
       const res = await authApi.switchOrg(orgId);
       queryClient.clear();
-      setState({ status: "authenticated", ...applyAuth(res) });
+      const next = applyAuth(res);
+      writeShellRole(next.member.role);
+      setState({ status: "authenticated", ...next });
     },
     [queryClient],
   );
@@ -167,19 +183,11 @@ export function useAuth(): AuthCtx {
   return ctx;
 }
 
-function FullPageSpinner() {
-  return (
-    <div className="center" style={{ height: "100vh" }}>
-      <div className="spinner" />
-    </div>
-  );
-}
-
 export function RequireAuth({ children }: { children: ReactNode }) {
   const { status } = useAuth();
   const location = useLocation();
 
-  if (status === "loading") return <FullPageSpinner />;
+  if (status === "loading") return null;
   if (status === "unauthenticated") {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
@@ -188,7 +196,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 
 export function RedirectIfAuthed({ children }: { children: ReactNode }) {
   const { status } = useAuth();
-  if (status === "loading") return <FullPageSpinner />;
+  if (status === "loading" || status === "restoring") return null;
   if (status === "authenticated") return <Navigate to="/" replace />;
   return <>{children}</>;
 }
@@ -201,7 +209,7 @@ export function RequireCapability({
   children: ReactNode;
 }) {
   const { status, member, can: capable } = useAuth();
-  if (status === "loading") return <FullPageSpinner />;
+  if (status === "loading") return null;
   if (capable(capability)) return <>{children}</>;
   return (
     <div className="card" style={{ maxWidth: 560 }}>

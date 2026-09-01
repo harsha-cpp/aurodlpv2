@@ -1,4 +1,4 @@
-import { StrictMode, Suspense } from "react";
+import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider, createBrowserRouter } from "react-router-dom";
@@ -16,15 +16,7 @@ if (root) {
   createRoot(root).render(
     <StrictMode>
       <QueryClientProvider client={queryClient}>
-        <Suspense
-          fallback={
-            <div className="center" style={{ height: "100vh" }}>
-              <div className="spinner" />
-            </div>
-          }
-        >
-          <RouterProvider router={router} />
-        </Suspense>
+        <RouterProvider router={router} />
       </QueryClientProvider>
     </StrictMode>,
   );

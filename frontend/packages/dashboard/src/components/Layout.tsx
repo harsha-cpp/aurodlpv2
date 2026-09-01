@@ -1,18 +1,23 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { ChevronsUpDown, Monitor, Moon, Sun } from "lucide-react";
+import { ChevronsUpDown, Menu, Monitor, Moon, Sun, X } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { authApi, type OrgListItem } from "../api/auth";
 import { navGroupsFor } from "../lib/roles";
 import { useTheme, type ThemePreference } from "../lib/theme";
 import { errorMessage } from "../lib/errors";
 import ErrorBoundary from "./ErrorBoundary";
+import BladeWordmark from "./BladeWordmark";
+import { PageSkeleton } from "./Skeletons";
+
+const SIDEBAR_ID = "primary-sidebar";
 
 export default function Layout() {
   const { member, organization, logout, switchOrg } = useAuth();
   const location = useLocation();
   const [signingOut, setSigningOut] = useState(false);
   const [open, setOpen] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
   const [orgs, setOrgs] = useState<OrgListItem[]>([]);
   const [switchError, setSwitchError] = useState<string | null>(null);
   const [switching, setSwitching] = useState<string | null>(null);
@@ -46,6 +51,38 @@ export default function Layout() {
     return () => document.removeEventListener("mousedown", onClick);
   }, [open]);
 
+  useEffect(() => {
+    setNavOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!navOpen) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setNavOpen(false);
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [navOpen]);
+
+  useEffect(() => {
+    const wide = window.matchMedia("(min-width: 900px)");
+    function onChange(e: MediaQueryListEvent) {
+      if (e.matches) setNavOpen(false);
+    }
+    wide.addEventListener("change", onChange);
+    return () => wide.removeEventListener("change", onChange);
+  }, []);
+
+  useEffect(() => {
+    if (!navOpen) return;
+    const body = document.body;
+    const previous = body.style.overflow;
+    body.style.overflow = "hidden";
+    return () => {
+      body.style.overflow = previous;
+    };
+  }, [navOpen]);
+
   async function switchTo(org: OrgListItem) {
     setOpen(false);
     if (org.id === organization?.id) return;
@@ -64,11 +101,34 @@ export default function Layout() {
   const others = orgs.filter((o) => o.id !== organization?.id);
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
+    <div className="app-shell" data-nav-open={navOpen ? "true" : "false"}>
+      <header className="topbar">
+        <button
+          type="button"
+          className="sidebar-toggle"
+          onClick={() => setNavOpen((v) => !v)}
+          aria-expanded={navOpen}
+          aria-controls={SIDEBAR_ID}
+          aria-label={navOpen ? "Close navigation" : "Open navigation"}
+        >
+          {navOpen ? <X size={18} /> : <Menu size={18} />}
+        </button>
         <div className="sidebar-brand">
-          <span className="sidebar-brand-word">Auro</span>
-          <span className="sidebar-brand-tag">DLP</span>
+          <BladeWordmark height={32} className="sidebar-brand-lockup" />
+          <span className="brand-tm">DLP</span>
+        </div>
+      </header>
+
+      <div
+        className="sidebar-scrim"
+        aria-hidden="true"
+        onClick={() => setNavOpen(false)}
+      />
+
+      <aside className="sidebar" id={SIDEBAR_ID}>
+        <div className="sidebar-brand">
+          <BladeWordmark height={34} className="sidebar-brand-lockup" />
+          <span className="brand-tm">DLP</span>
         </div>
 
         <nav className="sidebar-nav" aria-label="Primary">
@@ -154,9 +214,10 @@ export default function Layout() {
       </aside>
 
       <main className="main page-enter" key={location.pathname}>
-        {/* Keyed on the path so navigating away from a broken page clears it. */}
         <ErrorBoundary resetKey={location.pathname}>
-          <Outlet />
+          <Suspense fallback={<PageSkeleton />}>
+            <Outlet />
+          </Suspense>
         </ErrorBoundary>
       </main>
     </div>
